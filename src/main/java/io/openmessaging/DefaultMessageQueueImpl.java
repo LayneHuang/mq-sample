@@ -1,5 +1,7 @@
 package io.openmessaging;
 
+import sun.misc.Cleaner;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
@@ -37,6 +39,7 @@ public class DefaultMessageQueueImpl extends MessageQueue {
                     queuePath.resolve(queueId + ".d"),
                     StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.APPEND, StandardOpenOption.SYNC
             );
+            dataChannel.force(true);
             long position = dataChannel.position();
             ByteBuffer lenBufWrite = ByteBuffer.allocate(Short.BYTES);
             lenBufWrite.putShort((short) data.limit());
@@ -44,6 +47,7 @@ public class DefaultMessageQueueImpl extends MessageQueue {
             dataChannel.write(lenBufWrite);
             lenBufWrite.flip();
             dataChannel.write(data);
+            dataChannel.close();
             // 索引
             if (offset % 64 == 0) {
                 ByteBuffer indexBuf = ByteBuffer.allocate(16);
@@ -54,7 +58,9 @@ public class DefaultMessageQueueImpl extends MessageQueue {
                         queuePath.resolve(queueId + ".i"),
                         StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.APPEND, StandardOpenOption.SYNC
                 );
+                indexChannel.force(true);
                 indexChannel.write(indexBuf);
+                indexChannel.close();
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -82,6 +88,11 @@ public class DefaultMessageQueueImpl extends MessageQueue {
                 prevOffset = curOffset;
                 position = indexMapBuf.getLong();
             }
+            Cleaner cleaner = ((sun.nio.ch.DirectBuffer) indexMapBuf).cleaner();
+            if (cleaner != null) {
+                cleaner.clean();
+            }
+            indexChannel.close();
             dataMap = new HashMap<>(fetchNum);
             FileChannel dataChannel = FileChannel.open(
                     DIR_WORK.resolve(topic).resolve(queueId + ".d"),
@@ -109,6 +120,7 @@ public class DefaultMessageQueueImpl extends MessageQueue {
                 }
                 prevOffset++;
             }
+            dataChannel.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
