@@ -38,9 +38,10 @@ public class DefaultMessageQueueImpl extends MessageQueue {
             Files.createDirectories(queuePath);
             FileChannel dataChannel = FileChannel.open(
                     queuePath.resolve(queueId + ".d"),
-                    StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.APPEND, StandardOpenOption.SYNC
+                    StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.APPEND
+//                    , StandardOpenOption.SYNC
             );
-            dataChannel.force(true);
+//            dataChannel.force(true);
             long position = dataChannel.position();
             ByteBuffer lenBufWrite = ByteBuffer.allocate(Short.BYTES);
             lenBufWrite.putShort((short) data.limit());
@@ -57,9 +58,10 @@ public class DefaultMessageQueueImpl extends MessageQueue {
                 indexBuf.flip();
                 FileChannel indexChannel = FileChannel.open(
                         queuePath.resolve(queueId + ".i"),
-                        StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.APPEND, StandardOpenOption.SYNC
+                        StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.APPEND
+//                        , StandardOpenOption.SYNC
                 );
-                indexChannel.force(true);
+//                indexChannel.force(true);
                 indexChannel.write(indexBuf);
                 indexChannel.close();
             }
