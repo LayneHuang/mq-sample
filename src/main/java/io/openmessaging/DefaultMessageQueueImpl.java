@@ -23,9 +23,6 @@ public class DefaultMessageQueueImpl extends MessageQueue {
     public static final Path DIR_WORK = Paths.get(System.getProperty("user.dir")).resolve("target");
     public static final ConcurrentHashMap<String, ConcurrentHashMap<Integer, AtomicLong>> APPEND_OFFSET_MAP = new ConcurrentHashMap<>();
 
-    ByteBuffer lenBufWrite = ByteBuffer.allocate(Short.BYTES);
-    ByteBuffer lenBufRead = ByteBuffer.allocate(Short.BYTES);
-
     @Override
     public long append(String topic, int queueId, ByteBuffer data) {
         ConcurrentHashMap<Integer, AtomicLong> queueOffsetMap = APPEND_OFFSET_MAP.computeIfAbsent(topic, k -> new ConcurrentHashMap<>());
@@ -41,6 +38,7 @@ public class DefaultMessageQueueImpl extends MessageQueue {
                     StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.APPEND, StandardOpenOption.SYNC
             );
             long position = dataChannel.position();
+            ByteBuffer lenBufWrite = ByteBuffer.allocate(Short.BYTES);
             lenBufWrite.putShort((short) data.limit());
             lenBufWrite.flip();
             dataChannel.write(lenBufWrite);
@@ -76,7 +74,7 @@ public class DefaultMessageQueueImpl extends MessageQueue {
             // 找数据偏移量
             long prevOffset = 0;
             long position = 0;
-            while (true) {
+            while (indexMapBuf.hasRemaining()) {
                 long curOffset = indexMapBuf.getLong();
                 if (curOffset > offset) {
                     break;
@@ -91,6 +89,7 @@ public class DefaultMessageQueueImpl extends MessageQueue {
             );
             dataChannel.position(position);
             int key = 0;
+            ByteBuffer lenBufRead = ByteBuffer.allocate(Short.BYTES);
             while (true) {
                 if (dataChannel.read(lenBufRead) <= 0) {
                     break;
