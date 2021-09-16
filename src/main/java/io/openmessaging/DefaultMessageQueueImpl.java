@@ -97,6 +97,8 @@ public class DefaultMessageQueueImpl extends MessageQueue {
                     cleaner.clean();
                 }
                 indexChannel.close();
+            } else {
+                System.out.println(indexPath + "不存在");
             }
             if (Files.exists(dataPath)) {
                 FileChannel dataChannel = FileChannel.open(
@@ -126,6 +128,8 @@ public class DefaultMessageQueueImpl extends MessageQueue {
                     prevOffset++;
                 }
                 dataChannel.close();
+            } else {
+                System.out.println(dataPath + "不存在");
             }
         } catch (IOException e) {
             e.printStackTrace();
