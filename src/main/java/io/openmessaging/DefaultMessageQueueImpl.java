@@ -75,13 +75,10 @@ public class DefaultMessageQueueImpl extends MessageQueue {
         Path indexPath = DIR_ESSD.resolve(topic).resolve(queueId + ".i");
         Path dataPath = DIR_ESSD.resolve(topic).resolve(queueId + ".d");
         try {
-            FileChannel indexChannel = FileChannel.open(
-                    indexPath,
-                    StandardOpenOption.READ
-            );
             long prevOffset = 0;
             long position = 0;
             if (Files.exists(indexPath)) {
+                FileChannel indexChannel = FileChannel.open(indexPath, StandardOpenOption.READ);
                 MappedByteBuffer indexMapBuf = indexChannel.map(FileChannel.MapMode.READ_ONLY, 0, indexChannel.size());
                 // 找数据偏移量
                 while (indexMapBuf.hasRemaining()) {
@@ -101,10 +98,7 @@ public class DefaultMessageQueueImpl extends MessageQueue {
                 System.out.println(indexPath + "不存在");
             }
             if (Files.exists(dataPath)) {
-                FileChannel dataChannel = FileChannel.open(
-                        dataPath,
-                        StandardOpenOption.READ
-                );
+                FileChannel dataChannel = FileChannel.open(dataPath, StandardOpenOption.READ);
                 dataChannel.position(position);
                 int key = 0;
                 ByteBuffer lenBufRead = ByteBuffer.allocate(Short.BYTES);
