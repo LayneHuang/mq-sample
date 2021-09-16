@@ -23,7 +23,7 @@ public class DefaultMessageQueueImpl extends MessageQueue {
 
     public static final String DIR_PMEM = "/pmem";
     public static final Path DIR_ESSD = Paths.get("/essd");
-//    public static final Path DIR_ESSD = Paths.get(System.getProperty("user.dir")).resolve("target");
+    //    public static final Path DIR_ESSD = Paths.get(System.getProperty("user.dir")).resolve("target");
     public static final ConcurrentHashMap<String, ConcurrentHashMap<Integer, AtomicLong>> APPEND_OFFSET_MAP = new ConcurrentHashMap<>();
 
     @Override
@@ -72,55 +72,61 @@ public class DefaultMessageQueueImpl extends MessageQueue {
     @Override
     public Map<Integer, ByteBuffer> getRange(String topic, int queueId, long offset, int fetchNum) {
         Map<Integer, ByteBuffer> dataMap = new HashMap<>(fetchNum);
+        Path indexPath = DIR_ESSD.resolve(topic).resolve(queueId + ".i");
+        Path dataPath = DIR_ESSD.resolve(topic).resolve(queueId + ".d");
         try {
             FileChannel indexChannel = FileChannel.open(
-                    DIR_ESSD.resolve(topic).resolve(queueId + ".i"),
+                    indexPath,
                     StandardOpenOption.READ
             );
-            MappedByteBuffer indexMapBuf = indexChannel.map(FileChannel.MapMode.READ_ONLY, 0, indexChannel.size());
-            // 找数据偏移量
             long prevOffset = 0;
             long position = 0;
-            while (indexMapBuf.hasRemaining()) {
-                long curOffset = indexMapBuf.getLong();
-                if (curOffset > offset) {
-                    break;
-                }
-                prevOffset = curOffset;
-                position = indexMapBuf.getLong();
-            }
-            Cleaner cleaner = ((sun.nio.ch.DirectBuffer) indexMapBuf).cleaner();
-            if (cleaner != null) {
-                cleaner.clean();
-            }
-            indexChannel.close();
-            FileChannel dataChannel = FileChannel.open(
-                    DIR_ESSD.resolve(topic).resolve(queueId + ".d"),
-                    StandardOpenOption.READ
-            );
-            dataChannel.position(position);
-            int key = 0;
-            ByteBuffer lenBufRead = ByteBuffer.allocate(Short.BYTES);
-            while (true) {
-                if (dataChannel.read(lenBufRead) <= 0) {
-                    break;
-                }
-                lenBufRead.flip();
-                short length = lenBufRead.getShort();
-                lenBufRead.flip();
-                ByteBuffer msgBuf = ByteBuffer.allocate(length);
-                dataChannel.read(msgBuf);
-                msgBuf.flip();
-                if (prevOffset >= offset) {
-                    dataMap.put(key, msgBuf);
-                    key++;
-                    if (key == fetchNum) {
+            if (Files.exists(indexPath)) {
+                MappedByteBuffer indexMapBuf = indexChannel.map(FileChannel.MapMode.READ_ONLY, 0, indexChannel.size());
+                // 找数据偏移量
+                while (indexMapBuf.hasRemaining()) {
+                    long curOffset = indexMapBuf.getLong();
+                    if (curOffset > offset) {
                         break;
                     }
+                    prevOffset = curOffset;
+                    position = indexMapBuf.getLong();
                 }
-                prevOffset++;
+                Cleaner cleaner = ((sun.nio.ch.DirectBuffer) indexMapBuf).cleaner();
+                if (cleaner != null) {
+                    cleaner.clean();
+                }
+                indexChannel.close();
             }
-            dataChannel.close();
+            if (Files.exists(dataPath)) {
+                FileChannel dataChannel = FileChannel.open(
+                        dataPath,
+                        StandardOpenOption.READ
+                );
+                dataChannel.position(position);
+                int key = 0;
+                ByteBuffer lenBufRead = ByteBuffer.allocate(Short.BYTES);
+                while (true) {
+                    if (dataChannel.read(lenBufRead) <= 0) {
+                        break;
+                    }
+                    lenBufRead.flip();
+                    short length = lenBufRead.getShort();
+                    lenBufRead.flip();
+                    ByteBuffer msgBuf = ByteBuffer.allocate(length);
+                    dataChannel.read(msgBuf);
+                    msgBuf.flip();
+                    if (prevOffset >= offset) {
+                        dataMap.put(key, msgBuf);
+                        key++;
+                        if (key == fetchNum) {
+                            break;
+                        }
+                    }
+                    prevOffset++;
+                }
+                dataChannel.close();
+            }
         } catch (IOException e) {
             e.printStackTrace();
         }
