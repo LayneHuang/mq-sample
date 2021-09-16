@@ -22,7 +22,8 @@ import java.util.concurrent.atomic.AtomicLong;
 public class DefaultMessageQueueImpl extends MessageQueue {
 
     public static final String DIR_PMEM = "/pmem";
-    public static final Path DIR_WORK = Paths.get(System.getProperty("user.dir")).resolve("target");
+    public static final Path DIR_ESSD = Paths.get("/essd");
+//    public static final Path DIR_ESSD = Paths.get(System.getProperty("user.dir")).resolve("target");
     public static final ConcurrentHashMap<String, ConcurrentHashMap<Integer, AtomicLong>> APPEND_OFFSET_MAP = new ConcurrentHashMap<>();
 
     @Override
@@ -33,7 +34,7 @@ public class DefaultMessageQueueImpl extends MessageQueue {
         // 更新最大位点
         // 保存 data 中的数据
         try {
-            Path queuePath = DIR_WORK.resolve(topic);
+            Path queuePath = DIR_ESSD.resolve(topic);
             Files.createDirectories(queuePath);
             FileChannel dataChannel = FileChannel.open(
                     queuePath.resolve(queueId + ".d"),
@@ -70,10 +71,10 @@ public class DefaultMessageQueueImpl extends MessageQueue {
 
     @Override
     public Map<Integer, ByteBuffer> getRange(String topic, int queueId, long offset, int fetchNum) {
-        Map<Integer, ByteBuffer> dataMap = null;
+        Map<Integer, ByteBuffer> dataMap = new HashMap<>(fetchNum);
         try {
             FileChannel indexChannel = FileChannel.open(
-                    DIR_WORK.resolve(topic).resolve(queueId + ".i"),
+                    DIR_ESSD.resolve(topic).resolve(queueId + ".i"),
                     StandardOpenOption.READ
             );
             MappedByteBuffer indexMapBuf = indexChannel.map(FileChannel.MapMode.READ_ONLY, 0, indexChannel.size());
@@ -93,9 +94,8 @@ public class DefaultMessageQueueImpl extends MessageQueue {
                 cleaner.clean();
             }
             indexChannel.close();
-            dataMap = new HashMap<>(fetchNum);
             FileChannel dataChannel = FileChannel.open(
-                    DIR_WORK.resolve(topic).resolve(queueId + ".d"),
+                    DIR_ESSD.resolve(topic).resolve(queueId + ".d"),
                     StandardOpenOption.READ
             );
             dataChannel.position(position);
