@@ -80,4 +80,9 @@ public class WriteAheadLog {
         locks.get(walId).writeLock().unlock();
     }
 
+    public void showOffset() {
+        for (WalOffset offset : offsets) {
+            System.out.println("wal offset: " + offset.beginOffset + " " + offset.endOffset);
+        }
+    }
 }
