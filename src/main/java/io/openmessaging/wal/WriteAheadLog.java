@@ -23,27 +23,29 @@ public class WriteAheadLog {
 
     private Map<String, Integer> TOPIC_ID = new HashMap<>();
 
-    private Map<String, Integer> WAL_OFFSET = new HashMap<>();
-
     private List<FileChannel> channels = new ArrayList<>();
 
     private List<ReadWriteLock> locks = new ArrayList<>();
 
     private WalOffset[] offsets = new WalOffset[Constant.WAL_FILE_COUNT];
 
-
     public WriteAheadLog() {
-
+        initChannels();
     }
 
-    public void initChannels() throws IOException {
+    public void initChannels() {
         for (int i = 0; i < Constant.WAL_FILE_COUNT; ++i) {
-            FileChannel channel = FileChannel.open(
-                    Constant.getWALPath(i),
-                    StandardOpenOption.WRITE,
-                    StandardOpenOption.CREATE,
-                    StandardOpenOption.TRUNCATE_EXISTING
-            );
+            FileChannel channel = null;
+            try {
+                channel = FileChannel.open(
+                        Constant.getWALPath(i),
+                        StandardOpenOption.WRITE,
+                        StandardOpenOption.CREATE,
+                        StandardOpenOption.TRUNCATE_EXISTING
+                );
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
             channels.add(channel);
             locks.add(new ReentrantReadWriteLock());
         }
@@ -52,7 +54,7 @@ public class WriteAheadLog {
     /**
      * log 落盘
      */
-    public void flush(String topic, int queueId, ByteBuffer buffer) throws IOException {
+    public void flush(String topic, int queueId, ByteBuffer buffer) {
         int walId = TOPIC_ID.computeIfAbsent(topic, id -> Constant.hash(topic)) % Constant.WAL_FILE_COUNT;
         locks.get(walId).writeLock().lock();
         int topicLen = topic.length();
@@ -68,7 +70,11 @@ public class WriteAheadLog {
         walBuffer.putInt(queueId);
         walBuffer.put(buffer);
         walBuffer.flip();
-        channels.get(walId).write(walBuffer);
+        try {
+            channels.get(walId).write(walBuffer);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         offsets[walId].endOffset = channels.size();
         locks.get(walId).writeLock().unlock();
     }
