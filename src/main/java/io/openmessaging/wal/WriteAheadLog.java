@@ -47,6 +47,7 @@ public class WriteAheadLog {
                 e.printStackTrace();
             }
             channels.add(channel);
+            offsets[i] = new WalOffset();
             locks.add(new ReentrantReadWriteLock());
         }
     }
