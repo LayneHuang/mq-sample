@@ -24,31 +24,48 @@ public class DefaultMessageQueueImpl extends MessageQueue {
     public static final String DIR_PMEM = "/pmem";
     public static final Path DIR_ESSD = Paths.get("/essd");
     //    public static final Path DIR_ESSD = Paths.get(System.getProperty("user.dir")).resolve("target");
-    public static final ConcurrentHashMap<String, ConcurrentHashMap<Integer, AtomicLong>> APPEND_OFFSET_MAP = new ConcurrentHashMap<>();
+    public static final ConcurrentHashMap<String, AtomicLong> APPEND_OFFSET_MAP = new ConcurrentHashMap<>();
+    public static FileChannel WAL;
+
+    static {
+        try {
+            WAL = FileChannel.open(
+                    DIR_ESSD.resolve("wal"),
+                    StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.APPEND
+                    , StandardOpenOption.DSYNC
+            );
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 
     @Override
     public long append(String topic, int queueId, ByteBuffer data) {
-        ConcurrentHashMap<Integer, AtomicLong> queueOffsetMap = APPEND_OFFSET_MAP.computeIfAbsent(topic, k -> new ConcurrentHashMap<>());
-        AtomicLong offsetAdder = queueOffsetMap.computeIfAbsent(queueId, k -> new AtomicLong());
+        AtomicLong offsetAdder = APPEND_OFFSET_MAP.computeIfAbsent(topic + queueId, k -> new AtomicLong());
         long offset = offsetAdder.getAndIncrement();
         // 更新最大位点
         // 保存 data 中的数据
         try {
+            // msg长度
+            ByteBuffer lenBufWrite = ByteBuffer.allocate(Short.BYTES);
+            lenBufWrite.putShort((short) data.limit());
+            lenBufWrite.flip();
+            // 落 wal
+            WAL.write(lenBufWrite);
+            lenBufWrite.rewind(); // 重复读
+            WAL.write(data);
+            data.rewind();
+            // 落具体 queue
             Path queuePath = DIR_ESSD.resolve(topic);
             Files.createDirectories(queuePath);
             FileChannel dataChannel = FileChannel.open(
                     queuePath.resolve(queueId + ".d"),
                     StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.APPEND
-                    , StandardOpenOption.DSYNC
             );
             long position = dataChannel.position();
-            ByteBuffer lenBufWrite = ByteBuffer.allocate(Short.BYTES);
-            lenBufWrite.putShort((short) data.limit());
-            lenBufWrite.flip();
             dataChannel.write(lenBufWrite);
             lenBufWrite.flip();
             dataChannel.write(data);
-//            dataChannel.force(false);
             dataChannel.close();
             // 索引
             if (offset % 128 == 0) {
@@ -59,10 +76,8 @@ public class DefaultMessageQueueImpl extends MessageQueue {
                 FileChannel indexChannel = FileChannel.open(
                         queuePath.resolve(queueId + ".i"),
                         StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.APPEND
-                        , StandardOpenOption.DSYNC
                 );
                 indexChannel.write(indexBuf);
-//                indexChannel.force(false);
                 indexChannel.close();
             }
         } catch (IOException e) {
