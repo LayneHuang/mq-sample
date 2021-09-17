@@ -39,9 +39,8 @@ public class DefaultMessageQueueImpl extends MessageQueue {
             FileChannel dataChannel = FileChannel.open(
                     queuePath.resolve(queueId + ".d"),
                     StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.APPEND
-//                    , StandardOpenOption.SYNC
+                    , StandardOpenOption.DSYNC
             );
-//            dataChannel.force(true);
             long position = dataChannel.position();
             ByteBuffer lenBufWrite = ByteBuffer.allocate(Short.BYTES);
             lenBufWrite.putShort((short) data.limit());
@@ -49,9 +48,10 @@ public class DefaultMessageQueueImpl extends MessageQueue {
             dataChannel.write(lenBufWrite);
             lenBufWrite.flip();
             dataChannel.write(data);
+//            dataChannel.force(false);
             dataChannel.close();
             // 索引
-            if (offset % 64 == 0) {
+            if (offset % 128 == 0) {
                 ByteBuffer indexBuf = ByteBuffer.allocate(16);
                 indexBuf.putLong(offset);
                 indexBuf.putLong(position);
@@ -59,10 +59,10 @@ public class DefaultMessageQueueImpl extends MessageQueue {
                 FileChannel indexChannel = FileChannel.open(
                         queuePath.resolve(queueId + ".i"),
                         StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.APPEND
-//                        , StandardOpenOption.SYNC
+                        , StandardOpenOption.DSYNC
                 );
-//                indexChannel.force(true);
                 indexChannel.write(indexBuf);
+//                indexChannel.force(false);
                 indexChannel.close();
             }
         } catch (IOException e) {
