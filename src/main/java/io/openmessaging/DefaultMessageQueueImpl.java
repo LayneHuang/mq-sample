@@ -23,11 +23,11 @@ import java.util.concurrent.atomic.AtomicLong;
 public class DefaultMessageQueueImpl extends MessageQueue {
 
     public static final long SEGMENT_MAX = 536870912; // 512M
-    //    public static final long SEGMENT_MAX = 64;
+    //    public static final long SEGMENT_MAX = 128;
     public static final long INDEX_GAP = 128;
     public static final String DIR_PMEM = "/pmem";
     public static final Path DIR_ESSD = Paths.get("/essd");
-    //        public static final Path DIR_ESSD = Paths.get(System.getProperty("user.dir")).resolve("target");
+    //    public static final Path DIR_ESSD = Paths.get(System.getProperty("user.dir")).resolve("target");
     public static final ConcurrentHashMap<String, AtomicLong> APPEND_OFFSET_MAP = new ConcurrentHashMap<>();
     public static final ConcurrentHashMap<String, String> APPEND_PATH_MAP = new ConcurrentHashMap<>();
 
@@ -38,10 +38,6 @@ public class DefaultMessageQueueImpl extends MessageQueue {
         long offset = offsetAdder.getAndIncrement();
         // 保存 data 中的数据
         try {
-            // msg长度
-            ByteBuffer lenBufWrite = ByteBuffer.allocate(Short.BYTES);
-            lenBufWrite.putShort((short) data.limit());
-            lenBufWrite.flip();
             // 落具体 queue
             Path queueDir = DIR_ESSD.resolve(topic).resolve(String.valueOf(queueId));
             Files.createDirectories(queueDir);
@@ -52,7 +48,7 @@ public class DefaultMessageQueueImpl extends MessageQueue {
                 }
                 Path oldPath = queueDir.resolve(old); // 直接用 offset 当文件名吧
                 try {
-                    if (Files.notExists(oldPath) || Files.size(oldPath) < SEGMENT_MAX) { // 512M
+                    if (Files.notExists(oldPath) || Files.size(oldPath) < SEGMENT_MAX) {
                         return old;
                     }
                 } catch (IOException e) {
@@ -61,26 +57,28 @@ public class DefaultMessageQueueImpl extends MessageQueue {
                 return segmentNew;
             });
             Path logPath = queueDir.resolve(segmentName);
-            FileChannel dataChannel = FileChannel.open(
-                    logPath,
-                    StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.APPEND
-            );
-            long position = dataChannel.position();
-            dataChannel.write(lenBufWrite);
-            dataChannel.write(data);
+            try {
+                Files.createFile(logPath);
+            } catch (IOException e) {
+            }
+            FileChannel dataChannel = FileChannel.open(logPath, StandardOpenOption.CREATE, StandardOpenOption.READ, StandardOpenOption.WRITE);
+            long position = dataChannel.size();
+            MappedByteBuffer logMapBuf = dataChannel.map(FileChannel.MapMode.READ_WRITE, position, Short.BYTES + data.limit());
+            logMapBuf.putShort((short) data.limit()); // msg长度
+            logMapBuf.put(data);
             dataChannel.close();
             // 索引
             if (offset % INDEX_GAP == 0) {
-                ByteBuffer indexBuf = ByteBuffer.allocate(16);
-                indexBuf.putLong(offset);
-                indexBuf.putLong(position);
-                indexBuf.flip();
                 Path indexPath = queueDir.resolve(segmentName + ".i");
-                FileChannel indexChannel = FileChannel.open(
-                        indexPath,
-                        StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.APPEND
-                );
-                indexChannel.write(indexBuf);
+                try {
+                    Files.createFile(indexPath);
+                } catch (IOException e) {
+                }
+                FileChannel indexChannel = FileChannel.open(indexPath, StandardOpenOption.CREATE, StandardOpenOption.READ, StandardOpenOption.WRITE);
+                MappedByteBuffer indexMapBuf = indexChannel.map(FileChannel.MapMode.READ_WRITE, indexChannel.size(), 16);
+                indexMapBuf.putLong(offset);
+                indexMapBuf.putLong(position);
+                indexMapBuf.force();
                 indexChannel.close();
             }
         } catch (IOException e) {
