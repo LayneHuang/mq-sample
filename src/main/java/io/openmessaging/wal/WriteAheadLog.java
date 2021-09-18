@@ -57,20 +57,23 @@ public class WriteAheadLog {
      */
     public void flush(String topic, int queueId, ByteBuffer buffer) {
         int walId = TOPIC_ID.computeIfAbsent(topic, id -> Constant.hash(topic)) % Constant.WAL_FILE_COUNT;
-        locks.get(walId).writeLock().lock();
         int topicLen = topic.length();
         ByteBuffer walBuffer = ByteBuffer.allocate(
                 Character.BYTES * topicLen
                         + 2 * Integer.BYTES
                         + buffer.limit()
         );
+        // topic len
         walBuffer.putInt(topicLen);
         for (int i = 0; i < topicLen; ++i) {
             walBuffer.putChar(topic.charAt(i));
         }
+        // queueId
         walBuffer.putInt(queueId);
+        // buffer
         walBuffer.put(buffer);
         walBuffer.flip();
+        locks.get(walId).writeLock().lock();
         try {
             channels.get(walId).write(walBuffer);
         } catch (IOException e) {
