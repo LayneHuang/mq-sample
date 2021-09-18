@@ -66,6 +66,7 @@ public class DefaultMessageQueueImpl extends MessageQueue {
             MappedByteBuffer logMapBuf = dataChannel.map(FileChannel.MapMode.READ_WRITE, position, Short.BYTES + data.limit());
             logMapBuf.putShort((short) data.limit()); // msg长度
             logMapBuf.put(data);
+            logMapBuf.force();
             dataChannel.close();
             // 索引
             if (offset % INDEX_GAP == 0) {
