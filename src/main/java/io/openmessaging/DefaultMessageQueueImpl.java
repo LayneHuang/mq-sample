@@ -1,6 +1,7 @@
 package io.openmessaging;
 
 import sun.misc.Cleaner;
+import sun.nio.ch.DirectBuffer;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -67,6 +68,7 @@ public class DefaultMessageQueueImpl extends MessageQueue {
             logMapBuf.putShort((short) data.limit()); // msg长度
             logMapBuf.put(data);
             logMapBuf.force();
+            clean(logMapBuf);
             dataChannel.close();
             // 索引
             if (offset % INDEX_GAP == 0) {
@@ -80,6 +82,7 @@ public class DefaultMessageQueueImpl extends MessageQueue {
                 indexMapBuf.putLong(offset);
                 indexMapBuf.putLong(position);
                 indexMapBuf.force();
+                clean(indexMapBuf);
                 indexChannel.close();
             }
         } catch (IOException e) {
@@ -127,10 +130,7 @@ public class DefaultMessageQueueImpl extends MessageQueue {
                     prevOffset = curOffset;
                     position = indexMapBuf.getLong();
                 }
-                Cleaner cleaner = ((sun.nio.ch.DirectBuffer) indexMapBuf).cleaner();
-                if (cleaner != null) {
-                    cleaner.clean();
-                }
+                clean(indexMapBuf);
                 indexChannel.close();
             } else {
                 System.out.println(indexPath + "不存在");
@@ -170,5 +170,12 @@ public class DefaultMessageQueueImpl extends MessageQueue {
             e.printStackTrace();
         }
         return dataMap;
+    }
+
+    private void clean(MappedByteBuffer indexMapBuf) {
+        Cleaner cleaner = ((DirectBuffer)indexMapBuf).cleaner();
+        if (cleaner != null) {
+            cleaner.clean();
+        }
     }
 }
