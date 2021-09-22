@@ -28,7 +28,7 @@ public class DefaultMessageQueueImpl extends MessageQueue {
 
     @Override
     public long append(String topic, int queueId, ByteBuffer data) {
-        String key = ("topic + " + " + queueId").intern();
+        String key = (topic + " + " + queueId).intern();
         AtomicLong offsetAdder = APPEND_OFFSET_MAP.computeIfAbsent(key, k -> new AtomicLong());
         long offset = offsetAdder.getAndIncrement();
         // 更新最大位点
