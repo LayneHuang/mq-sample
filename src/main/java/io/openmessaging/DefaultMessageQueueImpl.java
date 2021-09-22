@@ -61,11 +61,11 @@ public class DefaultMessageQueueImpl extends MessageQueue {
                 return segmentNew;
             });
             Path logPath = queueDir.resolve(segmentName);
+            semaphore.acquire();
             try {
                 Files.createFile(logPath);
             } catch (IOException e) {
             }
-            semaphore.acquire();
             FileChannel dataChannel = FileChannel.open(logPath, StandardOpenOption.CREATE, StandardOpenOption.READ, StandardOpenOption.WRITE);
             long position = dataChannel.size();
             MappedByteBuffer logMapBuf = dataChannel.map(FileChannel.MapMode.READ_WRITE, position, Short.BYTES + data.limit());
@@ -78,11 +78,11 @@ public class DefaultMessageQueueImpl extends MessageQueue {
             // 索引
             if (offset % INDEX_GAP == 0) {
                 Path indexPath = queueDir.resolve(segmentName + ".i");
+                semaphore.acquire();
                 try {
                     Files.createFile(indexPath);
                 } catch (IOException e) {
                 }
-                semaphore.acquire();
                 FileChannel indexChannel = FileChannel.open(indexPath, StandardOpenOption.CREATE, StandardOpenOption.READ, StandardOpenOption.WRITE);
                 MappedByteBuffer indexMapBuf = indexChannel.map(FileChannel.MapMode.READ_WRITE, indexChannel.size(), 16);
                 indexMapBuf.putLong(offset);
@@ -109,12 +109,14 @@ public class DefaultMessageQueueImpl extends MessageQueue {
             // 找数据块
             Path indexPath;
             Path logPath;
+            semaphore.acquire();
             Optional<Long> max = Files.list(queueDir)
                     .map(path -> path.getFileName().toString())
                     .filter(fileName -> !fileName.endsWith(".i"))
                     .map(Long::valueOf)
                     .filter(aLong -> aLong <= offset)
                     .max((o1, o2) -> (int) (o1 - o2));
+            semaphore.release();
             String segmentName;
             if (max.isPresent()) {
                 segmentName = max.get().toString();
