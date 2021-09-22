@@ -15,6 +15,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -31,6 +33,7 @@ public class DefaultMessageQueueImpl extends MessageQueue {
     //    public static final Path DIR_ESSD = Paths.get(System.getProperty("user.dir")).resolve("target");
     public static final ConcurrentHashMap<String, AtomicLong> APPEND_OFFSET_MAP = new ConcurrentHashMap<>();
     public static final ConcurrentHashMap<String, String> APPEND_PATH_MAP = new ConcurrentHashMap<>();
+    Semaphore semaphore = new Semaphore(1024);
 
     @Override
     public long append(String topic, int queueId, ByteBuffer data) {
@@ -62,6 +65,7 @@ public class DefaultMessageQueueImpl extends MessageQueue {
                 Files.createFile(logPath);
             } catch (IOException e) {
             }
+            semaphore.acquire();
             FileChannel dataChannel = FileChannel.open(logPath, StandardOpenOption.CREATE, StandardOpenOption.READ, StandardOpenOption.WRITE);
             long position = dataChannel.size();
             MappedByteBuffer logMapBuf = dataChannel.map(FileChannel.MapMode.READ_WRITE, position, Short.BYTES + data.limit());
@@ -70,6 +74,7 @@ public class DefaultMessageQueueImpl extends MessageQueue {
             logMapBuf.force();
             clean(logMapBuf);
             dataChannel.close();
+            semaphore.release();
             // 索引
             if (offset % INDEX_GAP == 0) {
                 Path indexPath = queueDir.resolve(segmentName + ".i");
@@ -77,6 +82,7 @@ public class DefaultMessageQueueImpl extends MessageQueue {
                     Files.createFile(indexPath);
                 } catch (IOException e) {
                 }
+                semaphore.acquire();
                 FileChannel indexChannel = FileChannel.open(indexPath, StandardOpenOption.CREATE, StandardOpenOption.READ, StandardOpenOption.WRITE);
                 MappedByteBuffer indexMapBuf = indexChannel.map(FileChannel.MapMode.READ_WRITE, indexChannel.size(), 16);
                 indexMapBuf.putLong(offset);
@@ -84,8 +90,9 @@ public class DefaultMessageQueueImpl extends MessageQueue {
                 indexMapBuf.force();
                 clean(indexMapBuf);
                 indexChannel.close();
+                semaphore.release();
             }
-        } catch (IOException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
         return offset;
@@ -120,6 +127,7 @@ public class DefaultMessageQueueImpl extends MessageQueue {
             long prevOffset = 0;
             long position = 0;
             if (Files.exists(indexPath)) {
+                semaphore.acquire();
                 FileChannel indexChannel = FileChannel.open(indexPath, StandardOpenOption.READ);
                 MappedByteBuffer indexMapBuf = indexChannel.map(FileChannel.MapMode.READ_ONLY, 0, indexChannel.size());
                 while (indexMapBuf.hasRemaining()) {
@@ -132,11 +140,13 @@ public class DefaultMessageQueueImpl extends MessageQueue {
                 }
                 clean(indexMapBuf);
                 indexChannel.close();
+                semaphore.release();
             } else {
                 System.out.println(indexPath + "不存在");
             }
             if (Files.exists(logPath)) {
                 dataMap = new HashMap<>(fetchNum);
+                semaphore.acquire();
                 FileChannel dataChannel = FileChannel.open(logPath, StandardOpenOption.READ);
                 dataChannel.position(position);
                 int key = 0;
@@ -163,10 +173,11 @@ public class DefaultMessageQueueImpl extends MessageQueue {
                     prevOffset++;
                 }
                 dataChannel.close();
+                semaphore.release();
             } else {
                 System.out.println(logPath + "不存在");
             }
-        } catch (IOException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
         return dataMap;
