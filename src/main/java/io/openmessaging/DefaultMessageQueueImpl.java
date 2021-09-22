@@ -33,7 +33,7 @@ public class DefaultMessageQueueImpl extends MessageQueue {
     //    public static final Path DIR_ESSD = Paths.get(System.getProperty("user.dir")).resolve("target");
     public static final ConcurrentHashMap<String, AtomicLong> APPEND_OFFSET_MAP = new ConcurrentHashMap<>();
     public static final ConcurrentHashMap<String, String> APPEND_PATH_MAP = new ConcurrentHashMap<>();
-    Semaphore semaphore = new Semaphore(1024);
+    Semaphore semaphore = new Semaphore(1000);
 
     @Override
     public long append(String topic, int queueId, ByteBuffer data) {
