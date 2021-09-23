@@ -22,6 +22,8 @@ public class Constant {
 
     public static final int MAX_QUEUE_COUNT = 5000;
 
+    public static final int CACHE_LEN = 512;
+
     public static final int LOG_SEGMENT_SIZE = 1024;
 
     public static final int MSG_SIZE = 3 * Integer.BYTES + Long.BYTES;

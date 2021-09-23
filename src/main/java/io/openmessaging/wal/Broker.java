@@ -1,15 +1,17 @@
 package io.openmessaging.wal;
 
 import io.openmessaging.Constant;
+import io.openmessaging.PageCache;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 
 /**
  * WalCache
  *
- * @author 86188
+ * @author layne
  * @since 2021/9/23
  */
 public class Broker extends Thread {
@@ -25,24 +27,44 @@ public class Broker extends Thread {
 
     @Override
     public void run() {
-        while (true) {
-            if (offset.hasLogSegment()) {
-                partition();
+        try (FileChannel channel = FileChannel.open(Constant.getWALPath(walId))) {
+            while (true) {
+                if (offset.hasLogSegment()) {
+                    MappedByteBuffer buffer = channel.map(
+                            FileChannel.MapMode.READ_ONLY,
+                            getBegin(),
+                            getEnd()
+                    );
+                    partition(buffer);
+                }
                 offset.dealCount += Constant.LOG_SEGMENT_SIZE;
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * 分区
+     *
+     * @param buffer WAL
+     */
+    private void partition(ByteBuffer buffer) {
+        while (buffer.hasRemaining()) {
+            WalInfoBasic info = new WalInfoBasic();
+            info.decode(buffer);
+            PageCache.add(info);
+            if (PageCache.isFull(info.topicId, info.queueId)) {
+                write();
             }
         }
     }
 
-    private void partition() {
-        try (FileChannel channel = FileChannel.open(Constant.getWALPath(walId))) {
-            MappedByteBuffer buffer = channel.map(
-                    FileChannel.MapMode.READ_ONLY,
-                    getBegin(),
-                    getEnd()
-            );
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+    /**
+     * 写入 topic_queue 文件
+     */
+    private void write() {
+
     }
 
     private long getBegin() {
@@ -50,6 +72,6 @@ public class Broker extends Thread {
     }
 
     private long getEnd() {
-        return (long) offset.logCount.get() * Constant.MSG_SIZE;
+        return (long) (offset.dealCount + Constant.LOG_SEGMENT_SIZE) * Constant.MSG_SIZE;
     }
 }

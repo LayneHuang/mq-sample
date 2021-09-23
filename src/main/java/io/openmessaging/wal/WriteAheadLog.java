@@ -57,15 +57,8 @@ public class WriteAheadLog {
     public int flush(String topic, int queueId, ByteBuffer buffer) {
         int topicId = IdGenerator.getId(topic);
         int walId = topicId % Constant.WAL_FILE_COUNT;
-        ByteBuffer infoBuffer = ByteBuffer.allocate(Constant.MSG_SIZE);
-        // topic
-        infoBuffer.putInt(topicId);
-        // queueId
-        infoBuffer.putInt(queueId);
-        // buffer size
-        infoBuffer.putInt(buffer.limit());
-        // buffer pos
-        infoBuffer.putLong(offset.valueEndOffset);
+        WalInfoBasic walInfoBasic = new WalInfoBasic(topicId, queueId, buffer.limit(), offset.valueEndOffset);
+        ByteBuffer infoBuffer = walInfoBasic.encode();
         infoBuffer.flip();
         // buffer
         buffer.flip();
