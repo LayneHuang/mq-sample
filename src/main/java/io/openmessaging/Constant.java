@@ -18,8 +18,20 @@ public class Constant {
 
     public static final int WAL_FILE_COUNT = 10;
 
+    public static final int MAX_TOPIC_COUNT = 100;
+
+    public static final int MAX_QUEUE_COUNT = 5000;
+
+    public static final int LOG_SEGMENT_SIZE = 1024;
+
+    public static final int MSG_SIZE = 3 * Integer.BYTES + Long.BYTES;
+
     public static Path getWALPath(int walId) {
-        return DIR_ESSD.resolve("WAL-" + walId + ".md");
+        return DIR_ESSD.resolve("WAL-INFO-" + walId + ".md");
+    }
+
+    public static Path getWALValuePath(int walId) {
+        return DIR_ESSD.resolve("WAL-VALUE-" + walId + ".md");
     }
 
     public static Path getPath(String topic, int queueId) {

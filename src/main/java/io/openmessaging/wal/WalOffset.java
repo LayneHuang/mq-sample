@@ -1,5 +1,10 @@
 package io.openmessaging.wal;
 
+import io.openmessaging.Constant;
+
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+
 /**
  * WALInfo
  *
@@ -9,12 +14,24 @@ package io.openmessaging.wal;
 public class WalOffset {
 
     /**
-     * 已经处理过 offset
+     * 已经处理过 info 个数
      */
-    public int beginOffset;
+    public int dealCount;
+
+    /**
+     * 未处理过 info 个数
+     */
+    public AtomicInteger logCount = new AtomicInteger();
 
     /**
      * 文件末尾
      */
-    public int endOffset;
+    public long valueEndOffset;
+
+
+    public boolean hasLogSegment() {
+        int count = logCount.get();
+        return count - dealCount >= Constant.LOG_SEGMENT_SIZE;
+    }
+
 }
