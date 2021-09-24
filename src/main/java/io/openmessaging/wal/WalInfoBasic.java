@@ -52,4 +52,9 @@ public class WalInfoBasic {
         this.size = buffer.getInt();
         this.pos = buffer.getLong();
     }
+
+    public void decodeSimple(ByteBuffer buffer) {
+        this.size = buffer.getInt();
+        this.pos = buffer.getLong();
+    }
 }

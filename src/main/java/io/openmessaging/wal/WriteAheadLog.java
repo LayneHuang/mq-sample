@@ -2,6 +2,8 @@ package io.openmessaging.wal;
 
 import io.openmessaging.Constant;
 import io.openmessaging.IdGenerator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -17,6 +19,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  * @since 2021/9/17
  */
 public class WriteAheadLog {
+    private static final Logger log = LoggerFactory.getLogger(WriteAheadLog.class);
     /**
      * 同步水位
      */
@@ -24,13 +27,15 @@ public class WriteAheadLog {
     private final int walId;
     private FileChannel infoChannel;
     private FileChannel valueChannel;
+    private final MyBlockingQueue bq = new MyBlockingQueue();
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
+
     private final Broker broker;
 
     public WriteAheadLog(int walId) {
         this.walId = walId;
-        this.broker = new Broker(walId, offset);
         initChannels();
+        this.broker = new Broker(walId, offset, bq);
         this.broker.start();
     }
 
@@ -40,14 +45,15 @@ public class WriteAheadLog {
                     Constant.getWALPath(walId),
                     StandardOpenOption.WRITE,
                     StandardOpenOption.CREATE,
-                    StandardOpenOption.TRUNCATE_EXISTING
+                    StandardOpenOption.APPEND,
+                    StandardOpenOption.DSYNC
             );
 
             valueChannel = FileChannel.open(
                     Constant.getWALValuePath(walId),
                     StandardOpenOption.WRITE,
                     StandardOpenOption.CREATE,
-                    StandardOpenOption.TRUNCATE_EXISTING
+                    StandardOpenOption.APPEND
             );
         } catch (IOException e) {
             e.printStackTrace();
@@ -57,21 +63,22 @@ public class WriteAheadLog {
     public int flush(String topic, int queueId, ByteBuffer buffer) {
         int topicId = IdGenerator.getId(topic);
         int walId = topicId % Constant.WAL_FILE_COUNT;
-        WalInfoBasic walInfoBasic = new WalInfoBasic(topicId, queueId, buffer.limit(), offset.valueEndOffset);
+        WalInfoBasic walInfoBasic = new WalInfoBasic(topicId, queueId, buffer.limit(), offset.msgPos);
         ByteBuffer infoBuffer = walInfoBasic.encode();
         infoBuffer.flip();
         // buffer
-        buffer.flip();
+        // buffer.flip();
         lock.writeLock().lock();
         try {
             infoChannel.write(infoBuffer);
             valueChannel.write(buffer);
-            offset.logCount.incrementAndGet();
-            offset.valueEndOffset = valueChannel.size();
+            offset.logCount++;
+            offset.msgPos = (long) offset.logCount * Constant.MSG_SIZE;
         } catch (IOException e) {
             e.printStackTrace();
         }
         lock.writeLock().unlock();
+        bq.put(walInfoBasic);
         return walId;
     }
 

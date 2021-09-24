@@ -28,6 +28,10 @@ public class Constant {
 
     public static final int MSG_SIZE = 3 * Integer.BYTES + Long.BYTES;
 
+    public static final int SIMPLE_MSG_SIZE = Integer.BYTES + Long.BYTES;
+
+    public static final int READ_BUFFER_SIZE = 512 * SIMPLE_MSG_SIZE;
+
     public static Path getWALPath(int walId) {
         return DIR_ESSD.resolve("WAL-INFO-" + walId + ".md");
     }
@@ -36,8 +40,8 @@ public class Constant {
         return DIR_ESSD.resolve("WAL-VALUE-" + walId + ".md");
     }
 
-    public static Path getPath(String topic, int queueId) {
-        return DIR_ESSD.resolve(getKey(topic, queueId) + ".md");
+    public static Path getPath(int topicId, int queueId) {
+        return DIR_ESSD.resolve("PAGE-" + topicId + "-" + queueId + ".md");
     }
 
     public static String getKey(String topic, int queueId) {
