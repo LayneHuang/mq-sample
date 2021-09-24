@@ -26,8 +26,8 @@ import java.util.concurrent.atomic.AtomicLong;
 public class DefaultMessageQueueImpl extends MessageQueue {
 
     public static final String DIR_PMEM = "/pmem";
-    public static final Path DIR_ESSD = Paths.get("/essd");
-    //    public static final Path DIR_ESSD = Paths.get(System.getProperty("user.dir")).resolve("target");
+//    public static final Path DIR_ESSD = Paths.get("/essd");
+        public static final Path DIR_ESSD = Paths.get(System.getProperty("user.dir")).resolve("target").resolve("work");
     public static final ConcurrentHashMap<String, AtomicLong> APPEND_OFFSET_MAP = new ConcurrentHashMap<>();
 
     public static final Path LOGS_PATH = DIR_ESSD.resolve("log");
@@ -62,7 +62,7 @@ public class DefaultMessageQueueImpl extends MessageQueue {
     }
 
     public static void openLog() throws IOException {
-        int logNum = LOG_ADDER.getAndIncrement();
+        int logNum = LOG_ADDER.incrementAndGet();
         Path logPath = LOGS_PATH.resolve(String.valueOf(logNum));
         Files.createFile(logPath);
         LOG_FILE_CHANNEL = FileChannel.open(logPath, StandardOpenOption.READ, StandardOpenOption.WRITE);
@@ -111,16 +111,16 @@ public class DefaultMessageQueueImpl extends MessageQueue {
     @Override
     public Map<Integer, ByteBuffer> getRange(String topic, int queueId, long offset, int fetchNum) {
         Map<Integer, ByteBuffer> dataMap = null;
-        Path indexPath = DIR_ESSD.resolve(topic).resolve(queueId + ".i");
+        Path indexPath = DIR_ESSD.resolve(topic).resolve(String.valueOf(queueId));
         try {
             if (Files.exists(indexPath)) {
                 FileChannel indexChannel = FileChannel.open(indexPath, StandardOpenOption.READ);
                 long fileSize = indexChannel.size();
-                long start = offset * 6;
+                long start = offset * 8;
                 if (start < fileSize) {
                     dataMap = new HashMap<>(fetchNum);
                     int key = 0;
-                    long end = Math.min(start + fetchNum * 6L, fileSize);
+                    long end = Math.min(start + fetchNum * 8L, fileSize);
                     long mappedSize = end - start;
                     MappedByteBuffer indexMappedBuf = indexChannel.map(FileChannel.MapMode.READ_ONLY, start, mappedSize);
                     short logNum, msgLen;
