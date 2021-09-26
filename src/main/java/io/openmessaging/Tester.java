@@ -7,7 +7,7 @@ import java.util.Map;
 public class Tester {
 
     public static void main(String[] args) throws InterruptedException {
-        MessageQueue messageQueue = new DefaultMessageQueueImpl();
+        MessageQueue messageQueue = new LayneMessageQueueImpl();
         long start = System.currentTimeMillis();
         Thread threadA = new Thread(() -> {
             for (int i = 0; i < 10000; i++) {

@@ -44,14 +44,14 @@ public class LayneMessageQueueImpl extends MessageQueue {
         int topicId = IdGenerator.getId(topic);
         int walId = topicId % Constant.WAL_FILE_COUNT;
         Map<Integer, ByteBuffer> dataMap = new HashMap<>(fetchNum);
-        log.info("query, topic: {}, queueId: {}", topic, queueId);
+        log.info("query, topic: {}, queueId: {}, offset: {}, fetchNum: {}", topic, queueId, offset, fetchNum);
 
         int idx = 0;
         int[] ansSize = new int[fetchNum];
         long[] ansPos = new long[fetchNum];
 
         try (FileChannel infoChannel = FileChannel.open(Constant.getPath(topicId, queueId), StandardOpenOption.READ)) {
-            ByteBuffer infoBuffer = ByteBuffer.allocateDirect(Constant.SIMPLE_MSG_SIZE * fetchNum);
+            ByteBuffer infoBuffer = ByteBuffer.allocate(Constant.SIMPLE_MSG_SIZE * fetchNum);
             infoChannel.read(infoBuffer, offset * Constant.SIMPLE_MSG_SIZE);
             while (idx < fetchNum) {
                 infoBuffer.flip();
@@ -67,7 +67,7 @@ public class LayneMessageQueueImpl extends MessageQueue {
         }
         try (FileChannel valueChannel = FileChannel.open(Constant.getWALValuePath(walId), StandardOpenOption.READ)) {
             for (int i = 0; i < idx; ++i) {
-                ByteBuffer buffer = ByteBuffer.allocateDirect(ansSize[i]);
+                ByteBuffer buffer = ByteBuffer.allocate(ansSize[i]);
                 valueChannel.read(buffer, ansPos[i]);
                 dataMap.put((int) offset + i, buffer);
             }

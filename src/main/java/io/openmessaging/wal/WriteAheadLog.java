@@ -48,12 +48,12 @@ public class WriteAheadLog {
                     StandardOpenOption.APPEND,
                     StandardOpenOption.DSYNC
             );
-
             valueChannel = FileChannel.open(
                     Constant.getWALValuePath(walId),
                     StandardOpenOption.WRITE,
                     StandardOpenOption.CREATE,
-                    StandardOpenOption.APPEND
+                    StandardOpenOption.APPEND,
+                    StandardOpenOption.DSYNC
             );
         } catch (IOException e) {
             e.printStackTrace();
