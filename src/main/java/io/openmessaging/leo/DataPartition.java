@@ -56,18 +56,16 @@ public class DataPartition {
             indexBuf.flip();
             // index
             Path topicPath = DIR_ESSD.resolve(topic);
-            Path queuePath = topicPath.resolve(String.valueOf(queueId));
-            if (lastIndexPath == null) {
-                try {
-                    Files.createDirectories(topicPath);
-                } catch (IOException e) {
-                }
+            Path queueFile = topicPath.resolve(String.valueOf(queueId));
+            try {
+                Files.createDirectories(topicPath);
+            } catch (IOException e) {
             }
-            if (!queuePath.equals(lastIndexPath)) {
+            if (!queueFile.equals(lastIndexPath)) {
                 if (lastIndexFileChannel != null) {
                     lastIndexFileChannel.close();
                 }
-                lastIndexPath = queuePath;
+                lastIndexPath = queueFile;
                 lastIndexFileChannel = FileChannel.open(
                         lastIndexPath,
                         StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.APPEND
