@@ -50,7 +50,8 @@ public class LayneMessageQueueImpl extends MessageQueue {
         int[] ansSize = new int[fetchNum];
         long[] ansPos = new long[fetchNum];
 
-        try (FileChannel infoChannel = FileChannel.open(Constant.getPath(topicId, queueId), StandardOpenOption.READ)) {
+        try (FileChannel infoChannel = FileChannel.open(
+                Constant.getPath(topicId, queueId), StandardOpenOption.READ)) {
             ByteBuffer infoBuffer = ByteBuffer.allocate(Constant.SIMPLE_MSG_SIZE * fetchNum);
             infoChannel.read(infoBuffer, offset * Constant.SIMPLE_MSG_SIZE);
             while (idx < fetchNum) {
@@ -65,7 +66,8 @@ public class LayneMessageQueueImpl extends MessageQueue {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        try (FileChannel valueChannel = FileChannel.open(Constant.getWALValuePath(walId), StandardOpenOption.READ)) {
+        try (FileChannel valueChannel = FileChannel.open(
+                Constant.getWALValuePath(walId), StandardOpenOption.READ)) {
             for (int i = 0; i < idx; ++i) {
                 ByteBuffer buffer = ByteBuffer.allocate(ansSize[i]);
                 valueChannel.read(buffer, ansPos[i]);
@@ -74,7 +76,9 @@ public class LayneMessageQueueImpl extends MessageQueue {
         } catch (IOException e) {
             e.printStackTrace();
         }
-
+        for (int i = 0; i < idx; ++i) {
+            log.info("ans, offset: {}, size: {}, pos: {}, res: {}", (offset + i), ansSize[i], ansPos[i], new String(dataMap.get((int) (offset + i)).array()));
+        }
         return dataMap;
     }
 }

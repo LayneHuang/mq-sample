@@ -67,6 +67,8 @@ public class WriteAheadLog {
         ByteBuffer infoBuffer = walInfoBasic.encode();
         infoBuffer.flip();
         // buffer
+        // String value = new String(buffer.array());
+        // if (value.length() <= 3) log.info("buffer: {}, {}", value, buffer.limit());
         // buffer.flip();
         lock.writeLock().lock();
         try {

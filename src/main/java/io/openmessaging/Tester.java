@@ -29,9 +29,7 @@ public class Tester {
         threadB.join();
         Map<Integer, ByteBuffer> range;
         range = messageQueue.getRange("A", 1, 100, 100);
-        range.forEach((key, value) -> {
-            System.out.println(key + ": " + new String(value.array()));
-        });
+        // range.forEach((key, value) -> System.out.println(key + ": " + new String(value.array())));
         System.out.println(System.currentTimeMillis() - start);
     }
 }
