@@ -1,5 +1,7 @@
 package io.openmessaging;
 
+import io.openmessaging.solve.LeoMessageQueueImpl;
+
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
@@ -7,7 +9,7 @@ import java.util.Map;
 public class Tester {
 
     public static void main(String[] args) throws InterruptedException {
-        MessageQueue messageQueue = new DefaultMessageQueueImpl();
+        MessageQueue messageQueue = new LeoMessageQueueImpl();
         long start = System.currentTimeMillis();
         Thread threadA = new Thread(() -> {
             for (int i = 0; i < 10000; i++) {

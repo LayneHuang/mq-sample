@@ -16,17 +16,19 @@ public class LeoMessageQueueImpl extends MessageQueue {
 
     @Override
     public long append(String topic, int queueId, ByteBuffer data) {
-        String key = (topic + " + " + queueId).intern();
+        int topicHash = topic.hashCode();
+        String key = (topicHash + " + " + queueId).intern();
         long offset = getOffset(key);
         // 更新最大位点
         // 保存 data 中的数据
-        writeLog(topic, queueId, data);
+        writeLog(topicHash, queueId, offset, data);
         return offset;
     }
 
     @Override
     public Map<Integer, ByteBuffer> getRange(String topic, int queueId, long offset, int fetchNum) {
-        Map<Integer, ByteBuffer> dataMap = readLog(topic, queueId, offset, fetchNum);
+        int topicHash = topic.hashCode();
+        Map<Integer, ByteBuffer> dataMap = readLog(topicHash, queueId, offset, fetchNum);
         if (dataMap != null) {
             return dataMap;
         } else {
