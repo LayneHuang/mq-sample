@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
 import java.util.concurrent.BlockingQueue;
@@ -34,6 +35,10 @@ public class WriteAheadLog {
 
     private final Broker broker;
 
+    private MappedByteBuffer infoMapBuffer;
+
+    private MappedByteBuffer valueMapBuffer;
+
     public WriteAheadLog(int walId) {
         this.walId = walId;
         initChannels();
@@ -47,15 +52,13 @@ public class WriteAheadLog {
                     Constant.getWALPath(walId),
                     StandardOpenOption.WRITE,
                     StandardOpenOption.CREATE,
-                    StandardOpenOption.APPEND,
-                    StandardOpenOption.DSYNC
+                    StandardOpenOption.APPEND
             );
             valueChannel = FileChannel.open(
                     Constant.getWALValuePath(walId),
                     StandardOpenOption.WRITE,
                     StandardOpenOption.CREATE,
-                    StandardOpenOption.APPEND,
-                    StandardOpenOption.DSYNC
+                    StandardOpenOption.APPEND
             );
         } catch (IOException e) {
             e.printStackTrace();
@@ -63,33 +66,35 @@ public class WriteAheadLog {
     }
 
     public int flush(String topic, int queueId, ByteBuffer buffer) {
+        int logCount = 0;
         int topicId = IdGenerator.getId(topic);
         int walId = topicId % Constant.WAL_FILE_COUNT;
         WalInfoBasic walInfoBasic = new WalInfoBasic(topicId, queueId, buffer.limit());
         ByteBuffer infoBuffer = walInfoBasic.encode();
         infoBuffer.flip();
-        // buffer
-        // String value = new String(buffer.array());
-        // if (value.length() <= 3) log.info("buffer: {}, {}", value, buffer.limit());
-        // buffer.flip();
         lock.writeLock().lock();
         try {
             walInfoBasic.pos = offset.msgPos;
             infoChannel.write(infoBuffer);
             valueChannel.write(buffer);
             offset.msgPos += walInfoBasic.size;
-            offset.logCount++;
+            logCount = ++offset.logCount;
         } catch (IOException e) {
             e.printStackTrace();
         }
         lock.writeLock().unlock();
         try {
-            if (walInfoBasic == null) log.info("FUCK");
             bq.put(walInfoBasic);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-        return walId;
+        return logCount;
+    }
+
+    private void putInfo() throws IOException {
+        if (infoMapBuffer == null || !infoMapBuffer.hasRemaining()) {
+            infoMapBuffer = infoChannel.map(FileChannel.MapMode.READ_WRITE, 0, Constant.WAL_BUFFER_SIZE);
+        }
     }
 
     public void stopBroker() throws InterruptedException {

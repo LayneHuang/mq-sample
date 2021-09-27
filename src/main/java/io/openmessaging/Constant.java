@@ -36,6 +36,8 @@ public class Constant {
 
     public static final int READ_BUFFER_SIZE = 512 * SIMPLE_MSG_SIZE;
 
+    public static final int WAL_BUFFER_SIZE = 128 * 1024 * 1024;
+
     public static Path getWALPath(int walId) {
         return DIR_ESSD.resolve("WAL-INFO-" + walId + ".md");
     }
