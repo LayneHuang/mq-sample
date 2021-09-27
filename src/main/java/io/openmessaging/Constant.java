@@ -1,6 +1,7 @@
 package io.openmessaging;
 
 import java.io.File;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
@@ -12,7 +13,10 @@ import java.nio.file.Paths;
  */
 public class Constant {
 
-    public static final Path DIR_ESSD = Paths.get(System.getProperty("user.dir") + File.separator + "essd");
+    public static final Path DIR_ESSD =
+            Files.exists(new File("/essd").toPath())
+                    ? Paths.get("/essd")
+                    : Paths.get(System.getProperty("user.dir") + File.separator + "essd");
 
     public static final String DIR_PMEM = "/pmem";
 
