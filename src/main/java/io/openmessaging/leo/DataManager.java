@@ -20,27 +20,28 @@ import java.util.concurrent.atomic.AtomicLong;
 public class DataManager {
 
     public static final String DIR_PMEM = "/pmem";
-//    public static final Path DIR_ESSD = Paths.get("/essd");
-        public static final Path DIR_ESSD = Paths.get(System.getProperty("user.dir")).resolve("target").resolve("work");
+        public static final Path DIR_ESSD = Paths.get("/essd");
+//    public static final Path DIR_ESSD = Paths.get(System.getProperty("user.dir")).resolve("target").resolve("work");
     public static final ConcurrentHashMap<String, AtomicLong> APPEND_OFFSET_MAP = new ConcurrentHashMap<>();
 
     public static final Path LOGS_PATH = DIR_ESSD.resolve("log");
 
     public static final short INDEX_BUF_SIZE = 8;
+    public static final short INDEX_TEMP_BUF_SIZE = INDEX_BUF_SIZE * 2048;
     public static AtomicInteger PARTITION_ID_ADDER = new AtomicInteger();
     public static ConcurrentHashMap<Integer, DataPartition> PARTITIONS = new ConcurrentHashMap<>(40);
     public static ThreadLocal<DataPartition> PARTITION_TL = new ThreadLocal<>();
-    public static ConcurrentHashMap<String, Indexer> INDEXERS = new ConcurrentHashMap<>(1024_000);
+    public static ConcurrentHashMap<String, Indexer> INDEXERS = new ConcurrentHashMap<>(1000_000);
 
     static {
         try {
-            if (Files.notExists(LOGS_PATH)){
+            if (Files.notExists(LOGS_PATH)) {
                 Files.createDirectories(LOGS_PATH);
             } else {
                 // 重启
-                Files.list(LOGS_PATH).forEach(path -> {
-
-                });
+//                Files.list(LOGS_PATH).forEach(path -> {
+//                    40 * INDEX_TEMP_BUF_SIZE
+//                });
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -89,7 +90,7 @@ public class DataManager {
                 if (key < fetchNum) {
                     Indexer indexer = INDEXERS.get(topic + "+" + queueId);
                     if (indexer.tempBuf.position() != 0) {
-                        ByteBuffer duplicate = indexer.tempBuf.duplicate();
+                        ByteBuffer duplicate = indexer.getTempBuf();
                         duplicate.flip();
                         while (duplicate.hasRemaining() && key < fetchNum) {
                             readLog(dataMap, key, duplicate);
