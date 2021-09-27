@@ -1,7 +1,5 @@
 package io.openmessaging;
 
-import io.openmessaging.solve.LayneMessageQueueImpl;
-
 import java.nio.ByteBuffer;
 import java.util.Map;
 
@@ -11,15 +9,15 @@ import java.util.Map;
  */
 public class DefaultMessageQueueImpl extends MessageQueue {
 
-    MessageQueue result = new LayneMessageQueueImpl();
+    LeoMessageQueueImpl messageQueue = new LeoMessageQueueImpl();
 
     @Override
     public long append(String topic, int queueId, ByteBuffer data) {
-        return result.append(topic, queueId, data);
+        return messageQueue.append(topic, queueId, data);
     }
 
     @Override
     public Map<Integer, ByteBuffer> getRange(String topic, int queueId, long offset, int fetchNum) {
-        return result.getRange(topic, queueId, offset, fetchNum);
+        return messageQueue.getRange(topic, queueId, offset, fetchNum);
     }
 }

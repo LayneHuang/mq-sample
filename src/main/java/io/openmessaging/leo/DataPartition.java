@@ -12,13 +12,14 @@ import static io.openmessaging.leo.DataManager.*;
 
 public class DataPartition {
 
-    public Short id;
+    public byte id;
     public Path logDir;
-    public short logNumAdder = 0;
+    public byte logNumAdder = -1;
     public FileChannel logFileChannel;
     public MappedByteBuffer logMappedBuf;
+    public long forcedPosition;
 
-    public void init(short id) {
+    public void init(byte id) {
         this.id = id;
         logDir = LOGS_PATH.resolve(String.valueOf(this.id));
         try {
@@ -38,24 +39,31 @@ public class DataPartition {
     private Path lastIndexPath;
     private FileChannel lastIndexFileChannel;
 
-    public void writeLog(String topic, int queueId, ByteBuffer data) {
+    public boolean writeLog(int topic, int queueId, long offset, ByteBuffer data, Indexer indexer) {
+        ByteBuffer indexBuf = ByteBuffer.allocate(INDEX_BUF_SIZE);
+        short msgLen = (short) data.limit();
+        short dataSize = (short) (18 + msgLen);
         try {
-            if (logMappedBuf.remaining() < data.limit()) {
+            if (logMappedBuf.remaining() < dataSize) {
                 unmap(logMappedBuf);
                 logFileChannel.close();
                 openLog();
             }
             int position = logMappedBuf.position();
+            logMappedBuf.putInt(topic); // 4
+            logMappedBuf.putInt(queueId); // 4
+            logMappedBuf.putLong(offset); // 8
+            logMappedBuf.putShort(msgLen); // 2
             logMappedBuf.put(data);
             logMappedBuf.force();
-            ByteBuffer indexBuf = ByteBuffer.allocate(INDEX_BUF_SIZE);
-            indexBuf.putShort(id);
-            indexBuf.putShort(logNumAdder);
+            // index
+            indexBuf.put(id);
+            indexBuf.put(logNumAdder);
             indexBuf.putInt(position);
-            indexBuf.putShort((short) data.limit());
+            indexBuf.putShort(dataSize);
             indexBuf.flip();
             // index
-            Path topicPath = DIR_ESSD.resolve(topic);
+            Path topicPath = DIR_ESSD.resolve(String.valueOf(topic));
             Path queueFile = topicPath.resolve(String.valueOf(queueId));
             try {
                 Files.createDirectories(topicPath);
@@ -76,6 +84,12 @@ public class DataPartition {
         } catch (IOException e) {
             e.printStackTrace();
         }
+        indexer.writeIndex(indexBuf);
+        return false;
+    }
+
+    public void indexForced() {
+
     }
 
 }
