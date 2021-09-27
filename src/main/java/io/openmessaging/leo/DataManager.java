@@ -20,8 +20,8 @@ import java.util.concurrent.atomic.AtomicLong;
 public class DataManager {
 
     public static final String DIR_PMEM = "/pmem";
-    public static final Path DIR_ESSD = Paths.get("/essd");
-    //    public static final Path DIR_ESSD = Paths.get(System.getProperty("user.dir")).resolve("target").resolve("work");
+//    public static final Path DIR_ESSD = Paths.get("/essd");
+        public static final Path DIR_ESSD = Paths.get(System.getProperty("user.dir")).resolve("target").resolve("work");
     public static final ConcurrentHashMap<String, AtomicLong> APPEND_OFFSET_MAP = new ConcurrentHashMap<>();
 
     public static final Path LOGS_PATH = DIR_ESSD.resolve("log");
@@ -34,7 +34,14 @@ public class DataManager {
 
     static {
         try {
-            Files.createDirectories(LOGS_PATH);
+            if (Files.notExists(LOGS_PATH)){
+                Files.createDirectories(LOGS_PATH);
+            } else {
+                // 重启
+                Files.list(LOGS_PATH).forEach(path -> {
+
+                });
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -56,9 +63,6 @@ public class DataManager {
         }
         Indexer indexer = INDEXERS.computeIfAbsent(topic + "+" + queueId, k -> new Indexer(topic, queueId));
         partition.writeLog(topic, queueId, offset, data, indexer);
-//        if (needForce) {
-//            INDEXERS.forEach();
-//        }
     }
 
     public static Map<Integer, ByteBuffer> readLog(int topic, int queueId, long offset, int fetchNum) {
@@ -82,17 +86,17 @@ public class DataManager {
                     unmap(indexMappedBuf);
                     indexChannel.close();
                 }
-//                if (key < fetchNum) {
-//                    Indexer indexer = INDEXERS.get(topic + "+" + queueId);
-//                    if (indexer.tempBuf.position() != 0) {
-//                        ByteBuffer duplicate = indexer.tempBuf.duplicate();
-//                        duplicate.flip();
-//                        while (duplicate.hasRemaining() && key < fetchNum) {
-//                            readLog(dataMap, key, duplicate);
-//                            key++;
-//                        }
-//                    }
-//                }
+                if (key < fetchNum) {
+                    Indexer indexer = INDEXERS.get(topic + "+" + queueId);
+                    if (indexer.tempBuf.position() != 0) {
+                        ByteBuffer duplicate = indexer.tempBuf.duplicate();
+                        duplicate.flip();
+                        while (duplicate.hasRemaining() && key < fetchNum) {
+                            readLog(dataMap, key, duplicate);
+                            key++;
+                        }
+                    }
+                }
             } else {
                 System.out.println(indexPath + "不存在");
             }
@@ -109,7 +113,7 @@ public class DataManager {
         short dataSize = indexBuf.getShort();
         Path logPath = LOGS_PATH.resolve(String.valueOf(partitionId)).resolve(String.valueOf(logNum));
         FileChannel logChannel = FileChannel.open(logPath, StandardOpenOption.READ);
-//                        MappedByteBuffer msgMappedBuf = logChannel.map(FileChannel.MapMode.READ_ONLY, position, msgLen);
+//      MappedByteBuffer msgMappedBuf = logChannel.map(FileChannel.MapMode.READ_ONLY, position, msgLen);
         ByteBuffer dataBuf = ByteBuffer.allocate(dataSize);
         logChannel.read(dataBuf, position);
         logChannel.close();

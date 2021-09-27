@@ -17,7 +17,6 @@ public class DataPartition {
     public byte logNumAdder = -1;
     public FileChannel logFileChannel;
     public MappedByteBuffer logMappedBuf;
-    public long forcedPosition;
 
     public void init(byte id) {
         this.id = id;
@@ -36,10 +35,7 @@ public class DataPartition {
         logMappedBuf = logFileChannel.map(FileChannel.MapMode.READ_WRITE, 0, 1_073_741_824);// 1G
     }
 
-    private Path lastIndexPath;
-    private FileChannel lastIndexFileChannel;
-
-    public boolean writeLog(int topic, int queueId, long offset, ByteBuffer data, Indexer indexer) {
+    public void writeLog(int topic, int queueId, long offset, ByteBuffer data, Indexer indexer) {
         ByteBuffer indexBuf = ByteBuffer.allocate(INDEX_BUF_SIZE);
         short msgLen = (short) data.limit();
         short dataSize = (short) (18 + msgLen);
@@ -62,34 +58,10 @@ public class DataPartition {
             indexBuf.putInt(position);
             indexBuf.putShort(dataSize);
             indexBuf.flip();
-            // index
-            Path topicPath = DIR_ESSD.resolve(String.valueOf(topic));
-            Path queueFile = topicPath.resolve(String.valueOf(queueId));
-            try {
-                Files.createDirectories(topicPath);
-            } catch (IOException e) {
-            }
-            if (!queueFile.equals(lastIndexPath)) {
-                if (lastIndexFileChannel != null) {
-                    lastIndexFileChannel.close();
-                }
-                lastIndexPath = queueFile;
-                lastIndexFileChannel = FileChannel.open(
-                        lastIndexPath,
-                        StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.APPEND
-//                            , StandardOpenOption.DSYNC
-                );
-            }
-            lastIndexFileChannel.write(indexBuf);
         } catch (IOException e) {
             e.printStackTrace();
         }
         indexer.writeIndex(indexBuf);
-        return false;
-    }
-
-    public void indexForced() {
-
     }
 
 }

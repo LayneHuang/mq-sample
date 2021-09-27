@@ -2,8 +2,10 @@ package io.openmessaging.leo;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 
 import static io.openmessaging.leo.DataManager.DIR_ESSD;
 import static io.openmessaging.leo.DataManager.INDEX_BUF_SIZE;
@@ -13,7 +15,7 @@ public class Indexer {
     public int topic;
     public int queueId;
     public Path indexFile;
-    public ByteBuffer tempBuf = ByteBuffer.allocate(1024 * INDEX_BUF_SIZE);
+    public ByteBuffer tempBuf = ByteBuffer.allocate(2048 * INDEX_BUF_SIZE);
 
     public Indexer(int topic, int queueId) {
         this.topic = topic;
@@ -31,28 +33,22 @@ public class Indexer {
         }
     }
 
-    public synchronized boolean writeIndex(ByteBuffer indexBuf) {
-//        boolean forced = false;
-//        try {
-//            if (tempBuf.remaining() < indexBuf.limit()) {
-//                tempBuf.flip();
-//                FileChannel fileChannel = FileChannel.open(
-//                        indexFile, StandardOpenOption.WRITE, StandardOpenOption.APPEND
-//                        , StandardOpenOption.DSYNC
-//                );
-//                fileChannel.write(tempBuf);
-//                fileChannel.close();
-//                forced = true;
-//                tempBuf = ByteBuffer.allocate(1024 * INDEX_BUF_SIZE);
-//            }
-//            tempBuf.put(indexBuf);
-//            tempBuf = ByteBuffer.allocate(1024 * INDEX_BUF_SIZE);
-//            }
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        }
-        tempBuf.put(indexBuf);
-        return tempBuf.remaining() == 0;
+    public synchronized void writeIndex(ByteBuffer indexBuf) {
+        try {
+            if (tempBuf.remaining() < indexBuf.limit()) {
+                tempBuf.flip();
+                FileChannel fileChannel = FileChannel.open(
+                        indexFile, StandardOpenOption.WRITE, StandardOpenOption.APPEND
+                        , StandardOpenOption.DSYNC
+                );
+                fileChannel.write(tempBuf);
+                fileChannel.close();
+                tempBuf = ByteBuffer.allocate(2048 * INDEX_BUF_SIZE);
+            }
+            tempBuf.put(indexBuf);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
 }
