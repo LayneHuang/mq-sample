@@ -1,5 +1,7 @@
 package io.openmessaging;
 
+import io.openmessaging.solve.LayneMessageQueueImpl;
+
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
@@ -27,8 +29,7 @@ public class Tester {
         threadA.join();
         threadB.start();
         threadB.join();
-        Map<Integer, ByteBuffer> range;
-        range = messageQueue.getRange("A", 1, 100, 100);
+        Map<Integer, ByteBuffer> range = messageQueue.getRange("A", 1, 100, 100);
         // range.forEach((key, value) -> System.out.println(key + ": " + new String(value.array())));
         System.out.println(System.currentTimeMillis() - start);
     }

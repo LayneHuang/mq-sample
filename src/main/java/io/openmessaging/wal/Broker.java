@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
+import java.util.concurrent.BlockingQueue;
 
 /**
  * WalCache
@@ -25,9 +26,9 @@ public class Broker extends Thread {
 
     private final ByteBuffer pageBuffer = ByteBuffer.allocate(Constant.SIMPLE_MSG_SIZE * Constant.CACHE_LEN);
 
-    private final MyBlockingQueue bq;
+    private final BlockingQueue<WalInfoBasic> bq;
 
-    public Broker(int walId, WalOffset offset, MyBlockingQueue bq) {
+    public Broker(int walId, WalOffset offset, BlockingQueue<WalInfoBasic> bq) {
         this.walId = walId;
         this.offset = offset;
         this.bq = bq;
@@ -37,37 +38,16 @@ public class Broker extends Thread {
     public void run() {
         log.info("Broker :{} , Start", walId);
         while (true) {
-            WalInfoBasic info = bq.poll();
-            if (info == null) break;
-            partition(info);
-        }
-    }
-
-    private void readFromWAL() {
-//        try (FileChannel channel = FileChannel.open(Constant.getWALPath(walId), StandardOpenOption.READ)) {
-//            while (true) {
-//                long logPos = bq.poll();
-//                if (logPos == -1) break;
-//                long begin = logPos * Constant.MSG_SIZE;
-//                long end = (logPos + Constant.LOG_SEGMENT_SIZE) * Constant.MSG_SIZE;
-//                log.info("read wal: {}, begin: {}, end: {}, channel size: {}", walId, begin, end, channel.size());
-//                MappedByteBuffer buffer = channel.map(FileChannel.MapMode.READ_ONLY, begin, end);
-//                partition(buffer);
-//            }
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        }
-    }
-
-    /**
-     * 分区
-     *
-     * @param buffer WAL
-     */
-    private void partition(ByteBuffer buffer) {
-        while (buffer.hasRemaining()) {
-            WalInfoBasic info = new WalInfoBasic();
-            info.decode(buffer);
+            WalInfoBasic info = null;
+            try {
+                info = bq.take();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            if (info == null || info.size == 0) {
+                log.info("Broker :{} , End", walId);
+                break;
+            }
             partition(info);
         }
     }

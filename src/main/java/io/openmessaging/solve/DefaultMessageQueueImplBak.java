@@ -1,4 +1,6 @@
-package io.openmessaging;
+package io.openmessaging.solve;
+
+import io.openmessaging.MessageQueue;
 
 import java.nio.ByteBuffer;
 import java.util.HashMap;

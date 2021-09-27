@@ -1,15 +1,15 @@
-package io.openmessaging;
+package io.openmessaging.solve;
 
-import io.openmessaging.wal.WalInfoBasic;
+import io.openmessaging.Constant;
+import io.openmessaging.IdGenerator;
+import io.openmessaging.MessageQueue;
 import io.openmessaging.wal.WriteAheadLog;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.HashMap;
 import java.util.Map;
@@ -45,7 +45,6 @@ public class LayneMessageQueueImpl extends MessageQueue {
         int walId = topicId % Constant.WAL_FILE_COUNT;
         Map<Integer, ByteBuffer> dataMap = new HashMap<>(fetchNum);
         log.info("query, topic: {}, queueId: {}, offset: {}, fetchNum: {}", topic, queueId, offset, fetchNum);
-
         int idx = 0;
         int[] ansSize = new int[fetchNum];
         long[] ansPos = new long[fetchNum];
@@ -76,9 +75,24 @@ public class LayneMessageQueueImpl extends MessageQueue {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        for (int i = 0; i < idx; ++i) {
+        //check(offset, ansSize, ansPos, dataMap);
+        //stopBroker();
+        return dataMap;
+    }
+
+    private void check(long offset, int[] ansSize, long[] ansPos, Map<Integer, ByteBuffer> dataMap) {
+        for (int i = 0; i < ansPos.length; ++i) {
             log.info("ans, offset: {}, size: {}, pos: {}, res: {}", (offset + i), ansSize[i], ansPos[i], new String(dataMap.get((int) (offset + i)).array()));
         }
-        return dataMap;
+    }
+
+    private void stopBroker() {
+        for (WriteAheadLog wal : walList) {
+            try {
+                wal.stopBroker();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
     }
 }

@@ -1,4 +1,4 @@
-package io.openmessaging;
+package io.openmessaging.solve;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -14,6 +14,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
+import io.openmessaging.MessageQueue;
 import sun.misc.Cleaner;
 
 /**

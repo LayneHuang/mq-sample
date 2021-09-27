@@ -1,10 +1,9 @@
 package io.openmessaging;
 
-import java.nio.ByteBuffer;
-import java.util.Collections;
-import java.util.Map;
+import io.openmessaging.solve.LayneMessageQueueImpl;
 
-import static io.openmessaging.leo.DataManager.*;
+import java.nio.ByteBuffer;
+import java.util.Map;
 
 /**
  * 这是一个简单的基于内存的实现，以方便选手理解题意；
@@ -12,23 +11,15 @@ import static io.openmessaging.leo.DataManager.*;
  */
 public class DefaultMessageQueueImpl extends MessageQueue {
 
+    MessageQueue result = new LayneMessageQueueImpl();
+
     @Override
     public long append(String topic, int queueId, ByteBuffer data) {
-        String key = (topic + " + " + queueId).intern();
-        long offset = getOffset(key);
-        // 更新最大位点
-        // 保存 data 中的数据
-        writeLog(topic, queueId, data);
-        return offset;
+        return result.append(topic, queueId, data);
     }
 
     @Override
     public Map<Integer, ByteBuffer> getRange(String topic, int queueId, long offset, int fetchNum) {
-        Map<Integer, ByteBuffer> dataMap = readLog(topic, queueId, offset, fetchNum);
-        if (dataMap != null) {
-            return dataMap;
-        } else {
-            return Collections.emptyMap();
-        }
+        return result.getRange(topic, queueId, offset, fetchNum);
     }
 }

@@ -22,6 +22,12 @@ public class WalInfoBasic {
     public WalInfoBasic() {
     }
 
+    public WalInfoBasic(int topicId, int queueId, int size) {
+        this.topicId = topicId;
+        this.queueId = queueId;
+        this.size = size;
+    }
+
     public WalInfoBasic(int topicId, int queueId, int size, long pos) {
         this.topicId = topicId;
         this.queueId = queueId;

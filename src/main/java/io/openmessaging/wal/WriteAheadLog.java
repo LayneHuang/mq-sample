@@ -9,6 +9,8 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -27,7 +29,7 @@ public class WriteAheadLog {
     private final int walId;
     private FileChannel infoChannel;
     private FileChannel valueChannel;
-    private final MyBlockingQueue bq = new MyBlockingQueue();
+    private final BlockingQueue<WalInfoBasic> bq = new LinkedBlockingDeque<>(Constant.LOG_SEGMENT_SIZE);
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
 
     private final Broker broker;
@@ -63,7 +65,7 @@ public class WriteAheadLog {
     public int flush(String topic, int queueId, ByteBuffer buffer) {
         int topicId = IdGenerator.getId(topic);
         int walId = topicId % Constant.WAL_FILE_COUNT;
-        WalInfoBasic walInfoBasic = new WalInfoBasic(topicId, queueId, buffer.limit(), offset.msgPos);
+        WalInfoBasic walInfoBasic = new WalInfoBasic(topicId, queueId, buffer.limit());
         ByteBuffer infoBuffer = walInfoBasic.encode();
         infoBuffer.flip();
         // buffer
@@ -72,16 +74,25 @@ public class WriteAheadLog {
         // buffer.flip();
         lock.writeLock().lock();
         try {
+            walInfoBasic.pos = offset.msgPos;
             infoChannel.write(infoBuffer);
             valueChannel.write(buffer);
+            offset.msgPos += walInfoBasic.size;
             offset.logCount++;
-            offset.msgPos = (long) offset.logCount * Constant.MSG_SIZE;
         } catch (IOException e) {
             e.printStackTrace();
         }
         lock.writeLock().unlock();
-        bq.put(walInfoBasic);
+        try {
+            if (walInfoBasic == null) log.info("FUCK");
+            bq.put(walInfoBasic);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
         return walId;
     }
 
+    public void stopBroker() throws InterruptedException {
+        bq.put(new WalInfoBasic());
+    }
 }
