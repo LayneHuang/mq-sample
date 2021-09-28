@@ -89,11 +89,10 @@ public class DataManager {
                 }
                 if (key < fetchNum) {
                     Indexer indexer = INDEXERS.get(topic + "+" + queueId);
-                    if (indexer.tempBuf.position() != 0) {
-                        ByteBuffer duplicate = indexer.getTempBuf();
-                        duplicate.flip();
-                        while (duplicate.hasRemaining() && key < fetchNum) {
-                            readLog(dataMap, key, duplicate);
+                    ByteBuffer tempBuf = indexer.getTempBuf();
+                    if (tempBuf.position() != 0) {
+                        while (tempBuf.hasRemaining() && key < fetchNum) {
+                            readLog(dataMap, key, tempBuf);
                             key++;
                         }
                     }
