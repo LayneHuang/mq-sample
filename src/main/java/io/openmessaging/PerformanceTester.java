@@ -28,25 +28,25 @@ public class PerformanceTester {
         });
         Thread threadR1 = new Thread(() -> {
             System.out.println("边写边查 threadR1");
-            messageQueue.getRange("A", 1, 100, 100)
+            messageQueue.getRange("A", 1, 9950, 100)
                     .forEach((key, value) -> System.out.println(key + ": " + new String(value.array())));
         });
-        Thread threadW2 = new Thread(() -> {
-            for (; i < 30000; i++) {
-                String text = String.valueOf(i);
-                ByteBuffer buf = ByteBuffer.wrap(text.getBytes(StandardCharsets.UTF_8));
-                messageQueue.append("B", 1, buf);
-            }
-        });
+//        Thread threadW2 = new Thread(() -> {
+//            for (; i < 30000; i++) {
+//                String text = String.valueOf(i);
+//                ByteBuffer buf = ByteBuffer.wrap(text.getBytes(StandardCharsets.UTF_8));
+//                messageQueue.append("B", 1, buf);
+//            }
+//        });
         threadW1.start();
         threadW1.join();
         threadR1.start();
         threadR1.join();
-        threadW2.start();
-        threadW2.join();
-        System.out.println("最后查");
-        messageQueue.getRange("A", 1, 500, 100)
-                .forEach((key, value) -> System.out.println("最后查: " + key + ": " + new String(value.array())));
+//        threadW2.start();
+//        threadW2.join();
+//        System.out.println("最后查");
+//        messageQueue.getRange("A", 1, 9950, 100)
+//                .forEach((key, value) -> System.out.println("最后查: " + key + ": " + new String(value.array())));
         System.out.println(System.currentTimeMillis() - start);
     }
 }

@@ -14,7 +14,7 @@ public class Indexer {
     public int topic;
     public int queueId;
     public Path indexFile;
-    public ByteBuffer tempBuf = ByteBuffer.allocate(INDEX_TEMP_BUF_SIZE);
+    private ByteBuffer tempBuf = ByteBuffer.allocate(INDEX_TEMP_BUF_SIZE);
 
     public Indexer(int topic, int queueId) {
         this.topic = topic;
@@ -38,9 +38,10 @@ public class Indexer {
                 tempBuf.flip();
                 FileChannel fileChannel = FileChannel.open(
                         indexFile, StandardOpenOption.WRITE, StandardOpenOption.APPEND
-                        , StandardOpenOption.DSYNC
+//                        , StandardOpenOption.DSYNC
                 );
                 fileChannel.write(tempBuf);
+                fileChannel.force(false);
                 fileChannel.close();
                 tempBuf = ByteBuffer.allocate(INDEX_TEMP_BUF_SIZE);
             }

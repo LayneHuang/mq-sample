@@ -20,8 +20,8 @@ import java.util.concurrent.atomic.AtomicLong;
 public class DataManager {
 
     public static final String DIR_PMEM = "/pmem";
-        public static final Path DIR_ESSD = Paths.get("/essd");
-//    public static final Path DIR_ESSD = Paths.get(System.getProperty("user.dir")).resolve("target").resolve("work");
+    public static final Path DIR_ESSD = Paths.get("/essd");
+    //    public static final Path DIR_ESSD = Paths.get(System.getProperty("user.dir")).resolve("target").resolve("work");
     public static final ConcurrentHashMap<String, AtomicLong> APPEND_OFFSET_MAP = new ConcurrentHashMap<>();
 
     public static final Path LOGS_PATH = DIR_ESSD.resolve("log");
@@ -111,21 +111,30 @@ public class DataManager {
         byte logNum = indexBuf.get();
         int position = indexBuf.getInt();
         short dataSize = indexBuf.getShort();
-        Path logPath = LOGS_PATH.resolve(String.valueOf(partitionId)).resolve(String.valueOf(logNum));
-        FileChannel logChannel = FileChannel.open(logPath, StandardOpenOption.READ);
+        Path logFile = LOGS_PATH.resolve(String.valueOf(partitionId)).resolve(String.valueOf(logNum));
+        if (Files.exists(logFile)) {
+            FileChannel logChannel = FileChannel.open(logFile, StandardOpenOption.READ);
+            long logSize = logChannel.size();
 //      MappedByteBuffer msgMappedBuf = logChannel.map(FileChannel.MapMode.READ_ONLY, position, msgLen);
-        ByteBuffer dataBuf = ByteBuffer.allocate(dataSize);
-        logChannel.read(dataBuf, position);
-        logChannel.close();
-        dataBuf.flip();
-        int topic = dataBuf.getInt();
-        int queueId = dataBuf.getInt();
-        long offset = dataBuf.getLong();
-        short msgLen = dataBuf.getShort();
-        ByteBuffer msgBuf = ByteBuffer.allocate(msgLen);
-        msgBuf.put(dataBuf);
-        msgBuf.flip();
-        dataMap.put(key, msgBuf);
+            ByteBuffer dataBuf = ByteBuffer.allocate(dataSize);
+            logChannel.read(dataBuf, position);
+            logChannel.close();
+            dataBuf.flip();
+            try {
+                int topic = dataBuf.getInt();
+                int queueId = dataBuf.getInt();
+                long offset = dataBuf.getLong();
+                short msgLen = dataBuf.getShort();
+                ByteBuffer msgBuf = ByteBuffer.allocate(msgLen);
+                msgBuf.put(dataBuf);
+                msgBuf.flip();
+                dataMap.put(key, msgBuf);
+            } catch (Exception e) {
+                System.out.println("readLog : " + partitionId + ", " + logNum + ", " + position + ", " + dataSize + ", logSize: " + logSize);
+            }
+        } else {
+            System.out.println("readLog : " + partitionId + ", " + logNum + " 不存在");
+        }
     }
 
     public static void unmap(MappedByteBuffer indexMapBuf) throws IOException {
