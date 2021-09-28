@@ -52,6 +52,9 @@ public class DataManager {
         DataPartition partition = PARTITION_TL.get();
         if (partition == null) {
             int id = PARTITION_ID_ADDER.getAndIncrement();
+            if (id >= 40) {
+                System.out.println("PARTITION 超过，" + id);
+            }
             partition = new DataPartition((byte) id);
             PARTITIONS.put(id, partition);
             PARTITION_TL.set(partition);
@@ -106,28 +109,24 @@ public class DataManager {
         int position = indexBuf.getInt();
         short dataSize = indexBuf.getShort();
         Path logFile = LOGS_PATH.resolve(String.valueOf(partitionId)).resolve(String.valueOf(logNum));
-        if (Files.exists(logFile)) {
-            FileChannel logChannel = FileChannel.open(logFile, StandardOpenOption.READ);
-            long logSize = logChannel.size();
+        FileChannel logChannel = FileChannel.open(logFile, StandardOpenOption.READ);
+        long logSize = logChannel.size();
 //      MappedByteBuffer msgMappedBuf = logChannel.map(FileChannel.MapMode.READ_ONLY, position, msgLen);
-            ByteBuffer dataBuf = ByteBuffer.allocate(dataSize);
-            logChannel.read(dataBuf, position);
-            logChannel.close();
-            dataBuf.flip();
-            try {
-                int topic = dataBuf.getInt();
-                int queueId = dataBuf.getInt();
-                long offset = dataBuf.getLong();
-                short msgLen = dataBuf.getShort();
-                ByteBuffer msgBuf = ByteBuffer.allocate(msgLen);
-                msgBuf.put(dataBuf);
-                msgBuf.flip();
-                dataMap.put(key, msgBuf);
-            } catch (Exception e) {
-                System.out.println("readLog : " + partitionId + ", " + logNum + ", " + position + ", " + dataSize + ", logSize: " + logSize);
-            }
-        } else {
-            System.out.println("readLog : " + partitionId + ", " + logNum + ", " + position + ", " + dataSize + ", 不存在");
+        ByteBuffer dataBuf = ByteBuffer.allocate(dataSize);
+        logChannel.read(dataBuf, position);
+        logChannel.close();
+        dataBuf.flip();
+        try {
+            int topic = dataBuf.getInt();
+            int queueId = dataBuf.getInt();
+            long offset = dataBuf.getLong();
+            short msgLen = dataBuf.getShort();
+            ByteBuffer msgBuf = ByteBuffer.allocate(msgLen);
+            msgBuf.put(dataBuf);
+            msgBuf.flip();
+            dataMap.put(key, msgBuf);
+        } catch (Exception e) {
+            System.out.println("readLog : " + partitionId + ", " + logNum + ", " + position + ", " + dataSize + ", logSize: " + logSize);
         }
     }
 

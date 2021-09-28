@@ -31,8 +31,8 @@ public class DataPartition {
 
     private void openLog() throws IOException {
         logNumAdder++;
-        if (logNumAdder == 0) {
-            logNumAdder++;
+        if (logNumAdder >= Byte.MAX_VALUE) {
+            System.out.println("logNumAdder 超过，" + logNumAdder);
         }
         setupLog();
     }
@@ -46,6 +46,9 @@ public class DataPartition {
 
     public void writeLog(int topic, int queueId, long offset, ByteBuffer data, Indexer indexer) {
         ByteBuffer indexBuf = ByteBuffer.allocate(INDEX_BUF_SIZE);
+        if (data.limit() >= Short.MAX_VALUE) {
+            System.out.println("data.limit() 超过 Short，" + data.limit());
+        }
         short msgLen = (short) data.limit();
         short dataSize = (short) (18 + msgLen);
         try {
