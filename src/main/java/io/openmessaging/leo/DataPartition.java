@@ -31,9 +31,6 @@ public class DataPartition {
 
     private void openLog() throws IOException {
         logNumAdder++;
-        if (logNumAdder >= Byte.MAX_VALUE) {
-            System.out.println("logNumAdder " + logNumAdder);
-        }
         setupLog();
     }
 
@@ -48,29 +45,31 @@ public class DataPartition {
         ByteBuffer indexBuf = ByteBuffer.allocate(INDEX_BUF_SIZE);
         short msgLen = (short) data.limit();
         short dataSize = (short) (18 + msgLen);
-        try {
-            if (logMappedBuf.remaining() < dataSize) {
-                unmap(logMappedBuf);
-                logFileChannel.close();
-                openLog();
+        synchronized(indexer) {
+            try {
+                if (logMappedBuf.remaining() < dataSize) {
+                    unmap(logMappedBuf);
+                    logFileChannel.close();
+                    openLog();
+                }
+                int position = logMappedBuf.position();
+                logMappedBuf.putInt(topic); // 4
+                logMappedBuf.putInt(queueId); // 4
+                logMappedBuf.putLong(offset); // 8
+                logMappedBuf.putShort(msgLen); // 2
+                logMappedBuf.put(data);
+                logMappedBuf.force();
+                // index
+                indexBuf.put(id);
+                indexBuf.put(logNumAdder);
+                indexBuf.putInt(position);
+                indexBuf.putShort(dataSize);
+                indexBuf.flip();
+            } catch (IOException e) {
+                e.printStackTrace();
             }
-            int position = logMappedBuf.position();
-            logMappedBuf.putInt(topic); // 4
-            logMappedBuf.putInt(queueId); // 4
-            logMappedBuf.putLong(offset); // 8
-            logMappedBuf.putShort(msgLen); // 2
-            logMappedBuf.put(data);
-            logMappedBuf.force();
-            // index
-            indexBuf.put(id);
-            indexBuf.put(logNumAdder);
-            indexBuf.putInt(position);
-            indexBuf.putShort(dataSize);
-            indexBuf.flip();
-        } catch (IOException e) {
-            e.printStackTrace();
+            indexer.writeIndex(indexBuf);
         }
-        indexer.writeIndex(indexBuf);
     }
 
 }

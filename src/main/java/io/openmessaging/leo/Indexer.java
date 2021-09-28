@@ -32,7 +32,7 @@ public class Indexer {
         }
     }
 
-    public synchronized void writeIndex(ByteBuffer indexBuf) {
+    public void writeIndex(ByteBuffer indexBuf) {
         try {
             if (tempBuf.remaining() < indexBuf.limit()) {
                 tempBuf.flip();
