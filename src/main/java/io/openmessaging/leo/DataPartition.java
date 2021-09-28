@@ -18,12 +18,14 @@ public class DataPartition {
     public FileChannel logFileChannel;
     public MappedByteBuffer logMappedBuf;
 
-    public void init(byte id) {
+    public DataPartition(byte id) {
         this.id = id;
         logDir = LOGS_PATH.resolve(String.valueOf(this.id));
         try {
             Files.createDirectories(logDir);
+            openLog();
         } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 

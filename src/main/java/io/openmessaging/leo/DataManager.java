@@ -21,7 +21,7 @@ public class DataManager {
 
     public static final String DIR_PMEM = "/pmem";
     public static final Path DIR_ESSD = Paths.get("/essd");
-    //    public static final Path DIR_ESSD = Paths.get(System.getProperty("user.dir")).resolve("target").resolve("work");
+//        public static final Path DIR_ESSD = Paths.get(System.getProperty("user.dir")).resolve("target").resolve("work");
     public static final ConcurrentHashMap<String, AtomicLong> APPEND_OFFSET_MAP = new ConcurrentHashMap<>();
 
     public static final Path LOGS_PATH = DIR_ESSD.resolve("log");
@@ -51,14 +51,8 @@ public class DataManager {
     public static void writeLog(int topic, int queueId, long offset, ByteBuffer data) {
         DataPartition partition = PARTITION_TL.get();
         if (partition == null) {
-            partition = new DataPartition();
             int id = PARTITION_ID_ADDER.getAndIncrement();
-            partition.init((byte) id);
-            try {
-                partition.openLog();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+            partition = new DataPartition((byte) id);
             PARTITIONS.put(id, partition);
             PARTITION_TL.set(partition);
         }
