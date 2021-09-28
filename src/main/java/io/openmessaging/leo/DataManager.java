@@ -69,19 +69,19 @@ public class DataManager {
         Path indexPath = DIR_ESSD.resolve(String.valueOf(topic)).resolve(String.valueOf(queueId));
         try {
             if (Files.exists(indexPath)) {
-                if(DEBUG) System.out.println("exists " + indexPath.toAbsolutePath());
+                if (DEBUG) System.out.println("exists " + indexPath.toAbsolutePath());
                 FileChannel indexChannel = FileChannel.open(indexPath, StandardOpenOption.READ);
                 long fileSize = indexChannel.size();
-                if(DEBUG) System.out.println("fileSize " + fileSize);
+                if (DEBUG) System.out.println("fileSize " + fileSize);
                 long start = offset * INDEX_BUF_SIZE;
-                if(DEBUG) System.out.println("start " + start);
+                if (DEBUG) System.out.println("start " + start);
                 dataMap = new HashMap<>(fetchNum);
                 int key = 0;
                 if (start < fileSize) {
                     long end = Math.min(start + (long) fetchNum * INDEX_BUF_SIZE, fileSize);
-                    if(DEBUG) System.out.println("end " + end);
+                    if (DEBUG) System.out.println("end " + end);
                     long mappedSize = end - start;
-                    if(DEBUG) System.out.println("mappedSize " + mappedSize);
+                    if (DEBUG) System.out.println("mappedSize " + mappedSize);
                     MappedByteBuffer indexMappedBuf = indexChannel.map(FileChannel.MapMode.READ_ONLY, start, mappedSize);
                     while (indexMappedBuf.hasRemaining()) {
                         readLog(dataMap, key, indexMappedBuf, DEBUG);
@@ -90,19 +90,18 @@ public class DataManager {
                     unmap(indexMappedBuf);
                     indexChannel.close();
                 }
-                if(DEBUG) System.out.println("key1 " + key);
+                if (DEBUG) System.out.println("key1 " + key);
                 if (key < fetchNum) {
                     Indexer indexer = INDEXERS.get(topic + "+" + queueId);
                     ByteBuffer tempBuf = indexer.getTempBuf();
-                    if(DEBUG) System.out.println("tempBuf.limit() " + tempBuf.limit());
-                    if(DEBUG) System.out.println("tempBuf.position() " + tempBuf.position());
-                    if (tempBuf.position() != 0) {
-                        while (tempBuf.hasRemaining() && key < fetchNum) {
-                            readLog(dataMap, key, tempBuf, DEBUG);
-                            key++;
-                        }
+                    if (DEBUG) System.out.println("tempBuf.limit() " + tempBuf.limit());
+                    if (DEBUG) System.out.println("tempBuf.position() " + tempBuf.position());
+                    while (tempBuf.hasRemaining() && key < fetchNum) {
+                        readLog(dataMap, key, tempBuf, DEBUG);
+                        key++;
                     }
                 }
+                if (DEBUG) System.out.println("dataMap.size() " + dataMap.size());
             } else {
                 System.out.println(indexPath + "不存在");
             }
@@ -114,18 +113,18 @@ public class DataManager {
 
     private static void readLog(Map<Integer, ByteBuffer> dataMap, int key, ByteBuffer indexBuf, boolean DEBUG) throws IOException {
         byte partitionId = indexBuf.get();
-        if(DEBUG) System.out.println("partitionId " + partitionId);
+        if (DEBUG) System.out.println("partitionId " + partitionId);
         byte logNum = indexBuf.get();
-        if(DEBUG) System.out.println("logNum " + logNum);
+        if (DEBUG) System.out.println("logNum " + logNum);
         int position = indexBuf.getInt();
-        if(DEBUG) System.out.println("position " + position);
+        if (DEBUG) System.out.println("position " + position);
         short dataSize = indexBuf.getShort();
-        if(DEBUG) System.out.println("dataSize " + dataSize);
+        if (DEBUG) System.out.println("dataSize " + dataSize);
         Path logFile = LOGS_PATH.resolve(String.valueOf(partitionId)).resolve(String.valueOf(logNum));
-        if(DEBUG) System.out.println("logFile " + logFile.toAbsolutePath());
+        if (DEBUG) System.out.println("logFile " + logFile.toAbsolutePath());
         FileChannel logChannel = FileChannel.open(logFile, StandardOpenOption.READ);
         long logSize = logChannel.size();
-        if(DEBUG) System.out.println("logSize " + logSize);
+        if (DEBUG) System.out.println("logSize " + logSize);
 //      MappedByteBuffer msgMappedBuf = logChannel.map(FileChannel.MapMode.READ_ONLY, position, msgLen);
         ByteBuffer dataBuf = ByteBuffer.allocate(dataSize);
         logChannel.read(dataBuf, position);
@@ -133,13 +132,13 @@ public class DataManager {
         dataBuf.flip();
         try {
             int topic = dataBuf.getInt();
-            if(DEBUG) System.out.println("topic " + topic);
+            if (DEBUG) System.out.println("topic " + topic);
             int queueId = dataBuf.getInt();
-            if(DEBUG) System.out.println("queueId " + queueId);
+            if (DEBUG) System.out.println("queueId " + queueId);
             long offset = dataBuf.getLong();
-            if(DEBUG) System.out.println("offset " + offset);
+            if (DEBUG) System.out.println("offset " + offset);
             short msgLen = dataBuf.getShort();
-            if(DEBUG) System.out.println("msgLen " + msgLen);
+            if (DEBUG) System.out.println("msgLen " + msgLen);
             ByteBuffer msgBuf = ByteBuffer.allocate(msgLen);
             msgBuf.put(dataBuf);
             msgBuf.flip();
