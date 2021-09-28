@@ -21,7 +21,7 @@ public class DataManager {
 
     public static final String DIR_PMEM = "/pmem";
     public static final Path DIR_ESSD = Paths.get("/essd");
-//        public static final Path DIR_ESSD = Paths.get(System.getProperty("user.dir")).resolve("target").resolve("work");
+    //        public static final Path DIR_ESSD = Paths.get(System.getProperty("user.dir")).resolve("target").resolve("work");
     public static final ConcurrentHashMap<String, AtomicLong> APPEND_OFFSET_MAP = new ConcurrentHashMap<>();
 
     public static final Path LOGS_PATH = DIR_ESSD.resolve("log");
@@ -71,7 +71,7 @@ public class DataManager {
                 dataMap = new HashMap<>(fetchNum);
                 int key = 0;
                 if (start < fileSize) {
-                    long end = Math.min(start + fetchNum * INDEX_BUF_SIZE, fileSize);
+                    long end = Math.min(start + (long) fetchNum * INDEX_BUF_SIZE, fileSize);
                     long mappedSize = end - start;
                     MappedByteBuffer indexMappedBuf = indexChannel.map(FileChannel.MapMode.READ_ONLY, start, mappedSize);
                     while (indexMappedBuf.hasRemaining()) {
@@ -127,7 +127,7 @@ public class DataManager {
                 System.out.println("readLog : " + partitionId + ", " + logNum + ", " + position + ", " + dataSize + ", logSize: " + logSize);
             }
         } else {
-            System.out.println("readLog : " + partitionId + ", " + logNum + " 不存在");
+            System.out.println("readLog : " + partitionId + ", " + logNum + ", " + position + ", " + dataSize + ", 不存在");
         }
     }
 

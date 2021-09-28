@@ -23,14 +23,21 @@ public class DataPartition {
         logDir = LOGS_PATH.resolve(String.valueOf(this.id));
         try {
             Files.createDirectories(logDir);
-            openLog();
+            setupLog();
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    public void openLog() throws IOException {
+    private void openLog() throws IOException {
         logNumAdder++;
+        if (logNumAdder == 0) {
+            logNumAdder++;
+        }
+        setupLog();
+    }
+
+    private void setupLog() throws IOException {
         Path logFile = logDir.resolve(String.valueOf(logNumAdder));
         Files.createFile(logFile);
         logFileChannel = FileChannel.open(logFile, StandardOpenOption.READ, StandardOpenOption.WRITE);
