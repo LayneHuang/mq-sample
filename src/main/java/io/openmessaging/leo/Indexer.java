@@ -52,9 +52,11 @@ public class Indexer {
     }
 
     public synchronized ByteBuffer getTempBuf() {
-        ByteBuffer clone = ByteBuffer.allocate(tempBuf.capacity());
+        ByteBuffer clone = ByteBuffer.allocate(tempBuf.position());
         tempBuf.rewind();
-        clone.put(tempBuf);
+        while (clone.hasRemaining()){
+            clone.put(tempBuf.get());
+        }
         clone.flip();
         return clone;
     }
