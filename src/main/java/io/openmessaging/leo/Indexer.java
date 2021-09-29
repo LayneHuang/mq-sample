@@ -7,8 +7,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 
-import static io.openmessaging.leo.DataManager.DIR_ESSD;
-import static io.openmessaging.leo.DataManager.INDEX_TEMP_BUF_SIZE;
+import static io.openmessaging.leo.DataManager.*;
 
 public class Indexer {
 
@@ -45,6 +44,13 @@ public class Indexer {
                 fileChannel.write(tempBuf);
                 fileChannel.force(false);
                 fileChannel.close();
+                int partitionId = indexBuf.get() * INDEX_POS_SIZE;
+                byte logNumAdder = indexBuf.get();
+                int position = indexBuf.getInt();
+                INDEXER_POS_BUF.put(partitionId, logNumAdder);
+                INDEXER_POS_BUF.putInt(partitionId + 1, position);
+                INDEXER_POS_BUF.force();
+                indexBuf.rewind();
                 tempBuf = ByteBuffer.allocate(INDEX_TEMP_BUF_SIZE);
             }
             tempBuf.put(indexBuf);

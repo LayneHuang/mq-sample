@@ -33,15 +33,62 @@ public class DataManager {
     public static ThreadLocal<DataPartition> PARTITION_TL = new ThreadLocal<>();
     public static ConcurrentHashMap<String, Indexer> INDEXERS = new ConcurrentHashMap<>(1000_000);
 
+    // 索引位置落盘
+    public static final short INDEX_POS_SIZE = 5;
+    public static final Path INDEX_POS_PATH = DIR_ESSD.resolve("/index");
+    public static FileChannel INDEX_POS_FILE;
+    public static MappedByteBuffer INDEXER_POS_BUF;
+
     static {
         try {
             if (Files.notExists(LOGS_PATH)) {
                 Files.createDirectories(LOGS_PATH);
+            }
+            if (Files.notExists(INDEX_POS_PATH)) {
+                Files.createFile(INDEX_POS_PATH);
+                INDEX_POS_FILE = FileChannel.open(INDEX_POS_PATH, StandardOpenOption.READ, StandardOpenOption.WRITE);
+                INDEX_POS_FILE.map(FileChannel.MapMode.READ_WRITE, 0, 40 * INDEX_POS_SIZE);
             } else {
                 // 重启
-//                Files.list(LOGS_PATH).forEach(path -> {
-//                    40 * INDEX_TEMP_BUF_SIZE
-//                });
+                INDEX_POS_FILE = FileChannel.open(INDEX_POS_PATH, StandardOpenOption.READ);
+                INDEXER_POS_BUF = INDEX_POS_FILE.map(FileChannel.MapMode.READ_ONLY, 0, 40 * INDEX_POS_SIZE);
+                byte partitionId = 0;
+                while (INDEXER_POS_BUF.hasRemaining()) {
+                    byte logNumAdder = INDEXER_POS_BUF.get();
+                    int position = INDEXER_POS_BUF.getInt();
+                    System.out.println("partitionId : " + partitionId + " logNumAdder" + logNumAdder + " position " + position);
+                    Path logFile = LOGS_PATH.resolve(String.valueOf(partitionId)).resolve(String.valueOf(logNumAdder));
+                    FileChannel logFileChannel = FileChannel.open(logFile, StandardOpenOption.READ);
+                    long fileSize = logFileChannel.size();
+                    if (fileSize > position) {
+                        System.out.println("需要重放");
+                        MappedByteBuffer logBuf = logFileChannel.map(FileChannel.MapMode.READ_ONLY, position, fileSize);
+                        while (logBuf.hasRemaining()) {
+                            ByteBuffer indexBuf = ByteBuffer.allocate(INDEX_BUF_SIZE);
+                            int topic = logBuf.getInt();
+                            int queueId = logBuf.getInt();
+                            long offset = logBuf.getLong();
+                            short msgLen = logBuf.getShort();
+                            for (int i = 0; i < msgLen; i++) {
+                                logBuf.get();
+                            }
+                            short dataSize = (short) (18 + msgLen);
+                            // index
+                            indexBuf.put(partitionId);
+                            indexBuf.put(logNumAdder);
+                            indexBuf.putInt(position);
+                            indexBuf.putShort(dataSize);
+                            indexBuf.flip();
+                            Indexer indexer = INDEXERS.get(topic + "+" + queueId);
+                            indexer.writeIndex(indexBuf);
+                        }
+                        unmap(logBuf);
+                    }
+                    logFileChannel.close();
+                    partitionId++;
+                }
+                unmap(INDEXER_POS_BUF);
+                INDEX_POS_FILE.close();
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -52,7 +99,6 @@ public class DataManager {
         DataPartition partition = PARTITION_TL.get();
         if (partition == null) {
             int id = PARTITION_ID_ADDER.getAndIncrement();
-            System.out.println("PARTITION " + id);
             partition = new DataPartition((byte) id);
             PARTITIONS.put(id, partition);
             PARTITION_TL.set(partition);
@@ -101,8 +147,6 @@ public class DataManager {
                         }
                     }
                 }
-            } else {
-                System.out.println(indexPath + "不存在");
             }
         } catch (IOException e) {
             e.printStackTrace();
