@@ -69,19 +69,17 @@ public class DataManager {
         Path indexPath = DIR_ESSD.resolve(String.valueOf(topic)).resolve(String.valueOf(queueId));
         try {
             if (Files.exists(indexPath)) {
-                if (DEBUG) System.out.println("exists " + indexPath.toAbsolutePath());
                 FileChannel indexChannel = FileChannel.open(indexPath, StandardOpenOption.READ);
                 long fileSize = indexChannel.size();
-                if (DEBUG) System.out.println("fileSize " + fileSize);
                 long start = offset * INDEX_BUF_SIZE;
-                if (DEBUG) System.out.println("start " + start);
+                if (DEBUG) System.out.println("fileSize " + fileSize + " start " + start);
                 dataMap = new HashMap<>(fetchNum);
                 int key = 0;
+                long mappedSize = 0;
                 if (start < fileSize) {
                     long end = Math.min(start + (long) fetchNum * INDEX_BUF_SIZE, fileSize);
-                    if (DEBUG) System.out.println("end " + end);
-                    long mappedSize = end - start;
-                    if (DEBUG) System.out.println("mappedSize " + mappedSize);
+                    mappedSize = end - start;
+                    if (DEBUG) System.out.println("end " + end + " mappedSize " + mappedSize);
                     MappedByteBuffer indexMappedBuf = indexChannel.map(FileChannel.MapMode.READ_ONLY, start, mappedSize);
                     while (indexMappedBuf.hasRemaining()) {
                         readLog(dataMap, key, indexMappedBuf, DEBUG);
@@ -94,14 +92,13 @@ public class DataManager {
                 if (key < fetchNum) {
                     Indexer indexer = INDEXERS.get(topic + "+" + queueId);
                     ByteBuffer tempBuf = indexer.getTempBuf();
-                    if (DEBUG) System.out.println("tempBuf.limit() " + tempBuf.limit());
-                    if (DEBUG) System.out.println("tempBuf.position() " + tempBuf.position());
+                    if (DEBUG) System.out.println("tempBuf.limit() " + tempBuf.limit() + " tempBuf.position() " + tempBuf.position());
+                    tempBuf.position((int) mappedSize);
                     while (tempBuf.hasRemaining() && key < fetchNum) {
                         readLog(dataMap, key, tempBuf, DEBUG);
                         key++;
                     }
                 }
-                if (DEBUG) System.out.println("dataMap.size() " + dataMap.size());
             } else {
                 System.out.println(indexPath + "不存在");
             }
