@@ -28,8 +28,8 @@ public class PageCache {
 
     public void add(WalInfoBasic info) {
         int len = getLen(info.topicId, info.queueId);
-        msgSizePage[info.topicId][info.queueId][len] = info.size;
-        msgPosPage[info.topicId][info.queueId][len] = info.pos;
+        msgSizePage[info.topicId][info.queueId][len] = info.valueSize;
+        msgPosPage[info.topicId][info.queueId][len] = info.valuePos;
         pLen[info.topicId][info.queueId]++;
     }
 

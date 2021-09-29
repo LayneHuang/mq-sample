@@ -44,7 +44,7 @@ public class Broker extends Thread {
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-            if (info == null || info.size == 0) {
+            if (info == null || info.valueSize == 0) {
                 log.info("Broker :{} , End", walId);
                 break;
             }
@@ -64,7 +64,7 @@ public class Broker extends Thread {
      * 写入 topic_queue 文件
      */
     private void write(WalInfoBasic info, ByteBuffer buffer) {
-        // log.info("write, topic: {} , queue: {}", info.topicId, info.queueId);
+//         log.info("write, topic: {} , queue: {}", info.topicId, info.queueId);
         try (FileChannel fileChannel = FileChannel.open(
                 Constant.getPath(info.topicId, info.queueId),
                 StandardOpenOption.WRITE,

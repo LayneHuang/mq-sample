@@ -20,12 +20,12 @@ public class WalOffset {
     public int dealCount;
 
     /**
-     * 文件末尾
+     * wal基础信息偏移
      */
-    public long msgPos;
+    public long infoPos;
 
-    public boolean hasLogSegment() {
-        return logCount - dealCount >= Constant.LOG_SEGMENT_SIZE;
-    }
-
+    /**
+     * wal内容(buffer)偏移
+     */
+    public long valuePos;
 }
