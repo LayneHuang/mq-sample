@@ -7,7 +7,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 
-import static io.openmessaging.leo.DataManager.*;
+import static io.openmessaging.leo.DataManager.DIR_ESSD;
+import static io.openmessaging.leo.DataManager.INDEX_TEMP_BUF_SIZE;
 
 public class Indexer {
 
@@ -15,6 +16,7 @@ public class Indexer {
     public int queueId;
     public Path indexFile;
     private ByteBuffer tempBuf = ByteBuffer.allocate(INDEX_TEMP_BUF_SIZE);
+    public final Object LOCKER = new Object();
 
     public Indexer(int topic, int queueId) {
         this.topic = topic;
@@ -51,14 +53,16 @@ public class Indexer {
         }
     }
 
-    public synchronized ByteBuffer getTempBuf() {
-        ByteBuffer clone = ByteBuffer.allocate(tempBuf.position());
-        tempBuf.rewind();
-        while (clone.hasRemaining()){
-            clone.put(tempBuf.get());
+    public ByteBuffer getTempBuf() {
+        synchronized (LOCKER) {
+            ByteBuffer clone = ByteBuffer.allocate(tempBuf.position());
+            tempBuf.rewind();
+            while (clone.hasRemaining()) {
+                clone.put(tempBuf.get());
+            }
+            clone.flip();
+            return clone;
         }
-        clone.flip();
-        return clone;
     }
 
 }
