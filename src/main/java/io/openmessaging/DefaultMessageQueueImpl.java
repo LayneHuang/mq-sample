@@ -12,9 +12,9 @@ import java.util.Map;
  */
 public class DefaultMessageQueueImpl extends MessageQueue {
 
-//    LeoMessageQueueImpl messageQueue = new LeoMessageQueueImpl();
-    TestMessageQueueImpl messageQueue = new TestMessageQueueImpl();
-    
+    LeoMessageQueueImpl messageQueue = new LeoMessageQueueImpl();
+//    TestMessageQueueImpl messageQueue = new TestMessageQueueImpl();
+
     @Override
     public long append(String topic, int queueId, ByteBuffer data) {
         return messageQueue.append(topic, queueId, data);
