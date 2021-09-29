@@ -25,11 +25,10 @@ public class TestMessageQueueImpl extends MessageQueue {
 
     @Override
     public long append(String topic, int queueId, ByteBuffer data) {
-        totalCount.incrementAndGet();
         if (data.limit() < 4 * 1024 - 5) {
             debrisCount.incrementAndGet();
         }
-        return getOffset(topic + queueId);
+        return getOffset(topic + "_" + queueId);
     }
 
     @Override
