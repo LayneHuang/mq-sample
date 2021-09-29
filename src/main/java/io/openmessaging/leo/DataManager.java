@@ -20,8 +20,8 @@ import java.util.concurrent.atomic.AtomicLong;
 public class DataManager {
 
     public static final String DIR_PMEM = "/pmem";
-    public static final Path DIR_ESSD = Paths.get("/essd");
-    //        public static final Path DIR_ESSD = Paths.get(System.getProperty("user.dir")).resolve("target").resolve("work");
+//    public static final Path DIR_ESSD = Paths.get("/essd");
+            public static final Path DIR_ESSD = Paths.get(System.getProperty("user.dir")).resolve("target").resolve("work");
     public static final ConcurrentHashMap<String, AtomicLong> APPEND_OFFSET_MAP = new ConcurrentHashMap<>();
 
     public static final Path LOGS_PATH = DIR_ESSD.resolve("log");
@@ -35,7 +35,7 @@ public class DataManager {
 
     // 索引位置落盘
     public static final short INDEX_POS_SIZE = 5;
-    public static final Path INDEX_POS_PATH = DIR_ESSD.resolve("/index");
+    public static final Path INDEX_POS_PATH = DIR_ESSD.resolve("index");
     public static FileChannel INDEX_POS_FILE;
     public static MappedByteBuffer INDEXER_POS_BUF;
 
@@ -47,7 +47,7 @@ public class DataManager {
             if (Files.notExists(INDEX_POS_PATH)) {
                 Files.createFile(INDEX_POS_PATH);
                 INDEX_POS_FILE = FileChannel.open(INDEX_POS_PATH, StandardOpenOption.READ, StandardOpenOption.WRITE);
-                INDEX_POS_FILE.map(FileChannel.MapMode.READ_WRITE, 0, 40 * INDEX_POS_SIZE);
+                INDEXER_POS_BUF = INDEX_POS_FILE.map(FileChannel.MapMode.READ_WRITE, 0, 40 * INDEX_POS_SIZE);
             } else {
                 // 重启
                 INDEX_POS_FILE = FileChannel.open(INDEX_POS_PATH, StandardOpenOption.READ);
@@ -56,12 +56,10 @@ public class DataManager {
                 while (INDEXER_POS_BUF.hasRemaining()) {
                     byte logNumAdder = INDEXER_POS_BUF.get();
                     int position = INDEXER_POS_BUF.getInt();
-                    System.out.println("partitionId : " + partitionId + " logNumAdder" + logNumAdder + " position " + position);
                     Path logFile = LOGS_PATH.resolve(String.valueOf(partitionId)).resolve(String.valueOf(logNumAdder));
-                    FileChannel logFileChannel = FileChannel.open(logFile, StandardOpenOption.READ);
+                    FileChannel logFileChannel = FileChannel.open(logFile, StandardOpenOption.READ, StandardOpenOption.WRITE);
                     long fileSize = logFileChannel.size();
                     if (fileSize > position) {
-                        System.out.println("需要重放");
                         MappedByteBuffer logBuf = logFileChannel.map(FileChannel.MapMode.READ_ONLY, position, fileSize);
                         while (logBuf.hasRemaining()) {
                             ByteBuffer indexBuf = ByteBuffer.allocate(INDEX_BUF_SIZE);
@@ -79,7 +77,7 @@ public class DataManager {
                             indexBuf.putInt(position);
                             indexBuf.putShort(dataSize);
                             indexBuf.flip();
-                            Indexer indexer = INDEXERS.get(topic + "+" + queueId);
+                            Indexer indexer = INDEXERS.computeIfAbsent(topic + "+" + queueId, k -> new Indexer(topic, queueId));
                             indexer.writeIndex(indexBuf);
                         }
                         unmap(logBuf);
