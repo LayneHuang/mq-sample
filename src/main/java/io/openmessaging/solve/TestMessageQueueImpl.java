@@ -22,9 +22,11 @@ public class TestMessageQueueImpl extends MessageQueue {
 
     private static final AtomicLong totalCount = new AtomicLong();
     private static final AtomicLong debrisCount = new AtomicLong();
+    private static final AtomicLong showLog = new AtomicLong();
 
     @Override
     public long append(String topic, int queueId, ByteBuffer data) {
+        totalCount.incrementAndGet();
         if (data.limit() < 4 * 1024 - 5) {
             debrisCount.incrementAndGet();
         }
@@ -33,8 +35,10 @@ public class TestMessageQueueImpl extends MessageQueue {
 
     @Override
     public Map<Integer, ByteBuffer> getRange(String topic, int queueId, long offset, int fetchNum) {
-        System.out.println("totalCount : " + totalCount.get());
-        System.out.println("debrisCount : " + debrisCount.get());
+        if (showLog.getAndIncrement() == 0){
+            System.out.println("totalCount : " + totalCount.get());
+            System.out.println("debrisCount : " + debrisCount.get());
+        }
         return Collections.emptyMap();
     }
 }
