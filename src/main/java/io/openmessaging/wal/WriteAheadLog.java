@@ -26,7 +26,7 @@ public class WriteAheadLog {
     /**
      * 同步水位
      */
-    private final WalOffset offset = new WalOffset();
+    public final WalOffset offset = new WalOffset();
     private final int walId;
     private FileChannel infoChannel;
     private FileChannel valueChannel;
@@ -62,7 +62,6 @@ public class WriteAheadLog {
             );
             offset.infoPos = infoChannel.position();
             offset.valuePos = valueChannel.position();
-            // log.info("info pos: {}, value pos: {}", offset.infoPos, offset.valuePos);
         } catch (IOException e) {
             e.printStackTrace();
         }

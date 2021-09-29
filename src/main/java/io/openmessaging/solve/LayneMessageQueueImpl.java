@@ -43,41 +43,53 @@ public class LayneMessageQueueImpl extends MessageQueue {
     public Map<Integer, ByteBuffer> getRange(String topic, int queueId, long offset, int fetchNum) {
         int topicId = IdGenerator.getId(topic);
         int walId = topicId % Constant.WAL_FILE_COUNT;
-        Map<Integer, ByteBuffer> dataMap = new HashMap<>(fetchNum);
         log.info("query, topic: {}, queueId: {}, offset: {}, fetchNum: {}", topic, queueId, offset, fetchNum);
-        int idx = 0;
-        int[] ansSize = new int[fetchNum];
         long[] ansPos = new long[fetchNum];
+        int[] ansSize = new int[fetchNum];
+        int dataCount = readInfoListFromPartition(topicId, queueId, offset, fetchNum, ansPos, ansSize);
+        return readValueFromWAL(walId, offset, fetchNum, dataCount, ansPos, ansSize);
+    }
 
+    private int readInfoListFromPartition(int topicId, int queueId, long offset, int fetchNum,
+                                          long[] ansPos, int[] ansSize) {
+        int size = 0;
         try (FileChannel infoChannel = FileChannel.open(
                 Constant.getPath(topicId, queueId), StandardOpenOption.READ)) {
             ByteBuffer infoBuffer = ByteBuffer.allocate(Constant.SIMPLE_MSG_SIZE * fetchNum);
             infoChannel.read(infoBuffer, offset * Constant.SIMPLE_MSG_SIZE);
-            while (idx < fetchNum) {
+            while (size < fetchNum) {
                 infoBuffer.flip();
                 while (infoBuffer.hasRemaining()) {
-                    ansSize[idx] = infoBuffer.getInt();
-                    ansPos[idx] = infoBuffer.getLong();
-                    idx++;
+                    ansSize[size] = infoBuffer.getInt();
+                    ansPos[size] = infoBuffer.getLong();
+                    size++;
                 }
                 infoBuffer.clear();
             }
         } catch (IOException e) {
             e.printStackTrace();
         }
+        return size;
+    }
+
+    private Map<Integer, ByteBuffer> readValueFromWAL(int walId, long offset, int fetchNum,
+                                                      int dataCount, long[] ansPos, int[] ansSize) {
+        Map<Integer, ByteBuffer> result = new HashMap<>(fetchNum);
         try (FileChannel valueChannel = FileChannel.open(
-                Constant.getWALValuePath(walId), StandardOpenOption.READ)) {
-            for (int i = 0; i < idx; ++i) {
+                Constant.getWALValuePath(walId),
+                StandardOpenOption.READ)
+        ) {
+            for (int i = 0; i < dataCount; ++i) {
                 ByteBuffer buffer = ByteBuffer.allocate(ansSize[i]);
                 valueChannel.read(buffer, ansPos[i]);
-                dataMap.put((int) offset + i, buffer);
+                result.put((int) offset + i, buffer);
             }
         } catch (IOException e) {
             e.printStackTrace();
         }
 //        check(offset, ansSize, ansPos, dataMap);
 //        stopBroker();
-        return dataMap;
+        return result;
     }
 
     private void check(long offset, int[] ansSize, long[] ansPos, Map<Integer, ByteBuffer> dataMap) {
