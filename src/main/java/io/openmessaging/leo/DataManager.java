@@ -75,10 +75,9 @@ public class DataManager {
                 if (DEBUG) System.out.println("fileSize " + fileSize + " start " + start);
                 dataMap = new HashMap<>(fetchNum);
                 int key = 0;
-                long mappedSize = 0;
                 if (start < fileSize) {
                     long end = Math.min(start + (long) fetchNum * INDEX_BUF_SIZE, fileSize);
-                    mappedSize = end - start;
+                    long mappedSize = end - start;
                     if (DEBUG) System.out.println("end " + end + " mappedSize " + mappedSize);
                     MappedByteBuffer indexMappedBuf = indexChannel.map(FileChannel.MapMode.READ_ONLY, start, mappedSize);
                     while (indexMappedBuf.hasRemaining()) {
@@ -92,8 +91,11 @@ public class DataManager {
                 if (key < fetchNum) {
                     Indexer indexer = INDEXERS.get(topic + "+" + queueId);
                     ByteBuffer tempBuf = indexer.getTempBuf();
-                    if (DEBUG) System.out.println("tempBuf.limit() " + tempBuf.limit() + " tempBuf.position() " + tempBuf.position());
-                    tempBuf.position((int) mappedSize);
+                    if (start > fileSize) {
+                        tempBuf.position((int) (start - fileSize));
+                    }
+                    if (DEBUG)
+                        System.out.println("tempBuf.limit() " + tempBuf.limit() + " tempBuf.position() " + tempBuf.position());
                     while (tempBuf.hasRemaining() && key < fetchNum) {
                         readLog(dataMap, key, tempBuf, DEBUG);
                         key++;
