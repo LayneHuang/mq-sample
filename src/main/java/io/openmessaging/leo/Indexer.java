@@ -23,13 +23,9 @@ public class Indexer {
         Path topicDir = DIR_ESSD.resolve(String.valueOf(topic));
         try {
             Files.createDirectories(topicDir);
-        } catch (IOException e) {
-        }
-        try {
             indexFile = topicDir.resolve(String.valueOf(queueId));
             Files.createFile(indexFile);
         } catch (IOException e) {
-            e.printStackTrace();
         }
     }
 
@@ -39,7 +35,6 @@ public class Indexer {
                 tempBuf.flip();
                 FileChannel fileChannel = FileChannel.open(
                         indexFile, StandardOpenOption.WRITE, StandardOpenOption.APPEND
-//                        , StandardOpenOption.DSYNC
                 );
                 fileChannel.write(tempBuf);
                 fileChannel.force(false);

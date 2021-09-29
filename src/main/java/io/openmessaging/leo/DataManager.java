@@ -21,7 +21,7 @@ public class DataManager {
 
     public static final String DIR_PMEM = "/pmem";
     public static final Path DIR_ESSD = Paths.get("/essd");
-//            public static final Path DIR_ESSD = Paths.get(System.getProperty("user.dir")).resolve("target").resolve("work");
+    //    public static final Path DIR_ESSD = Paths.get(System.getProperty("user.dir")).resolve("target").resolve("work");
     public static final ConcurrentHashMap<String, AtomicLong> APPEND_OFFSET_MAP = new ConcurrentHashMap<>();
 
     public static final Path LOGS_PATH = DIR_ESSD.resolve("log");
@@ -50,23 +50,25 @@ public class DataManager {
                 INDEXER_POS_BUF = INDEX_POS_FILE.map(FileChannel.MapMode.READ_WRITE, 0, 40 * INDEX_POS_SIZE);
             } else {
                 // 重启
-                INDEX_POS_FILE = FileChannel.open(INDEX_POS_PATH, StandardOpenOption.READ);
-                INDEXER_POS_BUF = INDEX_POS_FILE.map(FileChannel.MapMode.READ_ONLY, 0, 40 * INDEX_POS_SIZE);
+                INDEX_POS_FILE = FileChannel.open(INDEX_POS_PATH, StandardOpenOption.READ, StandardOpenOption.WRITE);
+                INDEXER_POS_BUF = INDEX_POS_FILE.map(FileChannel.MapMode.READ_WRITE, 0, 40 * INDEX_POS_SIZE);
                 byte partitionId = 0;
                 while (INDEXER_POS_BUF.hasRemaining()) {
                     byte logNumAdder = INDEXER_POS_BUF.get();
                     int position = INDEXER_POS_BUF.getInt();
                     Path logFile = LOGS_PATH.resolve(String.valueOf(partitionId)).resolve(String.valueOf(logNumAdder));
+                    if (Files.notExists(logFile)) break;
                     FileChannel logFileChannel = FileChannel.open(logFile, StandardOpenOption.READ, StandardOpenOption.WRITE);
                     long fileSize = logFileChannel.size();
                     if (fileSize > position) {
-                        MappedByteBuffer logBuf = logFileChannel.map(FileChannel.MapMode.READ_ONLY, position, fileSize);
+                        MappedByteBuffer logBuf = logFileChannel.map(FileChannel.MapMode.READ_ONLY, position, fileSize - position);
                         while (logBuf.hasRemaining()) {
                             ByteBuffer indexBuf = ByteBuffer.allocate(INDEX_BUF_SIZE);
                             int topic = logBuf.getInt();
                             int queueId = logBuf.getInt();
                             long offset = logBuf.getLong();
                             short msgLen = logBuf.getShort();
+                            if (msgLen == 0) break;
                             for (int i = 0; i < msgLen; i++) {
                                 logBuf.get();
                             }
@@ -85,8 +87,6 @@ public class DataManager {
                     logFileChannel.close();
                     partitionId++;
                 }
-                unmap(INDEXER_POS_BUF);
-                INDEX_POS_FILE.close();
             }
         } catch (Exception e) {
             e.printStackTrace();
