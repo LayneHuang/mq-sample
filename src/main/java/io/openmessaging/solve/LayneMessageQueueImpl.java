@@ -75,8 +75,8 @@ public class LayneMessageQueueImpl extends MessageQueue {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        //check(offset, ansSize, ansPos, dataMap);
-        //stopBroker();
+//        check(offset, ansSize, ansPos, dataMap);
+//        stopBroker();
         return dataMap;
     }
 

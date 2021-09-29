@@ -50,16 +50,19 @@ public class WriteAheadLog {
         try {
             infoChannel = FileChannel.open(
                     Constant.getWALPath(walId),
+                    StandardOpenOption.READ,
                     StandardOpenOption.WRITE,
-                    StandardOpenOption.CREATE,
-                    StandardOpenOption.APPEND
+                    StandardOpenOption.CREATE
             );
             valueChannel = FileChannel.open(
                     Constant.getWALValuePath(walId),
+                    StandardOpenOption.READ,
                     StandardOpenOption.WRITE,
-                    StandardOpenOption.CREATE,
-                    StandardOpenOption.APPEND
+                    StandardOpenOption.CREATE
             );
+            offset.infoPos = infoChannel.position();
+            offset.valuePos = valueChannel.position();
+            // log.info("info pos: {}, value pos: {}", offset.infoPos, offset.valuePos);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -68,16 +71,14 @@ public class WriteAheadLog {
     public int flush(String topic, int queueId, ByteBuffer buffer) {
         int logCount = 0;
         int topicId = IdGenerator.getId(topic);
-        int walId = topicId % Constant.WAL_FILE_COUNT;
         WalInfoBasic walInfoBasic = new WalInfoBasic(topicId, queueId, buffer.limit());
-        ByteBuffer infoBuffer = walInfoBasic.encode();
-        infoBuffer.flip();
         lock.writeLock().lock();
         try {
-            walInfoBasic.pos = offset.msgPos;
-            infoChannel.write(infoBuffer);
-            valueChannel.write(buffer);
-            offset.msgPos += walInfoBasic.size;
+            walInfoBasic.valuePos = offset.valuePos;
+            putInfo(walInfoBasic);
+            putValue(buffer);
+            offset.infoPos += Constant.MSG_SIZE;
+            offset.valuePos += walInfoBasic.valueSize;
             logCount = ++offset.logCount;
         } catch (IOException e) {
             e.printStackTrace();
@@ -91,10 +92,29 @@ public class WriteAheadLog {
         return logCount;
     }
 
-    private void putInfo() throws IOException {
+    private void putInfo(WalInfoBasic walInfoBasic) throws IOException {
         if (infoMapBuffer == null || !infoMapBuffer.hasRemaining()) {
-            infoMapBuffer = infoChannel.map(FileChannel.MapMode.READ_WRITE, 0, Constant.WAL_BUFFER_SIZE);
+            infoMapBuffer = infoChannel.map(
+                    FileChannel.MapMode.READ_WRITE,
+                    offset.infoPos,
+                    Constant.WAL_BUFFER_SIZE
+            );
         }
+//        walInfoBasic.show();
+        infoMapBuffer = (MappedByteBuffer) walInfoBasic.encode(infoMapBuffer);
+        infoMapBuffer.force();
+    }
+
+    private void putValue(ByteBuffer buffer) throws IOException {
+        if (valueMapBuffer == null || !valueMapBuffer.hasRemaining()) {
+            valueMapBuffer = valueChannel.map(
+                    FileChannel.MapMode.READ_WRITE,
+                    offset.valuePos,
+                    Constant.WAL_BUFFER_SIZE
+            );
+        }
+        valueMapBuffer.put(buffer);
+        valueMapBuffer.force();
     }
 
     public void stopBroker() throws InterruptedException {

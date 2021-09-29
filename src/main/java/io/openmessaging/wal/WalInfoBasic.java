@@ -1,6 +1,8 @@
 package io.openmessaging.wal;
 
 import io.openmessaging.Constant;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 
@@ -11,28 +13,30 @@ import java.nio.ByteBuffer;
  * @since 2021/9/23
  */
 public class WalInfoBasic {
+    private static final Logger log = LoggerFactory.getLogger(WalInfoBasic.class);
+
     public int topicId;
 
     public int queueId;
 
-    public int size;
+    public int valueSize;
 
-    public long pos;
+    public long valuePos;
 
     public WalInfoBasic() {
     }
 
-    public WalInfoBasic(int topicId, int queueId, int size) {
+    public WalInfoBasic(int topicId, int queueId, int valueSize) {
         this.topicId = topicId;
         this.queueId = queueId;
-        this.size = size;
+        this.valueSize = valueSize;
     }
 
-    public WalInfoBasic(int topicId, int queueId, int size, long pos) {
+    public WalInfoBasic(int topicId, int queueId, int valueSize, long valuePos) {
         this.topicId = topicId;
         this.queueId = queueId;
-        this.size = size;
-        this.pos = pos;
+        this.valueSize = valueSize;
+        this.valuePos = valuePos;
     }
 
     public ByteBuffer encode() {
@@ -46,21 +50,26 @@ public class WalInfoBasic {
         // queueId
         infoBuffer.putInt(queueId);
         // buffer size
-        infoBuffer.putInt(size);
+        infoBuffer.putInt(valueSize);
         // buffer pos
-        infoBuffer.putLong(pos);
+        infoBuffer.putLong(valuePos);
+//        log.info("info buffer size: {}", infoBuffer.position());
         return infoBuffer;
     }
 
     public void decode(ByteBuffer buffer) {
         this.topicId = buffer.getInt();
         this.queueId = buffer.getInt();
-        this.size = buffer.getInt();
-        this.pos = buffer.getLong();
+        this.valueSize = buffer.getInt();
+        this.valuePos = buffer.getLong();
     }
 
     public void decodeSimple(ByteBuffer buffer) {
-        this.size = buffer.getInt();
-        this.pos = buffer.getLong();
+        this.valueSize = buffer.getInt();
+        this.valuePos = buffer.getLong();
+    }
+
+    public void show() {
+        log.info("topic: {}, queue: {}, pos: {}, size: {}", topicId, queueId, valuePos, valueSize);
     }
 }
