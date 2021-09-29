@@ -42,7 +42,6 @@ public class DataPartition {
     }
 
     public void writeLog(int topic, int queueId, long offset, ByteBuffer data, Indexer indexer) {
-        boolean DEBUG = topic == topic22hash && queueId == 937;
         ByteBuffer indexBuf = ByteBuffer.allocate(INDEX_BUF_SIZE);
         short msgLen = (short) data.limit();
         short dataSize = (short) (18 + msgLen);
@@ -66,8 +65,6 @@ public class DataPartition {
                 indexBuf.putInt(position);
                 indexBuf.putShort(dataSize);
                 indexBuf.flip();
-                if (DEBUG)
-                    System.out.println("offset " + offset + " msgLen " + msgLen + " id " + id + " logNumAdder " + logNumAdder + " position " + position + " dataSize " + dataSize);
             } catch (IOException e) {
                 e.printStackTrace();
             }
