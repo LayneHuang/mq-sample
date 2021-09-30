@@ -1,7 +1,6 @@
 package io.openmessaging.wal;
 
 import io.openmessaging.Constant;
-import io.openmessaging.PageCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,8 +53,9 @@ public class Broker extends Thread {
             this.page.union(page);
             for (String key : this.page.data.keySet()) {
                 List<String> list = this.page.data.get(key);
-                if (list.size() * Constant.SIMPLE_MSG_SIZE < Constant.WRITE_BEFORE_QUERY) continue;
-                ByteBuffer buffer = ByteBuffer.allocate(list.size() * Constant.SIMPLE_MSG_SIZE);
+                int listSize = list.size();
+                if (listSize * Constant.SIMPLE_MSG_SIZE < Constant.WRITE_BEFORE_QUERY) continue;
+                ByteBuffer buffer = ByteBuffer.allocate(listSize * Constant.SIMPLE_MSG_SIZE);
                 for (String posStr : list) {
                     String[] ps = posStr.split("-");
                     buffer.putInt(Integer.parseInt(ps[0]));
@@ -66,23 +66,9 @@ public class Broker extends Thread {
                 int queueId = Integer.parseInt(indexes[1]);
                 write(topicId, queueId, buffer);
                 this.page.data.remove(key);
+                offset.dealingCount.addAndGet(listSize);
             }
         }
-    }
-
-    private void partition(WalInfoBasic info) {
-        PageCache.getIns().add(info);
-        if (PageCache.getIns().isFull(info.topicId, info.queueId)) {
-            write(info, PageCache.getIns().encode(info.topicId, info.queueId, pageBuffer));
-            PageCache.getIns().clear(info.topicId, info.queueId);
-        }
-    }
-
-    /**
-     * 写入 topic_queue 文件
-     */
-    private void write(WalInfoBasic info, ByteBuffer buffer) {
-        write(info.topicId, info.queueId, buffer);
     }
 
     private void write(int topicId, int queueId, ByteBuffer buffer) {

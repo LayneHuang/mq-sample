@@ -10,8 +10,6 @@ import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -63,7 +61,6 @@ public class WriteAheadLog {
     }
 
     public void flush(String topic, int queueId, ByteBuffer buffer) {
-        int logCount = 0;
         int topicId = IdGenerator.getId(topic);
         WalInfoBasic walInfoBasic = new WalInfoBasic(topicId, queueId, buffer.limit());
         lock.writeLock().lock();
