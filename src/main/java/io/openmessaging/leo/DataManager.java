@@ -11,8 +11,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -52,6 +51,7 @@ public class DataManager {
                 // 重启
                 INDEX_POS_FILE = FileChannel.open(INDEX_POS_PATH, StandardOpenOption.READ, StandardOpenOption.WRITE);
                 INDEXER_POS_BUF = INDEX_POS_FILE.map(FileChannel.MapMode.READ_WRITE, 0, 40 * INDEX_POS_SIZE);
+                Map<Integer, Map<Integer, PriorityQueue<OffsetBuf>>> topicQueueBufMap = new HashMap<>(100);
                 byte partitionId = 0;
                 while (INDEXER_POS_BUF.hasRemaining()) {
                     byte logNumAdder = INDEXER_POS_BUF.get();
@@ -79,14 +79,26 @@ public class DataManager {
                             indexBuf.putInt(position);
                             indexBuf.putShort(dataSize);
                             indexBuf.flip();
-                            Indexer indexer = INDEXERS.computeIfAbsent(topic + "+" + queueId, k -> new Indexer(topic, queueId));
-                            indexer.writeIndex(indexBuf);
+                            Map<Integer, PriorityQueue<OffsetBuf>> queueMap = topicQueueBufMap.putIfAbsent(topic, new HashMap<>());
+                            PriorityQueue<OffsetBuf> bufList = queueMap.putIfAbsent(queueId,
+                                    new PriorityQueue<>((o1, o2) -> (int) (o1.offset - o2.offset))
+                            );
+                            bufList.add(new OffsetBuf(offset, indexBuf));
                         }
                         unmap(logBuf);
                     }
                     logFileChannel.close();
                     partitionId++;
                 }
+                // 根据 offset 排序后统一插入
+                topicQueueBufMap.forEach((topic, queueMap) -> {
+                    queueMap.forEach((queueId, bufList) -> {
+                        Indexer indexer = INDEXERS.computeIfAbsent(topic + "+" + queueId, k -> new Indexer(topic, queueId));
+                        while(!bufList.isEmpty()){
+                            indexer.writeIndex(bufList.poll().buf);
+                        }
+                    });
+                });
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -127,7 +139,7 @@ public class DataManager {
                 }
                 indexChannel.close();
                 if (key < fetchNum) {
-                    Indexer indexer = INDEXERS.get(topic + "+" + queueId);
+                    Indexer indexer = INDEXERS.computeIfAbsent(topic + "+" + queueId, k -> new Indexer(topic, queueId));
                     ByteBuffer tempBuf = indexer.getTempBuf();
                     if (start > fileSize) { // 需要跳过
                         int skipPos = (int) (start - fileSize);
