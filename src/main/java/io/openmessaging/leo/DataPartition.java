@@ -28,7 +28,6 @@ public class DataPartition {
         try {
             Files.createDirectories(logDir);
             setupLog();
-            setupIndexPosFile();
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -39,10 +38,6 @@ public class DataPartition {
         setupLog();
     }
 
-    private void setupIndexPosFile() throws IOException {
-        indexPosFile = logDir.resolve("INDEX_POS");
-        Files.createFile(indexPosFile);
-    }
 
     private void setupLog() throws IOException {
         Path logFile = logDir.resolve(String.valueOf(logNumAdder));
@@ -54,25 +49,23 @@ public class DataPartition {
     public void writeLog(int topic, int queueId, long offset, ByteBuffer data, MemoryIndexer indexer) {
         short msgLen = (short) data.limit();
         short dataSize = (short) (18 + msgLen);
-        synchronized (indexer.LOCKER) {
-            try {
-                if (logMappedBuf.remaining() < dataSize) {
-                    unmap(logMappedBuf);
-                    logFileChannel.close();
-                    openLog();
-                }
-                int position = logMappedBuf.position();
-                logMappedBuf.putInt(topic); // 4
-                logMappedBuf.putInt(queueId); // 4
-                logMappedBuf.putLong(offset); // 8
-                logMappedBuf.putShort(msgLen); // 2
-                logMappedBuf.put(data);
-                logMappedBuf.force();
-                // index
-                indexer.writeIndex(id,logNumAdder,position,dataSize);
-            } catch (IOException e) {
-                e.printStackTrace();
+        try {
+            if (logMappedBuf.remaining() < dataSize) {
+                unmap(logMappedBuf);
+                logFileChannel.close();
+                openLog();
             }
+            int position = logMappedBuf.position();
+            logMappedBuf.putInt(topic); // 4
+            logMappedBuf.putInt(queueId); // 4
+            logMappedBuf.putLong(offset); // 8
+            logMappedBuf.putShort(msgLen); // 2
+            logMappedBuf.put(data);
+            logMappedBuf.force();
+            // index
+            indexer.writeIndex(id,logNumAdder,position,dataSize);
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 

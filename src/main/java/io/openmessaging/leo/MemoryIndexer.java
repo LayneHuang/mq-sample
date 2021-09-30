@@ -14,27 +14,41 @@ import static io.openmessaging.leo.DataManager.LOGS_PATH;
 
 public class MemoryIndexer {
 
+    private static final int BOX_SIZE = 32;
+
     public int topic;
     public int queueId;
-    public List<ByteBuffer> bufferList = new ArrayList<>();
-    public final Object LOCKER = new Object();
+    public List<MemoryBox> bufferList = new ArrayList<>();
+
+    public static class MemoryBox{
+        byte[] partitionIdArray = new byte[BOX_SIZE];
+        byte[] logNumArray = new byte[BOX_SIZE];
+        int[] positionArray = new int[BOX_SIZE];
+        short[] dataSizeArray = new short[BOX_SIZE];
+        byte index;
+
+        public void add(byte partitionId, byte logNumAdder, int position, short dataSize){
+            this.partitionIdArray[index] = partitionId;
+            this.logNumArray[index] = logNumAdder;
+            this.positionArray[index] = position;
+            this.dataSizeArray[index] = dataSize;
+            index++;
+        }
+    }
 
     public MemoryIndexer(int topic, int queueId) {
         this.topic = topic;
         this.queueId = queueId;
-        bufferList.add(ByteBuffer.allocate(8 * 32));
+        bufferList.add(new MemoryBox());
     }
 
     public void writeIndex(byte partitionId, byte logNumAdder, int position, short dataSize) {
-        ByteBuffer indexBuffer = bufferList.get(bufferList.size() - 1);
-        if (!indexBuffer.hasRemaining()) {
-            indexBuffer = ByteBuffer.allocate(8 * 32);
-            bufferList.add(indexBuffer);
+        MemoryBox memoryBox = bufferList.get(bufferList.size() - 1);
+        if (memoryBox.index >= BOX_SIZE -1) {
+            memoryBox = new MemoryBox();
+            bufferList.add(memoryBox);
         }
-        indexBuffer.put(partitionId);
-        indexBuffer.put(logNumAdder);
-        indexBuffer.putInt(position);
-        indexBuffer.putShort(dataSize);
+        memoryBox.add(partitionId,logNumAdder,position,dataSize);
     }
 
     public Map<Integer, ByteBuffer> getRange(long offsetStart, int fetchNum) throws IOException {
@@ -45,26 +59,14 @@ public class MemoryIndexer {
             if (index >= bufferList.size()){
                 break;
             }
-            ByteBuffer indexBuf = bufferList.get(index);
-            if (index == bufferList.size() - 1) {
-                synchronized (LOCKER) {
-                    ByteBuffer clone = ByteBuffer.allocate(indexBuf.position());
-                    indexBuf.rewind();
-                    while (clone.hasRemaining()) {
-                        clone.put(indexBuf.get());
-                    }
-                    clone.flip();
-                    indexBuf = clone;
-                }
-            }
-            if (indexPosition * 8 >= indexBuf.limit()){
+            MemoryBox memoryBox = bufferList.get(index);
+            if (indexPosition >= memoryBox.index){
                 break;
             }
-            indexBuf.position(indexPosition * 8);
-            byte partitionId = indexBuf.get();
-            byte logNum = indexBuf.get();
-            int position = indexBuf.getInt();
-            short dataSize = indexBuf.getShort();
+            byte partitionId = memoryBox.partitionIdArray[indexPosition];
+            byte logNum = memoryBox.logNumArray[indexPosition];
+            int position = memoryBox.positionArray[indexPosition];
+            short dataSize = memoryBox.dataSizeArray[indexPosition];
             Path logFile = LOGS_PATH.resolve(String.valueOf(partitionId)).resolve(String.valueOf(logNum));
             FileChannel logChannel = FileChannel.open(logFile, StandardOpenOption.READ);
 

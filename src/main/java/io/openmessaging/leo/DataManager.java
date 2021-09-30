@@ -46,6 +46,9 @@ public class DataManager {
         try {
             if (Files.notExists(LOGS_PATH)) {
                 Files.createDirectories(LOGS_PATH);
+            }else {
+                // 重启
+
             }
 //            if (Files.notExists(INDEX_POS_PATH)) {
 //                Files.createFile(INDEX_POS_PATH);
