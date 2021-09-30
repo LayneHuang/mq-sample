@@ -35,9 +35,17 @@ public class TestMessageQueueImpl extends MessageQueue {
 
     @Override
     public Map<Integer, ByteBuffer> getRange(String topic, int queueId, long offset, int fetchNum) {
-        if (showLog.getAndIncrement() == 0){
+        if (showLog.getAndIncrement() == 0) {
             System.out.println("totalCount : " + totalCount.get());
             System.out.println("debrisCount : " + debrisCount.get());
+            System.out.println("topic_queue Count : " + map.size());
+            int count = 0;
+            for (AtomicLong value : map.values()) {
+                if (value.get() > 2048) {
+                    count++;
+                }
+            }
+            System.out.println("offset超过2048的queueId数:" + count);
         }
         return Collections.emptyMap();
     }
