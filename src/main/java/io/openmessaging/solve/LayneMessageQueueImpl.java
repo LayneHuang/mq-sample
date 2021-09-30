@@ -64,13 +64,14 @@ public class LayneMessageQueueImpl extends MessageQueue {
             long dealOffset = DEAL_OFFSET_MAP.computeIfAbsent(WalInfoBasic.getKey(topicId, queueId), k -> new AtomicLong()).get();
             if (dealOffset >= targetOffset) break;
             int dealingCount = walList[walId].offset.dealingCount.getAndIncrement();
-            int logCount = walList[walId].offset.logCount;
+            int logCount = walList[walId].offset.logCount.get();
             long dealingBeginPos = (long) dealingCount * Constant.READ_BEFORE_QUERY;
             long dealingEndPos = Math.min(
                     dealingBeginPos + Constant.READ_BEFORE_QUERY,
                     (long) logCount * Constant.MSG_SIZE
             );
-            log.info("dealing, wal: {}, dealing: {}(b), {}(e), log: {}", walId, dealingBeginPos, dealingEndPos, (logCount * Constant.MSG_SIZE));
+            log.info("dealing, wal: {}, dealing: {}(b), {}(e), log: {}",
+                    walId, dealingBeginPos, dealingEndPos, (logCount * Constant.MSG_SIZE));
             Page page = new Page();
             page.clear();
             try (FileChannel infoChannel = FileChannel.open(Constant.getWALInfoPath(walId), StandardOpenOption.READ)) {

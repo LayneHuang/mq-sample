@@ -73,7 +73,7 @@ public class WriteAheadLog {
             putValue(buffer);
             offset.infoPos += Constant.MSG_SIZE;
             offset.valuePos += walInfoBasic.valueSize;
-            logCount = ++offset.logCount;
+            offset.logCount.incrementAndGet();
         } catch (IOException e) {
             e.printStackTrace();
         }
