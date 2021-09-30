@@ -33,7 +33,8 @@ public class DataManager {
     public static AtomicInteger PARTITION_ID_ADDER = new AtomicInteger();
     public static ConcurrentHashMap<Integer, DataPartition> PARTITIONS = new ConcurrentHashMap<>(40);
     public static ThreadLocal<DataPartition> PARTITION_TL = new ThreadLocal<>();
-    public static ConcurrentHashMap<String, Indexer> INDEXERS = new ConcurrentHashMap<>(1000_000);
+    public static ConcurrentHashMap<String, MemoryIndexer> INDEXERS = new ConcurrentHashMap<>(1000_000);
+//    public static ConcurrentHashMap<String, Indexer> INDEXERS = new ConcurrentHashMap<>(1000_000);
 
     // 索引位置落盘
 //    public static final short INDEX_POS_SIZE = 5;
@@ -45,51 +46,6 @@ public class DataManager {
         try {
             if (Files.notExists(LOGS_PATH)) {
                 Files.createDirectories(LOGS_PATH);
-            } else {
-                // 重启
-                List<Path> logDirPaths = Files.list(LOGS_PATH).collect(Collectors.toList());
-                for (Path logDirPath : logDirPaths) {
-                    Path indexPosPath = logDirPath.resolve("INDEX_POS");
-                    if (Files.exists(indexPosPath)) {
-                        FileChannel indexPosFileChannel = FileChannel.open(indexPosPath, StandardOpenOption.READ);
-                        MappedByteBuffer indexPosBuf = indexPosFileChannel.map(FileChannel.MapMode.READ_ONLY, indexPosFileChannel.size() - 5, 5);
-                        byte logNumAdder = indexPosBuf.get();
-                        int position = indexPosBuf.getInt();
-                        Path logPath = logDirPath.resolve(String.valueOf(logNumAdder));
-                        if (Files.notExists(logPath)) {
-                            continue;
-                        }
-                        FileChannel logFileChannel = FileChannel.open(logPath, StandardOpenOption.READ);
-                        long fileSize = logFileChannel.size();
-                        if (fileSize > position) {
-                            byte partitionId = Byte.parseByte(logDirPath.toFile().getName());
-                            MappedByteBuffer logBuf = logFileChannel.map(FileChannel.MapMode.READ_ONLY, position, fileSize - position);
-                            while (logBuf.hasRemaining()) {
-                                ByteBuffer indexBuf = ByteBuffer.allocate(INDEX_BUF_SIZE);
-                                int topic = logBuf.getInt();
-                                int queueId = logBuf.getInt();
-                                long offset = logBuf.getLong();
-                                short msgLen = logBuf.getShort();
-                                if (msgLen == 0) break;
-                                for (int i = 0; i < msgLen; i++) {
-                                    logBuf.get();
-                                }
-                                short dataSize = (short) (18 + msgLen);
-                                // index
-                                indexBuf.put(partitionId);
-                                indexBuf.put(logNumAdder);
-                                indexBuf.putInt(position);
-                                indexBuf.putShort(dataSize);
-                                indexBuf.flip();
-                                Indexer indexer = INDEXERS.computeIfAbsent(topic + "+" + queueId, k -> new Indexer(topic, queueId));
-                                indexer.writeIndex(indexBuf);
-                            }
-                            unmap(logBuf);
-                        }
-                        unmap(indexPosBuf);
-                        logFileChannel.close();
-                    }
-                }
             }
 //            if (Files.notExists(INDEX_POS_PATH)) {
 //                Files.createFile(INDEX_POS_PATH);
@@ -161,55 +117,18 @@ public class DataManager {
             PARTITIONS.put(id, partition);
             PARTITION_TL.set(partition);
         }
-        Indexer indexer = INDEXERS.computeIfAbsent(topic + "+" + queueId, k -> new Indexer(topic, queueId));
+        MemoryIndexer indexer = INDEXERS.computeIfAbsent(topic + "+" + queueId, k -> new MemoryIndexer(topic, queueId));
         partition.writeLog(topic, queueId, offset, data, indexer);
     }
 
     public static Map<Integer, ByteBuffer> readLog(int topic, int queueId, long offset, int fetchNum) {
-        Map<Integer, ByteBuffer> dataMap = null;
-        Path indexPath = DIR_ESSD.resolve(String.valueOf(topic)).resolve(String.valueOf(queueId));
+        MemoryIndexer indexer = INDEXERS.computeIfAbsent(topic + "+" + queueId, k -> new MemoryIndexer(topic, queueId));
         try {
-            if (Files.exists(indexPath)) {
-                FileChannel indexChannel = FileChannel.open(indexPath, StandardOpenOption.READ);
-                long fileSize = indexChannel.size();
-                long start = offset * INDEX_BUF_SIZE;
-                dataMap = new HashMap<>(fetchNum);
-                int key = 0;
-                if (start < fileSize) {
-                    long end = Math.min(start + (long) fetchNum * INDEX_BUF_SIZE, fileSize);
-                    long mappedSize = end - start;
-                    MappedByteBuffer indexMappedBuf = indexChannel.map(FileChannel.MapMode.READ_ONLY, start, mappedSize);
-                    while (indexMappedBuf.hasRemaining()) {
-                        readLog(dataMap, key, indexMappedBuf);
-                        key++;
-                    }
-                    unmap(indexMappedBuf);
-                }
-                indexChannel.close();
-                if (key < fetchNum) {
-                    Indexer indexer = INDEXERS.computeIfAbsent(topic + "+" + queueId, k -> new Indexer(topic, queueId));
-                    ByteBuffer tempBuf = indexer.getTempBuf();
-                    if (start > fileSize) { // 需要跳过
-                        int skipPos = (int) (start - fileSize);
-                        if (skipPos < tempBuf.limit()) {
-                            tempBuf.position(skipPos);
-                            while (tempBuf.hasRemaining() && key < fetchNum) {
-                                readLog(dataMap, key, tempBuf);
-                                key++;
-                            }
-                        }
-                    } else {
-                        while (tempBuf.hasRemaining() && key < fetchNum) {
-                            readLog(dataMap, key, tempBuf);
-                            key++;
-                        }
-                    }
-                }
-            }
+            return indexer.getRange(offset, fetchNum);
         } catch (IOException e) {
             e.printStackTrace();
         }
-        return dataMap;
+        return Collections.emptyMap();
     }
 
     private static void readLog(Map<Integer, ByteBuffer> dataMap, int key, ByteBuffer indexBuf) throws IOException {

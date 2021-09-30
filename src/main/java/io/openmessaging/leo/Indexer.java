@@ -20,13 +20,6 @@ public class Indexer {
     public Indexer(int topic, int queueId) {
         this.topic = topic;
         this.queueId = queueId;
-        Path topicDir = DIR_ESSD.resolve(String.valueOf(topic));
-        try {
-            Files.createDirectories(topicDir);
-            indexFile = topicDir.resolve(String.valueOf(queueId));
-            Files.createFile(indexFile);
-        } catch (IOException e) {
-        }
     }
 
     public boolean writeIndex(ByteBuffer indexBuf) {
@@ -34,6 +27,15 @@ public class Indexer {
         try {
             if (tempBuf.remaining() < indexBuf.limit()) {
                 tempBuf.flip();
+                if (indexFile == null){
+                    Path topicDir = DIR_ESSD.resolve(String.valueOf(topic));
+                    try {
+                        Files.createDirectories(topicDir);
+                        indexFile = topicDir.resolve(String.valueOf(queueId));
+                        Files.createFile(indexFile);
+                    } catch (IOException e) {
+                    }
+                }
                 FileChannel fileChannel = FileChannel.open(
                         indexFile, StandardOpenOption.WRITE, StandardOpenOption.APPEND
                 );

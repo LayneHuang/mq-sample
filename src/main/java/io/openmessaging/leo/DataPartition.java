@@ -51,8 +51,7 @@ public class DataPartition {
         logMappedBuf = logFileChannel.map(FileChannel.MapMode.READ_WRITE, 0, 1024 * 1024 * 1024);// 1G
     }
 
-    public void writeLog(int topic, int queueId, long offset, ByteBuffer data, Indexer indexer) {
-        ByteBuffer indexBuf = ByteBuffer.allocate(INDEX_BUF_SIZE);
+    public void writeLog(int topic, int queueId, long offset, ByteBuffer data, MemoryIndexer indexer) {
         short msgLen = (short) data.limit();
         short dataSize = (short) (18 + msgLen);
         synchronized (indexer.LOCKER) {
@@ -70,29 +69,9 @@ public class DataPartition {
                 logMappedBuf.put(data);
                 logMappedBuf.force();
                 // index
-                indexBuf.put(id);
-                indexBuf.put(logNumAdder);
-                indexBuf.putInt(position);
-                indexBuf.putShort(dataSize);
-                indexBuf.flip();
+                indexer.writeIndex(id,logNumAdder,position,dataSize);
             } catch (IOException e) {
                 e.printStackTrace();
-            }
-            if (indexer.writeIndex(indexBuf)) {
-                try {
-                    indexPosBuf.put(logNumAdder);
-                    indexPosBuf.putInt(logMappedBuf.position());
-                    indexPosBuf.flip();
-                    indexPosFileChannel = FileChannel.open(
-                            indexPosFile, StandardOpenOption.WRITE, StandardOpenOption.APPEND
-                    );
-                    indexPosFileChannel.write(indexPosBuf);
-                    indexPosFileChannel.force(false);
-                    indexPosFileChannel.close();
-                    indexPosBuf.clear();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
             }
         }
     }
