@@ -30,10 +30,7 @@ public class WriteAheadLog {
     private final int walId;
     private FileChannel infoChannel;
     private FileChannel valueChannel;
-    private final BlockingQueue<WalInfoBasic> bq = new LinkedBlockingDeque<>(Constant.LOG_SEGMENT_SIZE);
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
-
-    private final Broker broker;
 
     private MappedByteBuffer infoMapBuffer;
 
@@ -42,14 +39,12 @@ public class WriteAheadLog {
     public WriteAheadLog(int walId) {
         this.walId = walId;
         initChannels();
-        this.broker = new Broker(walId, offset, bq);
-        this.broker.start();
     }
 
     public void initChannels() {
         try {
             infoChannel = FileChannel.open(
-                    Constant.getWALPath(walId),
+                    Constant.getWALInfoPath(walId),
                     StandardOpenOption.READ,
                     StandardOpenOption.WRITE,
                     StandardOpenOption.CREATE
@@ -67,7 +62,7 @@ public class WriteAheadLog {
         }
     }
 
-    public int flush(String topic, int queueId, ByteBuffer buffer) {
+    public void flush(String topic, int queueId, ByteBuffer buffer) {
         int logCount = 0;
         int topicId = IdGenerator.getId(topic);
         WalInfoBasic walInfoBasic = new WalInfoBasic(topicId, queueId, buffer.limit());
@@ -83,12 +78,6 @@ public class WriteAheadLog {
             e.printStackTrace();
         }
         lock.writeLock().unlock();
-        try {
-            bq.put(walInfoBasic);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-        return logCount;
     }
 
     private void putInfo(WalInfoBasic walInfoBasic) throws IOException {
@@ -114,9 +103,5 @@ public class WriteAheadLog {
         }
         valueMapBuffer.put(buffer);
         valueMapBuffer.force();
-    }
-
-    public void stopBroker() throws InterruptedException {
-        bq.put(new WalInfoBasic());
     }
 }

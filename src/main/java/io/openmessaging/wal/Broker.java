@@ -9,7 +9,9 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
+import java.util.List;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 /**
  * WalCache
@@ -26,29 +28,45 @@ public class Broker extends Thread {
 
     private final ByteBuffer pageBuffer = ByteBuffer.allocate(Constant.SIMPLE_MSG_SIZE * Constant.CACHE_LEN);
 
-    private final BlockingQueue<WalInfoBasic> bq;
+    private final BlockingQueue<Page> bq = new LinkedBlockingQueue<>(Constant.CACHE_LEN);
 
-    public Broker(int walId, WalOffset offset, BlockingQueue<WalInfoBasic> bq) {
+    private final Page page = new Page();
+
+    public Broker(int walId, WalOffset offset) {
         this.walId = walId;
         this.offset = offset;
-        this.bq = bq;
     }
 
     @Override
     public void run() {
         log.info("Broker :{} , Start", walId);
         while (true) {
-            WalInfoBasic info = null;
+            Page page = null;
             try {
-                info = bq.take();
+                page = bq.take();
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-            if (info == null || info.valueSize == 0) {
+            if (page == null) {
                 log.info("Broker :{} , End", walId);
                 break;
             }
-            partition(info);
+            this.page.union(page);
+            for (String key : this.page.data.keySet()) {
+                List<String> list = this.page.data.get(key);
+                if (list.size() * Constant.SIMPLE_MSG_SIZE < Constant.WRITE_BEFORE_QUERY) continue;
+                ByteBuffer buffer = ByteBuffer.allocate(list.size() * Constant.SIMPLE_MSG_SIZE);
+                for (String posStr : list) {
+                    String[] ps = posStr.split("-");
+                    buffer.putInt(Integer.parseInt(ps[0]));
+                    buffer.putLong(Long.parseLong(ps[1]));
+                }
+                String[] indexes = key.split("-");
+                int topicId = Integer.parseInt(indexes[0]);
+                int queueId = Integer.parseInt(indexes[1]);
+                write(topicId, queueId, buffer);
+                this.page.data.remove(key);
+            }
         }
     }
 
@@ -64,9 +82,12 @@ public class Broker extends Thread {
      * 写入 topic_queue 文件
      */
     private void write(WalInfoBasic info, ByteBuffer buffer) {
-//         log.info("write, topic: {} , queue: {}", info.topicId, info.queueId);
+        write(info.topicId, info.queueId, buffer);
+    }
+
+    private void write(int topicId, int queueId, ByteBuffer buffer) {
         try (FileChannel fileChannel = FileChannel.open(
-                Constant.getPath(info.topicId, info.queueId),
+                Constant.getPath(topicId, queueId),
                 StandardOpenOption.WRITE,
                 StandardOpenOption.CREATE,
                 StandardOpenOption.APPEND
@@ -74,6 +95,14 @@ public class Broker extends Thread {
             buffer.flip();
             fileChannel.write(buffer);
         } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void save(Page page) {
+        try {
+            bq.put(page);
+        } catch (InterruptedException e) {
             e.printStackTrace();
         }
     }

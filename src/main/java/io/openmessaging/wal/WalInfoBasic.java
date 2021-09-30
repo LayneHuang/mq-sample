@@ -64,6 +64,18 @@ public class WalInfoBasic {
         this.valuePos = buffer.getLong();
     }
 
+    public static String getKey(int topicId, int queueId) {
+        return topicId + "-" + queueId;
+    }
+
+    public String getKey() {
+        return topicId + "-" + queueId;
+    }
+
+    public String encodeSimple() {
+        return valuePos + "-" + valueSize;
+    }
+
     public void decodeSimple(ByteBuffer buffer) {
         this.valueSize = buffer.getInt();
         this.valuePos = buffer.getLong();

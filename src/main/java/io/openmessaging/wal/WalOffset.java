@@ -1,6 +1,6 @@
 package io.openmessaging.wal;
 
-import io.openmessaging.Constant;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * WALInfo
@@ -17,7 +17,7 @@ public class WalOffset {
     /**
      * 当前处理到的 log 号
      */
-    public int dealCount;
+    public AtomicInteger dealingCount = new AtomicInteger();
 
     /**
      * wal基础信息偏移

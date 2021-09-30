@@ -38,7 +38,11 @@ public class Constant {
 
     public static final int WAL_BUFFER_SIZE = 128 * 1024 * 1024;
 
-    public static Path getWALPath(int walId) {
+    public static final int READ_BEFORE_QUERY = MSG_SIZE * 1024;
+
+    public static final int WRITE_BEFORE_QUERY = 4 * 1024;
+
+    public static Path getWALInfoPath(int walId) {
         return DIR_ESSD.resolve("WAL-INFO-" + walId + ".md");
     }
 
@@ -48,10 +52,6 @@ public class Constant {
 
     public static Path getPath(int topicId, int queueId) {
         return DIR_ESSD.resolve("PAGE-" + topicId + "-" + queueId + ".md");
-    }
-
-    public static String getKey(String topic, int queueId) {
-        return topic + "-" + queueId;
     }
 
     public static int hash(String topic) {
