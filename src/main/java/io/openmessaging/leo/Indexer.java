@@ -29,7 +29,8 @@ public class Indexer {
         }
     }
 
-    public void writeIndex(ByteBuffer indexBuf) {
+    public boolean writeIndex(ByteBuffer indexBuf) {
+        boolean force = false;
         try {
             if (tempBuf.remaining() < indexBuf.limit()) {
                 tempBuf.flip();
@@ -39,19 +40,21 @@ public class Indexer {
                 fileChannel.write(tempBuf);
                 fileChannel.force(false);
                 fileChannel.close();
-                int partitionId = indexBuf.get() * INDEX_POS_SIZE;
-                byte logNumAdder = indexBuf.get();
-                int position = indexBuf.getInt();
-                INDEXER_POS_BUF.put(partitionId, logNumAdder);
-                INDEXER_POS_BUF.putInt(partitionId + 1, position);
-                INDEXER_POS_BUF.force();
-                indexBuf.rewind();
+//                int partitionId = indexBuf.get() * INDEX_POS_SIZE;
+//                byte logNumAdder = indexBuf.get();
+//                int position = indexBuf.getInt();
+//                INDEXER_POS_BUF.put(partitionId, logNumAdder);
+//                INDEXER_POS_BUF.putInt(partitionId + 1, position);
+//                INDEXER_POS_BUF.force();
+//                indexBuf.rewind();
                 tempBuf = ByteBuffer.allocate(INDEX_TEMP_BUF_SIZE);
+                force = true;
             }
             tempBuf.put(indexBuf);
         } catch (IOException e) {
             e.printStackTrace();
         }
+        return force;
     }
 
     public ByteBuffer getTempBuf() {

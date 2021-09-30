@@ -18,12 +18,17 @@ public class DataPartition {
     public FileChannel logFileChannel;
     public MappedByteBuffer logMappedBuf;
 
+    public FileChannel indexPosFileChannel;
+    public Path indexPosFile;
+    public ByteBuffer indexPosBuf = ByteBuffer.allocate(5);
+
     public DataPartition(byte id) {
         this.id = id;
         logDir = LOGS_PATH.resolve(String.valueOf(this.id));
         try {
             Files.createDirectories(logDir);
             setupLog();
+            setupIndexPosFile();
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -34,11 +39,16 @@ public class DataPartition {
         setupLog();
     }
 
+    private void setupIndexPosFile() throws IOException {
+        indexPosFile = logDir.resolve("INDEX_POS");
+        Files.createFile(indexPosFile);
+    }
+
     private void setupLog() throws IOException {
         Path logFile = logDir.resolve(String.valueOf(logNumAdder));
         Files.createFile(logFile);
         logFileChannel = FileChannel.open(logFile, StandardOpenOption.READ, StandardOpenOption.WRITE);
-        logMappedBuf = logFileChannel.map(FileChannel.MapMode.READ_WRITE, 0, 128 * 1024 * 1024);// 1G
+        logMappedBuf = logFileChannel.map(FileChannel.MapMode.READ_WRITE, 0, 1024 * 1024 * 1024);// 1G
     }
 
     public void writeLog(int topic, int queueId, long offset, ByteBuffer data, Indexer indexer) {
@@ -68,7 +78,22 @@ public class DataPartition {
             } catch (IOException e) {
                 e.printStackTrace();
             }
-            indexer.writeIndex(indexBuf);
+            if (indexer.writeIndex(indexBuf)) {
+                try {
+                    indexPosBuf.put(logNumAdder);
+                    indexPosBuf.putInt(logMappedBuf.position());
+                    indexPosBuf.flip();
+                    indexPosFileChannel = FileChannel.open(
+                            indexPosFile, StandardOpenOption.WRITE, StandardOpenOption.APPEND
+                    );
+                    indexPosFileChannel.write(indexPosBuf);
+                    indexPosFileChannel.force(false);
+                    indexPosFileChannel.close();
+                    indexPosBuf.clear();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
         }
     }
 
