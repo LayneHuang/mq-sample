@@ -44,7 +44,7 @@ public class MemoryIndexer {
 
     public void writeIndex(byte partitionId, byte logNumAdder, int position, short dataSize) {
         MemoryBox memoryBox = bufferList.get(bufferList.size() - 1);
-        if (memoryBox.index >= BOX_SIZE -1) {
+        if (memoryBox.index >= BOX_SIZE) {
             memoryBox = new MemoryBox();
             bufferList.add(memoryBox);
         }
