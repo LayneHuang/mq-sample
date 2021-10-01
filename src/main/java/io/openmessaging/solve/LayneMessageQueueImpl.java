@@ -66,8 +66,8 @@ public class LayneMessageQueueImpl extends MessageQueue {
                     WalInfoBasic.getKey(topicId, queueId),
                     k -> new AtomicLong()
             ).get();
-            if (dealOffset >= targetOffset) break;
             log.info("dealing offset: {}, target: {}", dealOffset, targetOffset);
+            if (dealOffset >= targetOffset) break;
             // 日志的处理偏移
             int dealingCount = walList[walId].offset.dealingCount.getAndIncrement();
             int logCount = walList[walId].offset.logCount.get();
