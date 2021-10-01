@@ -46,30 +46,47 @@ public class DataManager {
         try {
             if (Files.notExists(LOGS_PATH)) {
                 Files.createDirectories(LOGS_PATH);
-            }else {
+            } else {
                 // 重启
-//                byte partitionId = 0;
-//                byte logNumAdder = 0;
-//                Path logFile = LOGS_PATH.resolve(String.valueOf(partitionId)).resolve(String.valueOf(logNumAdder));
-//                FileChannel logFileChannel = FileChannel.open(logFile, StandardOpenOption.READ, StandardOpenOption.WRITE);
-//                long fileSize = logFileChannel.size();
-//                MappedByteBuffer logBuf = logFileChannel.map(FileChannel.MapMode.READ_ONLY, 0, fileSize);
-//                while (logBuf.hasRemaining()) {
-//                    ByteBuffer indexBuf = ByteBuffer.allocate(INDEX_BUF_SIZE);
-//                    int topic = logBuf.getInt();
-//                    int queueId = logBuf.getInt();
-//                    long offset = logBuf.getLong();
-//                    short msgLen = logBuf.getShort();
-//                    for (int i = 0; i < msgLen; i++) {
-//                        logBuf.get();
-//                    }
-//                    short dataSize = (short) (18 + msgLen);
-//                    // index
-//                    MemoryIndexer indexer = INDEXERS.computeIfAbsent(topic + "+" + queueId, k -> new MemoryIndexer(topic, queueId));
-//                    indexer.writeIndex(partitionId,logNumAdder,logBuf.position(),msgLen);
-//                }
-//                unmap(logBuf);
-//                logFileChannel.close();
+                List<Path> logDirs = Files.list(LOGS_PATH).collect(Collectors.toList());
+                Thread[] threads = new Thread[logDirs.size()];
+                for (int i = 0; i < logDirs.size(); i++) {
+                    Path logDir = logDirs.get(i);
+                    threads[i] = new Thread(() -> {
+                        try {
+                            String partitionId = logDir.toFile().getName();
+                            List<Path> logFiles = Files.list(logDir).collect(Collectors.toList());
+                            for (Path logFile : logFiles) {
+                                String logNumAdder = logDir.toFile().getName();
+                                FileChannel logFileChannel = FileChannel.open(logFile, StandardOpenOption.READ, StandardOpenOption.WRITE);
+                                long fileSize = logFileChannel.size();
+                                MappedByteBuffer logBuf = logFileChannel.map(FileChannel.MapMode.READ_ONLY, 0, fileSize);
+                                while (logBuf.hasRemaining()) {
+                                    int topic = logBuf.getInt();
+                                    int queueId = logBuf.getInt();
+                                    long offset = logBuf.getLong();
+                                    short msgLen = logBuf.getShort();
+                                    for (int i1 = 0; i1 < msgLen; i1++) {
+                                        logBuf.get();
+                                    }
+                                    // index
+                                    MemoryIndexer indexer = INDEXERS.computeIfAbsent(topic + "+" + queueId, k -> new MemoryIndexer(topic, queueId));
+                                    indexer.writeIndex(Byte.parseByte(partitionId), Byte.parseByte(logNumAdder), logBuf.position(), msgLen);
+                                }
+                                unmap(logBuf);
+                                logFileChannel.close();
+                            }
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    });
+                }
+                for (Thread thread : threads) {
+                    thread.start();
+                }
+                for (Thread thread : threads) {
+                    thread.join();
+                }
             }
         } catch (Exception e) {
             e.printStackTrace();
