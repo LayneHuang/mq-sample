@@ -19,13 +19,15 @@ public class MemoryIndexer {
     public int topic;
     public int queueId;
     public List<MemoryBox> bufferList = new ArrayList<>();
+    public MemoryBox currentBox;
+    public final Object LOCKER = new Object();
 
     public static class MemoryBox{
         byte[] partitionIdArray = new byte[BOX_SIZE];
         byte[] logNumArray = new byte[BOX_SIZE];
         int[] positionArray = new int[BOX_SIZE];
         short[] dataSizeArray = new short[BOX_SIZE];
-        byte index;
+        byte index = 0;
 
         public void add(byte partitionId, byte logNumAdder, int position, short dataSize){
             this.partitionIdArray[index] = partitionId;
@@ -39,23 +41,23 @@ public class MemoryIndexer {
     public MemoryIndexer(int topic, int queueId) {
         this.topic = topic;
         this.queueId = queueId;
-        bufferList.add(new MemoryBox());
+        currentBox = new MemoryBox();
+        bufferList.add(currentBox);
     }
 
     public void writeIndex(byte partitionId, byte logNumAdder, int position, short dataSize) {
-        MemoryBox memoryBox = bufferList.get(bufferList.size() - 1);
-        if (memoryBox.index >= BOX_SIZE) {
-            memoryBox = new MemoryBox();
-            bufferList.add(memoryBox);
+        if (currentBox.index >= BOX_SIZE) {
+            currentBox = new MemoryBox();
+            bufferList.add(currentBox);
         }
-        memoryBox.add(partitionId,logNumAdder,position,dataSize);
+        currentBox.add(partitionId,logNumAdder,position,dataSize);
     }
 
     public Map<Integer, ByteBuffer> getRange(long offsetStart, int fetchNum) throws IOException {
         Map<Integer, ByteBuffer> map = new HashMap<>(fetchNum);
         for (long offset = offsetStart; offset < offsetStart + fetchNum; offset++) {
-            int index = (int) (offset / 32);
-            int indexPosition = (int) (offset % 32);
+            int index = (int) (offset / BOX_SIZE);
+            int indexPosition = (int) (offset % BOX_SIZE);
             if (index >= bufferList.size()){
                 break;
             }
@@ -75,7 +77,15 @@ public class MemoryIndexer {
             logChannel.read(dataBuf, position);
             logChannel.close();
             dataBuf.flip();
-            map.put((int) (offset - offsetStart), dataBuf);
+
+            dataBuf.getInt();
+            dataBuf.getInt();
+            offset = dataBuf.getLong();
+            short msgLen = dataBuf.getShort();
+            ByteBuffer msgBuf = ByteBuffer.allocate(msgLen);
+            msgBuf.put(dataBuf);
+            msgBuf.flip();
+            map.put((int) (offset - offsetStart), msgBuf);
         }
         return map;
     }

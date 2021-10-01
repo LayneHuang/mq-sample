@@ -21,7 +21,7 @@ import java.util.stream.Collectors;
 public class DataManager {
 
     public static final String DIR_PMEM = "/pmem";
-    public static final Path DIR_ESSD = Paths.get("/essd");
+    public static final Path DIR_ESSD = Paths.get("D:/essd");
     //    public static final Path DIR_ESSD = Paths.get(System.getProperty("user.dir")).resolve("target").resolve("work");
     public static final ConcurrentHashMap<String, AtomicLong> APPEND_OFFSET_MAP = new ConcurrentHashMap<>();
 
@@ -48,65 +48,29 @@ public class DataManager {
                 Files.createDirectories(LOGS_PATH);
             }else {
                 // 重启
-
-            }
-//            if (Files.notExists(INDEX_POS_PATH)) {
-//                Files.createFile(INDEX_POS_PATH);
-//                INDEX_POS_FILE = FileChannel.open(INDEX_POS_PATH, StandardOpenOption.READ, StandardOpenOption.WRITE);
-//                INDEXER_POS_BUF = INDEX_POS_FILE.map(FileChannel.MapMode.READ_WRITE, 0, 40 * INDEX_POS_SIZE);
-//            } else {
-//                // 重启
-//                INDEX_POS_FILE = FileChannel.open(INDEX_POS_PATH, StandardOpenOption.READ, StandardOpenOption.WRITE);
-//                INDEXER_POS_BUF = INDEX_POS_FILE.map(FileChannel.MapMode.READ_WRITE, 0, 40 * INDEX_POS_SIZE);
-//                Map<Integer, Map<Integer, PriorityQueue<OffsetBuf>>> topicQueueBufMap = new HashMap<>(100);
 //                byte partitionId = 0;
-//                while (INDEXER_POS_BUF.hasRemaining()) {
-//                    byte logNumAdder = INDEXER_POS_BUF.get();
-//                    int position = INDEXER_POS_BUF.getInt();
-//                    Path logFile = LOGS_PATH.resolve(String.valueOf(partitionId)).resolve(String.valueOf(logNumAdder));
-//                    if (Files.notExists(logFile)) break;
-//                    FileChannel logFileChannel = FileChannel.open(logFile, StandardOpenOption.READ, StandardOpenOption.WRITE);
-//                    long fileSize = logFileChannel.size();
-//                    if (fileSize > position) {
-//                        MappedByteBuffer logBuf = logFileChannel.map(FileChannel.MapMode.READ_ONLY, position, fileSize - position);
-//                        while (logBuf.hasRemaining()) {
-//                            ByteBuffer indexBuf = ByteBuffer.allocate(INDEX_BUF_SIZE);
-//                            int topic = logBuf.getInt();
-//                            int queueId = logBuf.getInt();
-//                            long offset = logBuf.getLong();
-//                            short msgLen = logBuf.getShort();
-//                            if (msgLen == 0) break;
-//                            for (int i = 0; i < msgLen; i++) {
-//                                logBuf.get();
-//                            }
-//                            short dataSize = (short) (18 + msgLen);
-//                            // index
-//                            indexBuf.put(partitionId);
-//                            indexBuf.put(logNumAdder);
-//                            indexBuf.putInt(position);
-//                            indexBuf.putShort(dataSize);
-//                            indexBuf.flip();
-//                            Map<Integer, PriorityQueue<OffsetBuf>> queueMap = topicQueueBufMap.putIfAbsent(topic, new HashMap<>());
-//                            PriorityQueue<OffsetBuf> bufList = queueMap.putIfAbsent(queueId,
-//                                    new PriorityQueue<>((o1, o2) -> (int) (o1.offset - o2.offset))
-//                            );
-//                            bufList.add(new OffsetBuf(offset, indexBuf));
-//                        }
-//                        unmap(logBuf);
+//                byte logNumAdder = 0;
+//                Path logFile = LOGS_PATH.resolve(String.valueOf(partitionId)).resolve(String.valueOf(logNumAdder));
+//                FileChannel logFileChannel = FileChannel.open(logFile, StandardOpenOption.READ, StandardOpenOption.WRITE);
+//                long fileSize = logFileChannel.size();
+//                MappedByteBuffer logBuf = logFileChannel.map(FileChannel.MapMode.READ_ONLY, 0, fileSize);
+//                while (logBuf.hasRemaining()) {
+//                    ByteBuffer indexBuf = ByteBuffer.allocate(INDEX_BUF_SIZE);
+//                    int topic = logBuf.getInt();
+//                    int queueId = logBuf.getInt();
+//                    long offset = logBuf.getLong();
+//                    short msgLen = logBuf.getShort();
+//                    for (int i = 0; i < msgLen; i++) {
+//                        logBuf.get();
 //                    }
-//                    logFileChannel.close();
-//                    partitionId++;
+//                    short dataSize = (short) (18 + msgLen);
+//                    // index
+//                    MemoryIndexer indexer = INDEXERS.computeIfAbsent(topic + "+" + queueId, k -> new MemoryIndexer(topic, queueId));
+//                    indexer.writeIndex(partitionId,logNumAdder,logBuf.position(),msgLen);
 //                }
-//                // 根据 offset 排序后统一插入
-//                topicQueueBufMap.forEach((topic, queueMap) -> {
-//                    queueMap.forEach((queueId, bufList) -> {
-//                        Indexer indexer = INDEXERS.computeIfAbsent(topic + "+" + queueId, k -> new Indexer(topic, queueId));
-//                        while(!bufList.isEmpty()){
-//                            indexer.writeIndex(bufList.poll().buf);
-//                        }
-//                    });
-//                });
-//            }
+//                unmap(logBuf);
+//                logFileChannel.close();
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
