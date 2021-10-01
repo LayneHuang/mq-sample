@@ -31,7 +31,7 @@ public class LayneMessageQueueImpl extends MessageQueue {
     public LayneMessageQueueImpl() {
         for (int i = 0; i < Constant.WAL_FILE_COUNT; ++i) {
             walList[i] = new WriteAheadLog(i);
-            brokers[i] = new Broker(i, new WalOffset());
+            brokers[i] = new Broker(i, new WalOffset(), DEAL_OFFSET_MAP);
             brokers[i].start();
         }
     }
@@ -60,20 +60,27 @@ public class LayneMessageQueueImpl extends MessageQueue {
     private void help(int topicId, int queueId, long offset, int fetchNum) {
         int walId = topicId % Constant.WAL_FILE_COUNT;
         while (true) {
+            // topic 块的处理偏移
             long targetOffset = offset + fetchNum;
-            long dealOffset = DEAL_OFFSET_MAP.computeIfAbsent(WalInfoBasic.getKey(topicId, queueId), k -> new AtomicLong()).get();
+            long dealOffset = DEAL_OFFSET_MAP.computeIfAbsent(
+                    WalInfoBasic.getKey(topicId, queueId),
+                    k -> new AtomicLong()
+            ).get();
             if (dealOffset >= targetOffset) break;
-            int dealingCount = walList[walId].offset.dealingCount.get();
+            log.info("dealing offset: {}, target: {}", dealOffset, targetOffset);
+            // 日志的处理偏移
+            int dealingCount = walList[walId].offset.dealingCount.getAndIncrement();
             int logCount = walList[walId].offset.logCount.get();
             long dealingBeginPos = (long) dealingCount * Constant.READ_BEFORE_QUERY;
             long dealingEndPos = Math.min(
                     dealingBeginPos + Constant.READ_BEFORE_QUERY,
                     (long) logCount * Constant.MSG_SIZE
             );
-            log.info("dealing, wal: {}, dealing: {}(b), {}(e), log: {}, deal offset: {}",
-                    walId, dealingBeginPos, dealingEndPos, (logCount * Constant.MSG_SIZE), dealOffset);
+            if (dealingBeginPos >= dealingEndPos) break;
+            log.info("dealing, wal: {}, dealing: {}(b), {}(e), log: {}",
+                    walId, dealingBeginPos, dealingEndPos, (logCount * Constant.MSG_SIZE));
             Page page = new Page();
-            page.clear();
+            if (dealingEndPos == (long) logCount * Constant.MSG_SIZE) page.forceUpdate = true;
             try (FileChannel infoChannel = FileChannel.open(Constant.getWALInfoPath(walId), StandardOpenOption.READ)) {
                 MappedByteBuffer buffer = infoChannel.map(FileChannel.MapMode.READ_ONLY, dealingBeginPos, Constant.READ_BEFORE_QUERY);
                 while (buffer.hasRemaining()) {

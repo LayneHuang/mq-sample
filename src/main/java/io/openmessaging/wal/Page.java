@@ -15,6 +15,8 @@ public class Page {
 
     public final Map<String, List<String>> data = new HashMap<>();
 
+    public boolean forceUpdate;
+
     /**
      * wal 分区
      */

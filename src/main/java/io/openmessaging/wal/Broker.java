@@ -10,7 +10,9 @@ import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * WalCache
@@ -25,15 +27,16 @@ public class Broker extends Thread {
 
     private final WalOffset offset;
 
-    private final ByteBuffer pageBuffer = ByteBuffer.allocate(Constant.SIMPLE_MSG_SIZE * Constant.CACHE_LEN);
-
     private final BlockingQueue<Page> bq = new LinkedBlockingQueue<>(Constant.CACHE_LEN);
+
+    private final ConcurrentHashMap<String, AtomicLong> pageOffset;
 
     private final Page page = new Page();
 
-    public Broker(int walId, WalOffset offset) {
+    public Broker(int walId, WalOffset offset, ConcurrentHashMap<String, AtomicLong> pageOffset) {
         this.walId = walId;
         this.offset = offset;
+        this.pageOffset = pageOffset;
     }
 
     @Override
@@ -54,7 +57,8 @@ public class Broker extends Thread {
             for (String key : this.page.data.keySet()) {
                 List<String> list = this.page.data.get(key);
                 int listSize = list.size();
-                if (listSize * Constant.SIMPLE_MSG_SIZE < Constant.WRITE_BEFORE_QUERY) continue;
+                if (listSize == 0) continue;
+                if (!page.forceUpdate && listSize * Constant.SIMPLE_MSG_SIZE < Constant.WRITE_BEFORE_QUERY) continue;
                 ByteBuffer buffer = ByteBuffer.allocate(listSize * Constant.SIMPLE_MSG_SIZE);
                 for (String posStr : list) {
                     String[] ps = posStr.split("-");
@@ -65,8 +69,11 @@ public class Broker extends Thread {
                 int topicId = Integer.parseInt(indexes[0]);
                 int queueId = Integer.parseInt(indexes[1]);
                 write(topicId, queueId, buffer);
+                pageOffset.computeIfAbsent(
+                        WalInfoBasic.getKey(topicId, queueId),
+                        k -> new AtomicLong()
+                ).getAndAdd(listSize);
                 this.page.data.remove(key);
-                offset.dealingCount.addAndGet(listSize);
             }
         }
     }
