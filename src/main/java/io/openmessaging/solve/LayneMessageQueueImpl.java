@@ -3,13 +3,15 @@ package io.openmessaging.solve;
 import io.openmessaging.Constant;
 import io.openmessaging.IdGenerator;
 import io.openmessaging.MessageQueue;
-import io.openmessaging.wal.*;
+import io.openmessaging.wal.Broker;
+import io.openmessaging.wal.Partition;
+import io.openmessaging.wal.WalInfoBasic;
+import io.openmessaging.wal.WriteAheadLog;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
 import java.util.HashMap;
@@ -23,16 +25,21 @@ public class LayneMessageQueueImpl extends MessageQueue {
 
     private static final ConcurrentHashMap<String, AtomicLong> APPEND_OFFSET_MAP = new ConcurrentHashMap<>();
 
-    private static final ConcurrentHashMap<String, AtomicLong> DEAL_OFFSET_MAP = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<String, AtomicLong> PARTITION_OFFSET_MAP = new ConcurrentHashMap<>();
 
     private static final WriteAheadLog[] walList = new WriteAheadLog[Constant.WAL_FILE_COUNT];
+
+    private static final Partition[] partitions = new Partition[Constant.WAL_FILE_COUNT];
+
     private static final Broker[] brokers = new Broker[Constant.WAL_FILE_COUNT];
 
     public LayneMessageQueueImpl() {
         for (int i = 0; i < Constant.WAL_FILE_COUNT; ++i) {
             walList[i] = new WriteAheadLog(i);
-            brokers[i] = new Broker(i, new WalOffset(), DEAL_OFFSET_MAP);
-//            brokers[i].start();
+            partitions[i] = new Partition(i);
+            brokers[i] = new Broker(i, PARTITION_OFFSET_MAP, partitions[i].writeBq);
+            partitions[i].start();
+            brokers[i].start();
         }
     }
 
@@ -42,6 +49,7 @@ public class LayneMessageQueueImpl extends MessageQueue {
         AtomicLong offsetAdder = APPEND_OFFSET_MAP.computeIfAbsent(WalInfoBasic.getKey(topicId, queueId), k -> new AtomicLong());
         int walId = topicId % Constant.WAL_FILE_COUNT;
         walList[walId].flush(topic, queueId, data);
+        asyncReadWal(walId);
         return offsetAdder.getAndIncrement();
     }
 
@@ -49,55 +57,40 @@ public class LayneMessageQueueImpl extends MessageQueue {
     public Map<Integer, ByteBuffer> getRange(String topic, int queueId, long offset, int fetchNum) {
         int topicId = IdGenerator.getId(topic);
         int walId = topicId % Constant.WAL_FILE_COUNT;
-        log.info("query, topic: {}, queueId: {}, offset: {}, fetchNum: {}", topic, queueId, offset, fetchNum);
-        help(topicId, queueId, offset, fetchNum);
         long[] ansPos = new long[fetchNum];
         int[] ansSize = new int[fetchNum];
-        int dataCount = readInfoListFromPartition(topicId, queueId, offset, fetchNum, ansPos, ansSize);
-        return readValueFromWAL(walId, offset, fetchNum, dataCount, ansPos, ansSize);
+        long partitionCount = PARTITION_OFFSET_MAP
+                .computeIfAbsent(WalInfoBasic.getKey(topicId, queueId), k -> new AtomicLong())
+                .get();
+        int partitionFetchNum = 0;
+        String qLog = "";
+        if (offset < partitionCount) {
+            partitionFetchNum = (int) (Math.min(partitionCount, offset + fetchNum) - offset);
+            readInfoListFromPartition(topicId, queueId, offset, partitionFetchNum, ansPos, ansSize);
+            qLog += "read form partition, fetNum: " + partitionFetchNum;
+        }
+        int walFetchNum = fetchNum - partitionFetchNum;
+        if (walFetchNum > 0) {
+            qLog += ", read form wal";
+        }
+        log.info("{}, topic: {}, queueId: {}, offset: {}, fetchNum: {}, partitionCount: {}",
+                qLog, topic, queueId, offset, fetchNum, partitionCount);
+        return readValueFromWAL(walId, offset, fetchNum, fetchNum, ansPos, ansSize);
     }
 
-    private void help(int topicId, int queueId, long offset, int fetchNum) {
-        int walId = topicId % Constant.WAL_FILE_COUNT;
-        while (true) {
-            // topic 块的处理偏移
-            long targetOffset = offset + fetchNum;
-            long dealOffset = DEAL_OFFSET_MAP.computeIfAbsent(
-                    WalInfoBasic.getKey(topicId, queueId),
-                    k -> new AtomicLong()
-            ).get();
-            log.info("dealing offset: {}, target: {}", dealOffset, targetOffset);
-            if (dealOffset >= targetOffset) break;
-            // 日志的处理偏移
-            int dealingCount = walList[walId].offset.dealingCount.getAndIncrement();
-            int logCount = walList[walId].offset.logCount.get();
-            long dealingBeginPos = (long) dealingCount * Constant.READ_BEFORE_QUERY;
-            long dealingEndPos = Math.min(
-                    dealingBeginPos + Constant.READ_BEFORE_QUERY,
-                    (long) logCount * Constant.MSG_SIZE
-            );
-            log.info("dealing, wal: {}, dealing: {}(b), {}(e), log: {}",
-                    walId, dealingBeginPos, dealingEndPos, (logCount * Constant.MSG_SIZE));
-            if (dealingBeginPos >= dealingEndPos) break;
-            Page page = new Page();
-            if (dealingEndPos == (long) logCount * Constant.MSG_SIZE) page.forceUpdate = true;
-            try (FileChannel infoChannel = FileChannel.open(Constant.getWALInfoPath(walId), StandardOpenOption.READ)) {
-                MappedByteBuffer buffer = infoChannel.map(FileChannel.MapMode.READ_ONLY, dealingBeginPos, Constant.READ_BEFORE_QUERY);
-                while (buffer.hasRemaining()) {
-                    WalInfoBasic msgInfo = new WalInfoBasic();
-                    msgInfo.decode(buffer);
-                    page.partition(msgInfo);
-                }
-//                brokers[walId].saveAsync(page);
-                brokers[walId].save(page);
-            } catch (IOException e) {
+    private void asyncReadWal(int walId) {
+        long curWalPos = walList[walId].offset.logCount.get() * Constant.SIMPLE_MSG_SIZE;
+        if (curWalPos > 0 && curWalPos % Constant.READ_BEFORE_QUERY == 0) {
+            try {
+                partitions[walId].readBq.put(curWalPos - Constant.READ_BEFORE_QUERY);
+            } catch (InterruptedException e) {
                 e.printStackTrace();
             }
         }
     }
 
-    private int readInfoListFromPartition(int topicId, int queueId, long offset,
-                                          int fetchNum, long[] ansPos, int[] ansSize) {
+    private void readInfoListFromPartition(int topicId, int queueId, long offset,
+                                           int fetchNum, long[] ansPos, int[] ansSize) {
         int size = 0;
         try (FileChannel infoChannel = FileChannel.open(
                 Constant.getPath(topicId, queueId), StandardOpenOption.READ)) {
@@ -115,7 +108,6 @@ public class LayneMessageQueueImpl extends MessageQueue {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        return size;
     }
 
     private Map<Integer, ByteBuffer> readValueFromWAL(int walId, long offset, int fetchNum,
@@ -133,7 +125,7 @@ public class LayneMessageQueueImpl extends MessageQueue {
         } catch (IOException e) {
             e.printStackTrace();
         }
-//        check(offset, ansSize, ansPos, dataMap);
+        check(offset, ansSize, ansPos, result);
 //        stopBroker();
         return result;
     }

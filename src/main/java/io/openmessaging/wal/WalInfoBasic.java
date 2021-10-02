@@ -76,6 +76,14 @@ public class WalInfoBasic {
         return valuePos + "-" + valueSize;
     }
 
+    public ByteBuffer encodeSimple(ByteBuffer infoBuffer) {
+        // buffer size
+        infoBuffer.putInt(valueSize);
+        // buffer pos
+        infoBuffer.putLong(valuePos);
+        return infoBuffer;
+    }
+
     public void decodeSimple(ByteBuffer buffer) {
         this.valueSize = buffer.getInt();
         this.valuePos = buffer.getLong();

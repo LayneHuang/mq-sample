@@ -1,8 +1,9 @@
 package io.openmessaging.wal;
 
+import io.openmessaging.Constant;
+
+import java.nio.ByteBuffer;
 import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -13,29 +14,22 @@ import java.util.Map;
  */
 public class Page {
 
-    public final Map<String, List<String>> data = new HashMap<>();
+    public final Map<String, ByteBuffer> data = new HashMap<>();
 
     public boolean forceUpdate;
 
     /**
      * wal 分区
      */
-    public void partition(WalInfoBasic infoBasic) {
-        List<String> list = data.computeIfAbsent(infoBasic.getKey(), k -> new LinkedList<>());
-        list.add(infoBasic.encodeSimple());
+    public ByteBuffer partition(WalInfoBasic infoBasic) {
+        ByteBuffer buffer = data.computeIfAbsent(
+                infoBasic.getKey(),
+                k -> ByteBuffer.allocate(Constant.WRITE_BEFORE_QUERY)
+        );
+        return infoBasic.encodeSimple(buffer);
     }
 
-    /**
-     * 两个分区结果合并
-     */
-    public void union(Page part) {
-        part.data.forEach((key, list1) -> {
-            List<String> list = data.computeIfAbsent(key, k -> new LinkedList<>());
-            list.addAll(list1);
-        });
-    }
-
-    public void clear() {
-        data.clear();
+    public void clear(WalInfoBasic infoBasic) {
+        data.remove(infoBasic.getKey());
     }
 }

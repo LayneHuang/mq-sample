@@ -1,6 +1,6 @@
 package io.openmessaging;
 
-import io.openmessaging.solve.LeoMessageQueueImpl;
+import io.openmessaging.solve.LayneMessageQueueImpl;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -11,7 +11,7 @@ public class PerformanceTester {
     static int i = 0;
 
     public static void main(String[] args) throws InterruptedException {
-        MessageQueue messageQueue = new LeoMessageQueueImpl();
+        MessageQueue messageQueue = new LayneMessageQueueImpl();
         long start = System.currentTimeMillis();
         Map<Integer, ByteBuffer> range;
         for (; i < 10000; i++) {
@@ -28,7 +28,7 @@ public class PerformanceTester {
         });
         Thread threadR1 = new Thread(() -> {
             System.out.println("边写边查 threadR1");
-            messageQueue.getRange("A", 1, 9950, 100)
+            messageQueue.getRange("A", 1, 0, 10)
                     .forEach((key, value) -> System.out.println(key + ": " + new String(value.array())));
         });
 //        Thread threadW2 = new Thread(() -> {
