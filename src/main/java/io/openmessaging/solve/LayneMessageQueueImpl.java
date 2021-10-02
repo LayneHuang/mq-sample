@@ -32,7 +32,7 @@ public class LayneMessageQueueImpl extends MessageQueue {
         for (int i = 0; i < Constant.WAL_FILE_COUNT; ++i) {
             walList[i] = new WriteAheadLog(i);
             brokers[i] = new Broker(i, new WalOffset(), DEAL_OFFSET_MAP);
-            brokers[i].start();
+//            brokers[i].start();
         }
     }
 
@@ -88,7 +88,8 @@ public class LayneMessageQueueImpl extends MessageQueue {
                     msgInfo.decode(buffer);
                     page.partition(msgInfo);
                 }
-                brokers[walId].saveAsync(page);
+//                brokers[walId].saveAsync(page);
+                brokers[walId].save(page);
             } catch (IOException e) {
                 e.printStackTrace();
             }

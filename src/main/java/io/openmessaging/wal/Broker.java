@@ -53,35 +53,35 @@ public class Broker extends Thread {
                 log.info("Broker :{} , End", walId);
                 break;
             }
-            this.page.union(page);
-            for (String key : this.page.data.keySet()) {
-                List<String> list = this.page.data.get(key);
-                int listSize = list.size();
-                if (listSize == 0) continue;
-                if (!page.forceUpdate && listSize * Constant.SIMPLE_MSG_SIZE < Constant.WRITE_BEFORE_QUERY) continue;
-                ByteBuffer buffer = ByteBuffer.allocate(listSize * Constant.SIMPLE_MSG_SIZE);
-                for (String posStr : list) {
-                    String[] ps = posStr.split("-");
-                    buffer.putInt(Integer.parseInt(ps[0]));
-                    buffer.putLong(Long.parseLong(ps[1]));
-                }
-                String[] indexes = key.split("-");
-                int topicId = Integer.parseInt(indexes[0]);
-                int queueId = Integer.parseInt(indexes[1]);
-                write(topicId, queueId, buffer);
-                this.page.data.remove(key);
-                long pOffset = pageOffset.computeIfAbsent(
-                        WalInfoBasic.getKey(topicId, queueId),
-                        k -> new AtomicLong()
-                ).addAndGet(listSize);
-                log.info("topic: {}, queue: {}, list size: {}, save to db, pageOffset: {}",
-                        topicId, queueId, listSize, pOffset);
-            }
+            save(page);
         }
     }
 
-    public void save(Page page) {
-
+    public synchronized void save(Page page) {
+        this.page.union(page);
+        for (String key : this.page.data.keySet()) {
+            List<String> list = this.page.data.get(key);
+            int listSize = list.size();
+            if (listSize == 0) continue;
+            if (!page.forceUpdate && listSize * Constant.SIMPLE_MSG_SIZE < Constant.WRITE_BEFORE_QUERY) continue;
+            ByteBuffer buffer = ByteBuffer.allocate(listSize * Constant.SIMPLE_MSG_SIZE);
+            for (String posStr : list) {
+                String[] ps = posStr.split("-");
+                buffer.putInt(Integer.parseInt(ps[0]));
+                buffer.putLong(Long.parseLong(ps[1]));
+            }
+            String[] indexes = key.split("-");
+            int topicId = Integer.parseInt(indexes[0]);
+            int queueId = Integer.parseInt(indexes[1]);
+            write(topicId, queueId, buffer);
+            this.page.data.remove(key);
+            long pOffset = pageOffset.computeIfAbsent(
+                    WalInfoBasic.getKey(topicId, queueId),
+                    k -> new AtomicLong()
+            ).addAndGet(listSize);
+            log.info("topic: {}, queue: {}, list size: {}, save to db, pageOffset: {}",
+                    topicId, queueId, listSize, pOffset);
+        }
     }
 
     public void saveAsync(Page page) {
