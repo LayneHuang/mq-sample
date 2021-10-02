@@ -14,7 +14,9 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -57,25 +59,25 @@ public class LayneMessageQueueImpl extends MessageQueue {
     public Map<Integer, ByteBuffer> getRange(String topic, int queueId, long offset, int fetchNum) {
         int topicId = IdGenerator.getId(topic);
         int walId = topicId % Constant.WAL_FILE_COUNT;
-        long[] ansPos = new long[fetchNum];
-        int[] ansSize = new int[fetchNum];
         long partitionCount = PARTITION_OFFSET_MAP
                 .computeIfAbsent(WalInfoBasic.getKey(topicId, queueId), k -> new AtomicLong())
                 .get();
         int partitionFetchNum = 0;
         String qLog = "";
+        List<WalInfoBasic> infoList = new ArrayList<>();
         if (offset < partitionCount) {
             partitionFetchNum = (int) (Math.min(partitionCount, offset + fetchNum) - offset);
-            readInfoListFromPartition(topicId, queueId, offset, partitionFetchNum, ansPos, ansSize);
+            infoList.addAll(readInfoListFromPartition(topicId, queueId, offset, partitionFetchNum));
             qLog += "read form partition, fetNum: " + partitionFetchNum;
         }
+        long walFetchOffset = offset + partitionFetchNum;
         int walFetchNum = fetchNum - partitionFetchNum;
         if (walFetchNum > 0) {
+            
             qLog += ", read form wal";
         }
-        log.info("{}, topic: {}, queueId: {}, offset: {}, fetchNum: {}, partitionCount: {}",
-                qLog, topic, queueId, offset, fetchNum, partitionCount);
-        return readValueFromWAL(walId, offset, fetchNum, fetchNum, ansPos, ansSize);
+        log.info("{}, topic: {}, queueId: {}, offset: {}, fetchNum: {}, partitionCount: {}", qLog, topic, queueId, offset, fetchNum, partitionCount);
+        return readValueFromWAL(walId, offset, fetchNum, infoList);
     }
 
     private void asyncReadWal(int walId) {
@@ -89,8 +91,9 @@ public class LayneMessageQueueImpl extends MessageQueue {
         }
     }
 
-    private void readInfoListFromPartition(int topicId, int queueId, long offset,
-                                           int fetchNum, long[] ansPos, int[] ansSize) {
+    private List<WalInfoBasic> readInfoListFromPartition(int topicId, int queueId, long offset,
+                                                         int fetchNum) {
+        List<WalInfoBasic> result = new ArrayList<>();
         int size = 0;
         try (FileChannel infoChannel = FileChannel.open(
                 Constant.getPath(topicId, queueId), StandardOpenOption.READ)) {
@@ -99,8 +102,9 @@ public class LayneMessageQueueImpl extends MessageQueue {
             while (size < fetchNum) {
                 infoBuffer.flip();
                 while (infoBuffer.hasRemaining()) {
-                    ansSize[size] = infoBuffer.getInt();
-                    ansPos[size] = infoBuffer.getLong();
+                    int infoSize = infoBuffer.getInt();
+                    long infoPos = infoBuffer.getLong();
+                    result.add(new WalInfoBasic(infoSize, infoPos));
                     size++;
                 }
                 infoBuffer.clear();
@@ -108,24 +112,27 @@ public class LayneMessageQueueImpl extends MessageQueue {
         } catch (IOException e) {
             e.printStackTrace();
         }
+        return result;
     }
 
     private Map<Integer, ByteBuffer> readValueFromWAL(int walId, long offset, int fetchNum,
-                                                      int dataCount, long[] ansPos, int[] ansSize) {
+                                                      List<WalInfoBasic> infoList) {
         Map<Integer, ByteBuffer> result = new HashMap<>(fetchNum);
         try (FileChannel valueChannel = FileChannel.open(
                 Constant.getWALValuePath(walId),
                 StandardOpenOption.READ)
         ) {
-            for (int i = 0; i < dataCount; ++i) {
-                ByteBuffer buffer = ByteBuffer.allocate(ansSize[i]);
-                valueChannel.read(buffer, ansPos[i]);
-                result.put((int) offset + i, buffer);
+            int idx = 0;
+            for (WalInfoBasic infoBasic : infoList) {
+                ByteBuffer buffer = ByteBuffer.allocate(infoBasic.valueSize);
+                valueChannel.read(buffer, infoBasic.valueSize);
+                result.put((int) offset + idx, buffer);
+                idx++;
             }
         } catch (IOException e) {
             e.printStackTrace();
         }
-        check(offset, ansSize, ansPos, result);
+//        check(offset, ansSize, ansPos, result);
 //        stopBroker();
         return result;
     }

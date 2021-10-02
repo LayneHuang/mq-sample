@@ -1,6 +1,7 @@
 package io.openmessaging;
 
 import io.openmessaging.solve.LayneMessageQueueImpl;
+import io.openmessaging.solve.LeoMessageQueueImpl;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
