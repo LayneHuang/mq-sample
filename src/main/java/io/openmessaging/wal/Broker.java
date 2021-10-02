@@ -69,14 +69,26 @@ public class Broker extends Thread {
                 int topicId = Integer.parseInt(indexes[0]);
                 int queueId = Integer.parseInt(indexes[1]);
                 write(topicId, queueId, buffer);
+                this.page.data.remove(key);
                 long pOffset = pageOffset.computeIfAbsent(
                         WalInfoBasic.getKey(topicId, queueId),
                         k -> new AtomicLong()
                 ).addAndGet(listSize);
-                this.page.data.remove(key);
-                log.info("topic: {}, queue: {}, save to db, pageOffset: {}",
-                        topicId, queueId, pOffset);
+                log.info("topic: {}, queue: {}, list size: {}, save to db, pageOffset: {}",
+                        topicId, queueId, listSize, pOffset);
             }
+        }
+    }
+
+    public void save(Page page) {
+
+    }
+
+    public void saveAsync(Page page) {
+        try {
+            bq.put(page);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
         }
     }
 
@@ -94,11 +106,4 @@ public class Broker extends Thread {
         }
     }
 
-    public void save(Page page) {
-        try {
-            bq.put(page);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-    }
 }

@@ -76,9 +76,9 @@ public class LayneMessageQueueImpl extends MessageQueue {
                     dealingBeginPos + Constant.READ_BEFORE_QUERY,
                     (long) logCount * Constant.MSG_SIZE
             );
-            if (dealingBeginPos >= dealingEndPos) break;
             log.info("dealing, wal: {}, dealing: {}(b), {}(e), log: {}",
                     walId, dealingBeginPos, dealingEndPos, (logCount * Constant.MSG_SIZE));
+            if (dealingBeginPos >= dealingEndPos) break;
             Page page = new Page();
             if (dealingEndPos == (long) logCount * Constant.MSG_SIZE) page.forceUpdate = true;
             try (FileChannel infoChannel = FileChannel.open(Constant.getWALInfoPath(walId), StandardOpenOption.READ)) {
@@ -88,7 +88,7 @@ public class LayneMessageQueueImpl extends MessageQueue {
                     msgInfo.decode(buffer);
                     page.partition(msgInfo);
                 }
-                brokers[walId].save(page);
+                brokers[walId].saveAsync(page);
             } catch (IOException e) {
                 e.printStackTrace();
             }
