@@ -33,10 +33,12 @@ public class Partition extends Thread {
             while (true) {
                 long begin = readBq.take();
                 if (begin == -1) break;
+                // log.info("begin: {}", begin);
                 MappedByteBuffer mappedBuffer = infoChannel.map(FileChannel.MapMode.READ_ONLY, begin, Constant.READ_BEFORE_QUERY);
                 while (mappedBuffer.hasRemaining()) {
                     WalInfoBasic msgInfo = new WalInfoBasic();
                     msgInfo.decode(mappedBuffer);
+//                    msgInfo.show();
                     ByteBuffer buffer = page.partition(msgInfo);
                     if (!buffer.hasRemaining()) {
                         PageForWrite pageForWrite = new PageForWrite(msgInfo.topicId, msgInfo.queueId, buffer);

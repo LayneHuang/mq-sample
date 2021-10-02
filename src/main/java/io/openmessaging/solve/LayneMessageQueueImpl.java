@@ -79,7 +79,7 @@ public class LayneMessageQueueImpl extends MessageQueue {
     }
 
     private void asyncReadWal(int walId) {
-        long curWalPos = walList[walId].offset.logCount.get() * Constant.SIMPLE_MSG_SIZE;
+        long curWalPos = (long) walList[walId].offset.logCount.get() * Constant.MSG_SIZE;
         if (curWalPos > 0 && curWalPos % Constant.READ_BEFORE_QUERY == 0) {
             try {
                 partitions[walId].readBq.put(curWalPos - Constant.READ_BEFORE_QUERY);

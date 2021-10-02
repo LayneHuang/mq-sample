@@ -55,6 +55,7 @@ public class WriteAheadLog {
             );
             offset.infoPos = infoChannel.position();
             offset.valuePos = valueChannel.position();
+            log.info("init info pos: {}, value pos: {}", offset.infoPos, offset.valuePos);
         } catch (IOException e) {
             e.printStackTrace();
         }
