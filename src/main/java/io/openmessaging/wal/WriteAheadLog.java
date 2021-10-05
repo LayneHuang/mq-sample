@@ -10,6 +10,8 @@ import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -28,11 +30,10 @@ public class WriteAheadLog {
     private final int walId;
     private FileChannel infoChannel;
     private FileChannel valueChannel;
-    private final ReadWriteLock lock = new ReentrantReadWriteLock();
-
     private MappedByteBuffer infoMapBuffer;
-
     private MappedByteBuffer valueMapBuffer;
+    private final ReadWriteLock lock = new ReentrantReadWriteLock();
+    private final Map<String, ByteBuffer> walIndex = new HashMap<>();
 
     public WriteAheadLog(int walId) {
         this.walId = walId;
@@ -61,14 +62,16 @@ public class WriteAheadLog {
         }
     }
 
-    public void flush(String topic, int queueId, ByteBuffer buffer) {
+    public void flush(String topic, int queueId, ByteBuffer buffer, long pOffset) {
         int topicId = IdGenerator.getId(topic);
         WalInfoBasic walInfoBasic = new WalInfoBasic(topicId, queueId, buffer.limit());
+        long infoPos = 0;
         lock.writeLock().lock();
         try {
             walInfoBasic.valuePos = offset.valuePos;
             putInfo(walInfoBasic);
             putValue(buffer);
+            infoPos = offset.infoPos;
             offset.infoPos += Constant.MSG_SIZE;
             offset.valuePos += walInfoBasic.valueSize;
             offset.logCount.incrementAndGet();
@@ -76,6 +79,10 @@ public class WriteAheadLog {
             e.printStackTrace();
         }
         lock.writeLock().unlock();
+        // 间距100插入一索引, page内不冲突, 可以无需同步
+        if (pOffset % Constant.INDEX_DISTANCE == 0) {
+            saveIndex(topicId, queueId, infoPos);
+        }
     }
 
     private void putInfo(WalInfoBasic walInfoBasic) throws IOException {
@@ -101,5 +108,26 @@ public class WriteAheadLog {
         }
         valueMapBuffer.put(buffer);
         valueMapBuffer.force();
+    }
+
+    private void saveIndex(int topicId, int queueId, long walPos) {
+        ByteBuffer buffer = walIndex.computeIfAbsent(
+                WalInfoBasic.getKey(topicId, queueId),
+                k -> ByteBuffer.allocate(Constant.INDEX_CACHE_SIZE)
+        );
+        buffer.putLong(walPos);
+        if (!buffer.hasRemaining()) {
+            log.info("save idx, walPos: {}", walPos);
+            try (FileChannel channel = FileChannel.open(Constant.getWALIndexPath(topicId, queueId),
+                    StandardOpenOption.WRITE,
+                    StandardOpenOption.CREATE,
+                    StandardOpenOption.APPEND,
+                    StandardOpenOption.DSYNC
+            )) {
+                channel.write(buffer);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
 }
