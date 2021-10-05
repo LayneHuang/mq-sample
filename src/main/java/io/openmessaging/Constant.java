@@ -36,7 +36,7 @@ public class Constant {
 
     public static final int READ_BUFFER_SIZE = 512 * SIMPLE_MSG_SIZE;
 
-    public static final int WAL_BUFFER_SIZE = MSG_SIZE * 1024 * 1024;
+    public static final int WAL_BUFFER_SIZE = MSG_SIZE * 1024;
 
     public static final int READ_BEFORE_QUERY = MSG_SIZE * 1024;
 
