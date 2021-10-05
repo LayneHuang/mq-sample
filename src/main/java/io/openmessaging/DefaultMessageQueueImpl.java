@@ -1,7 +1,6 @@
 package io.openmessaging;
 
-import io.openmessaging.solve.LeoMessageQueueImpl;
-import io.openmessaging.solve.TestMessageQueueImpl;
+import io.openmessaging.solve.LayneMessageQueueImpl;
 
 import java.nio.ByteBuffer;
 import java.util.Map;
@@ -12,8 +11,7 @@ import java.util.Map;
  */
 public class DefaultMessageQueueImpl extends MessageQueue {
 
-    LeoMessageQueueImpl messageQueue = new LeoMessageQueueImpl();
-//    TestMessageQueueImpl messageQueue = new TestMessageQueueImpl();
+    MessageQueue messageQueue = new LayneMessageQueueImpl();
 
     @Override
     public long append(String topic, int queueId, ByteBuffer data) {

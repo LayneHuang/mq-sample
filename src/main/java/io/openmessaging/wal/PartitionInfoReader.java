@@ -1,6 +1,9 @@
 package io.openmessaging.wal;
 
 import io.openmessaging.Constant;
+import io.openmessaging.solve.LayneMessageQueueImpl;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -16,6 +19,8 @@ import java.util.List;
  * @since 2021/10/5
  */
 public class PartitionInfoReader implements InfoReader {
+    private static final Logger log = LoggerFactory.getLogger(PartitionInfoReader.class);
+
     @Override
     public List<WalInfoBasic> read(int topicId, int queueId, long offset, int fetchNum) {
         List<WalInfoBasic> result = new ArrayList<>();
@@ -29,7 +34,8 @@ public class PartitionInfoReader implements InfoReader {
                 while (infoBuffer.hasRemaining()) {
                     int infoSize = infoBuffer.getInt();
                     long infoPos = infoBuffer.getLong();
-                    result.add(new WalInfoBasic(infoSize, infoPos));
+//                    log.info("info size: {}, pos: {}", infoSize, infoPos);
+                    result.add(new WalInfoBasic(topicId, queueId, infoSize, infoPos));
                     size++;
                 }
                 infoBuffer.clear();

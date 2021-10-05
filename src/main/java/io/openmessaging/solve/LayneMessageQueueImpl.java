@@ -19,7 +19,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class LayneMessageQueueImpl extends MessageQueue {
-
     private static final Logger log = LoggerFactory.getLogger(LayneMessageQueueImpl.class);
 
     private static final ConcurrentHashMap<String, AtomicLong> APPEND_OFFSET_MAP = new ConcurrentHashMap<>();
@@ -100,7 +99,7 @@ public class LayneMessageQueueImpl extends MessageQueue {
             int idx = 0;
             for (WalInfoBasic infoBasic : infoList) {
                 ByteBuffer buffer = ByteBuffer.allocate(infoBasic.valueSize);
-                valueChannel.read(buffer, infoBasic.valueSize);
+                valueChannel.read(buffer, infoBasic.valuePos);
                 result.put((int) offset + idx, buffer);
                 idx++;
             }
