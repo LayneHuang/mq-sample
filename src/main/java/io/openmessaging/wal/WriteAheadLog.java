@@ -99,7 +99,8 @@ public class WriteAheadLog {
     }
 
     private void putValue(ByteBuffer buffer) throws IOException {
-        if (valueMapBuffer == null || !valueMapBuffer.hasRemaining()) {
+        if (valueMapBuffer == null
+                || valueMapBuffer.remaining() < buffer.limit()) {
             valueMapBuffer = valueChannel.map(
                     FileChannel.MapMode.READ_WRITE,
                     offset.valuePos,
