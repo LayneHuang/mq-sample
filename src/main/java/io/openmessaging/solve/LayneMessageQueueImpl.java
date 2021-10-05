@@ -71,7 +71,7 @@ public class LayneMessageQueueImpl extends MessageQueue {
         long walFetchOffset = offset + partitionFetchNum;
         int walFetchNum = fetchNum - partitionFetchNum;
         if (walFetchNum > 0) {
-            // infoList.addAll(walInfoReader.read(topicId, queueId, walFetchOffset, walFetchNum));
+            infoList.addAll(walInfoReader.read(topicId, queueId, walFetchOffset, walFetchNum));
         }
         log.info("topic: {}, queueId: {}, offset: {}, fetchNum: {}, partitionCount: {}, partitionFetchNum: {}, walFetchNum: {}",
                 topic, queueId, offset, fetchNum, partitionCount, partitionFetchNum, walFetchNum);
