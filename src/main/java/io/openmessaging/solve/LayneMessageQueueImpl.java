@@ -76,8 +76,8 @@ public class LayneMessageQueueImpl extends MessageQueue {
                     walFetchNum, walList[walId].offset.walIndexPos
             ));
         }
-        log.info("topic: {}, queueId: {}, offset: {}, fetchNum: {}, partitionCount: {}, partitionFetchNum: {}, walFetchNum: {}",
-                topic, queueId, offset, fetchNum, partitionCount, partitionFetchNum, walFetchNum);
+//        log.info("topic: {}, queueId: {}, offset: {}, fetchNum: {}, partitionCount: {}, partitionFetchNum: {}, walFetchNum: {}",
+//                topic, queueId, offset, fetchNum, partitionCount, partitionFetchNum, walFetchNum);
         return readValueFromWAL(walId, offset, fetchNum, infoList);
     }
 

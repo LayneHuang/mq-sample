@@ -36,7 +36,7 @@ public class Broker extends Thread {
 
     @Override
     public void run() {
-        log.info("Broker :{} , Start", walId);
+//        log.info("Broker :{} , Start", walId);
         while (true) {
             PageForWrite page = null;
             try {
@@ -54,7 +54,7 @@ public class Broker extends Thread {
                     WalInfoBasic.getKey(page.topicId, page.queueId),
                     k -> new AtomicLong()
             ).addAndGet(msgCount);
-            log.info("write, topic:{}, queue:{}, pCount:{}", page.topicId, page.queueId, pCount);
+//            log.info("write, topic:{}, queue:{}, pCount:{}", page.topicId, page.queueId, pCount);
         }
     }
 
