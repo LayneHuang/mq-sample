@@ -22,7 +22,7 @@ public class WalInfoReader implements InfoReader {
         List<WalInfoBasic> result = new ArrayList<>();
         ByteBuffer buffer = ByteBuffer.allocate(Constant.READ_BEFORE_QUERY);
         try (FileChannel indexChannel = FileChannel.open(
-                Constant.getWALIndexPath(topicId, queueId), StandardOpenOption.READ)) {
+                Constant.getWALInfoPath(topicId % Constant.WAL_FILE_COUNT), StandardOpenOption.READ)) {
             while (result.size() < fetchNum) {
                 indexChannel.read(buffer, offset);
                 while (buffer.hasRemaining()) {

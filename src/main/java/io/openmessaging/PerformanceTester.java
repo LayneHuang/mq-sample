@@ -29,8 +29,9 @@ public class PerformanceTester {
         });
         Thread threadR1 = new Thread(() -> {
             System.out.println("边写边查 threadR1");
-            messageQueue.getRange("A", 1, 9950, 100)
-                    .forEach((key, value) -> System.out.println(key + ": " + new String(value.array())));
+            messageQueue.getRange("A", 1, 9950, 100);
+            messageQueue.getRange("A", 1, 19500, 500);
+            System.out.println("FINISH");
         });
 //        Thread threadW2 = new Thread(() -> {
 //            for (; i < 30000; i++) {
