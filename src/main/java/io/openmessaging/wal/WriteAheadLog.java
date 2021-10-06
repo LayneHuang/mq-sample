@@ -56,16 +56,18 @@ public class WriteAheadLog {
             );
             offset.infoPos = infoChannel.position();
             offset.valuePos = valueChannel.position();
-            log.info("init info pos: {}, value pos: {}", offset.infoPos, offset.valuePos);
+            offset.logCount = (int) (offset.infoPos / Constant.MSG_SIZE);
+//            log.info("init info pos: {}, value pos: {}, logCount: {}", offset.infoPos, offset.valuePos, offset.logCount);
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    public void flush(String topic, int queueId, ByteBuffer buffer, long pOffset) {
+    public int flush(String topic, int queueId, ByteBuffer buffer, long pOffset) {
         int topicId = IdGenerator.getId(topic);
         WalInfoBasic walInfoBasic = new WalInfoBasic(topicId, queueId, buffer.limit());
         long infoPos = 0;
+        int logCount = 0;
         lock.writeLock().lock();
         try {
             walInfoBasic.valuePos = offset.valuePos;
@@ -74,7 +76,7 @@ public class WriteAheadLog {
             infoPos = offset.infoPos;
             offset.infoPos += Constant.MSG_SIZE;
             offset.valuePos += walInfoBasic.valueSize;
-            offset.logCount.incrementAndGet();
+            logCount = ++offset.logCount;
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -83,6 +85,7 @@ public class WriteAheadLog {
         if (pOffset % Constant.INDEX_DISTANCE == 0) {
             saveIndex(topicId, queueId, infoPos);
         }
+        return logCount;
     }
 
     private void putInfo(WalInfoBasic walInfoBasic) throws IOException {

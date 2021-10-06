@@ -12,12 +12,7 @@ public class WalOffset {
     /**
      * write ahead log 个数
      */
-    public AtomicInteger logCount = new AtomicInteger();
-
-    /**
-     * 当前处理到的 log 块号
-     */
-    public AtomicInteger dealingCount = new AtomicInteger();
+    public int logCount;
 
     /**
      * wal基础信息偏移

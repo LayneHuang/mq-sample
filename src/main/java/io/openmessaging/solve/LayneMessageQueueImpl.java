@@ -50,8 +50,8 @@ public class LayneMessageQueueImpl extends MessageQueue {
         AtomicLong offsetAdder = APPEND_OFFSET_MAP.computeIfAbsent(WalInfoBasic.getKey(topicId, queueId), k -> new AtomicLong());
         long result = offsetAdder.getAndIncrement();
         int walId = topicId % Constant.WAL_FILE_COUNT;
-        walList[walId].flush(topic, queueId, data, result);
-        asyncReadWal(walId);
+        int logCount = walList[walId].flush(topic, queueId, data, result);
+        asyncReadWal(walId, logCount);
         return result;
     }
 
@@ -78,8 +78,8 @@ public class LayneMessageQueueImpl extends MessageQueue {
         return readValueFromWAL(walId, offset, fetchNum, infoList);
     }
 
-    private void asyncReadWal(int walId) {
-        long curWalPos = (long) walList[walId].offset.logCount.get() * Constant.MSG_SIZE;
+    private void asyncReadWal(int walId, int logCount) {
+        long curWalPos = (long) logCount * Constant.MSG_SIZE;
         if (curWalPos > 0 && curWalPos % Constant.READ_BEFORE_QUERY == 0) {
             try {
                 partitions[walId].readBq.put(curWalPos - Constant.READ_BEFORE_QUERY);
