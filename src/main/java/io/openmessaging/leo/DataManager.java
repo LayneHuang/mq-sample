@@ -22,10 +22,11 @@ public class DataManager {
 
     public static final String DIR_PMEM = "/pmem";
     public static final Path DIR_ESSD = Paths.get("/essd");
-    //    public static final Path DIR_ESSD = Paths.get(System.getProperty("user.dir")).resolve("target").resolve("work");
+//        public static final Path DIR_ESSD = Paths.get(System.getProperty("user.dir")).resolve("target").resolve("work");
     public static final ConcurrentHashMap<String, AtomicLong> APPEND_OFFSET_MAP = new ConcurrentHashMap<>();
 
     public static final Path LOGS_PATH = DIR_ESSD.resolve("log");
+    public static final Path INDEX_PATH = DIR_ESSD.resolve("index");
 
     public static final short INDEX_BUF_SIZE = 8;
     public static final short INDEX_TEMP_BUF_SIZE = INDEX_BUF_SIZE * 2048;
@@ -38,6 +39,7 @@ public class DataManager {
         try {
             if (Files.notExists(LOGS_PATH)) {
                 Files.createDirectories(LOGS_PATH);
+                Files.createDirectories(INDEX_PATH);
             } else {
                 // 重启
                 Map<Integer, Map<Integer, PriorityQueue<OffsetBuf>>> topicQueueBufMap = new HashMap<>(100);
@@ -117,7 +119,7 @@ public class DataManager {
 
     public static Map<Integer, ByteBuffer> readLog(int topic, int queueId, long offset, int fetchNum) {
         Map<Integer, ByteBuffer> dataMap = null;
-        Path indexPath = DIR_ESSD.resolve(String.valueOf(topic)).resolve(String.valueOf(queueId));
+        Path indexPath = INDEX_PATH.resolve(String.valueOf(topic)).resolve(String.valueOf(queueId));
         try {
             if (Files.exists(indexPath)) {
                 FileChannel indexChannel = FileChannel.open(indexPath, StandardOpenOption.READ);

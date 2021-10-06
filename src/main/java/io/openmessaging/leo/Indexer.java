@@ -7,7 +7,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 
-import static io.openmessaging.leo.DataManager.*;
+import static io.openmessaging.leo.DataManager.INDEX_PATH;
+import static io.openmessaging.leo.DataManager.INDEX_TEMP_BUF_SIZE;
 
 public class Indexer {
 
@@ -20,10 +21,11 @@ public class Indexer {
     public Indexer(int topic, int queueId) {
         this.topic = topic;
         this.queueId = queueId;
-        Path topicDir = DIR_ESSD.resolve(String.valueOf(topic));
+        Path topicDir = INDEX_PATH.resolve(String.valueOf(topic));
         try {
             Files.createDirectories(topicDir);
             indexFile = topicDir.resolve(String.valueOf(queueId));
+            Files.deleteIfExists(indexFile);
             Files.createFile(indexFile);
         } catch (IOException e) {
         }
@@ -39,6 +41,7 @@ public class Indexer {
                 fileChannel.write(tempBuf);
                 fileChannel.force(false);
                 fileChannel.close();
+                System.out.println("idx F " + topic + " , " + queueId);
                 tempBuf = ByteBuffer.allocate(INDEX_TEMP_BUF_SIZE);
             }
             tempBuf.put(indexBuf);
