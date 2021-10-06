@@ -67,12 +67,14 @@ public class LayneMessageQueueImpl extends MessageQueue {
             infoList.addAll(partitionInfoReader.read(topicId, queueId, offset, partitionFetchNum));
         }
         int walFetchNum = fetchNum - partitionFetchNum;
-        long walFetchOffset = 0;
+        long walFetchOffset = offset;
         if (walFetchNum > 0) {
-            walFetchOffset = infoList.stream()
-                    .map(info -> info.infoPos)
-                    .max(Comparator.naturalOrder())
-                    .get();
+            if (!infoList.isEmpty()) {
+                walFetchOffset = infoList.stream()
+                        .map(info -> info.infoPos)
+                        .max(Comparator.naturalOrder())
+                        .get();
+            }
             infoList.addAll(walInfoReader.read(topicId, queueId, walFetchOffset, walFetchNum));
         }
         log.info("topic: {}, queueId: {}, offset: {}, fetchNum: {}, walOffset:{}, partitionCount: {}, partitionFetchNum: {}, walFetchNum: {}",
