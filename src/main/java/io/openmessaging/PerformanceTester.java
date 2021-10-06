@@ -12,7 +12,7 @@ public class PerformanceTester {
     static int i = 0;
 
     public static void main(String[] args) throws InterruptedException {
-        MessageQueue messageQueue = new LayneMessageQueueImpl();
+        MessageQueue messageQueue = new LeoMessageQueueImpl();
         long start = System.currentTimeMillis();
         Map<Integer, ByteBuffer> range;
         for (; i < 10000; i++) {
@@ -29,7 +29,7 @@ public class PerformanceTester {
         });
         Thread threadR1 = new Thread(() -> {
             System.out.println("边写边查 threadR1");
-            messageQueue.getRange("A", 1, 500, 100)
+            messageQueue.getRange("A", 1, 9950, 100)
                     .forEach((key, value) -> System.out.println(key + ": " + new String(value.array())));
         });
 //        Thread threadW2 = new Thread(() -> {

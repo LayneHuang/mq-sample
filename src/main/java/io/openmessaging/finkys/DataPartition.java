@@ -1,4 +1,4 @@
-package io.openmessaging.leo;
+package io.openmessaging.finkys;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -8,7 +8,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 
-import static io.openmessaging.leo.DataManager.*;
+import static io.openmessaging.leo.DataManager.LOGS_PATH;
+import static io.openmessaging.leo.DataManager.unmap;
 
 public class DataPartition {
 
@@ -17,6 +18,10 @@ public class DataPartition {
     public byte logNumAdder = Byte.MIN_VALUE;
     public FileChannel logFileChannel;
     public MappedByteBuffer logMappedBuf;
+
+    public FileChannel indexPosFileChannel;
+    public Path indexPosFile;
+    public ByteBuffer indexPosBuf = ByteBuffer.allocate(5);
 
     public DataPartition(byte id) {
         this.id = id;
@@ -34,6 +39,7 @@ public class DataPartition {
         setupLog();
     }
 
+
     private void setupLog() throws IOException {
         Path logFile = logDir.resolve(String.valueOf(logNumAdder));
         Files.createFile(logFile);
@@ -41,8 +47,7 @@ public class DataPartition {
         logMappedBuf = logFileChannel.map(FileChannel.MapMode.READ_WRITE, 0, 1024 * 1024 * 1024);// 1G
     }
 
-    public void writeLog(int topic, int queueId, long offset, ByteBuffer data, Indexer indexer) {
-        ByteBuffer indexBuf = ByteBuffer.allocate(INDEX_BUF_SIZE);
+    public void writeLog(int topic, int queueId, long offset, ByteBuffer data, MemoryIndexer indexer) {
         short msgLen = (short) data.limit();
         short dataSize = (short) (18 + msgLen);
         synchronized (indexer.LOCKER) {
@@ -60,15 +65,10 @@ public class DataPartition {
                 logMappedBuf.put(data);
                 logMappedBuf.force();
                 // index
-                indexBuf.put(id);
-                indexBuf.put(logNumAdder);
-                indexBuf.putInt(position);
-                indexBuf.putShort(dataSize);
-                indexBuf.flip();
+                indexer.writeIndex(id,logNumAdder,position,dataSize);
             } catch (IOException e) {
                 e.printStackTrace();
             }
-            indexer.writeIndex(indexBuf);
         }
     }
 

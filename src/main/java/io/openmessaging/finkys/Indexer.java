@@ -1,4 +1,4 @@
-package io.openmessaging.leo;
+package io.openmessaging.finkys;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -7,7 +7,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 
-import static io.openmessaging.leo.DataManager.*;
+import static io.openmessaging.leo.DataManager.DIR_ESSD;
+import static io.openmessaging.leo.DataManager.INDEX_TEMP_BUF_SIZE;
 
 public class Indexer {
 
@@ -20,31 +21,43 @@ public class Indexer {
     public Indexer(int topic, int queueId) {
         this.topic = topic;
         this.queueId = queueId;
-        Path topicDir = DIR_ESSD.resolve(String.valueOf(topic));
-        try {
-            Files.createDirectories(topicDir);
-            indexFile = topicDir.resolve(String.valueOf(queueId));
-            Files.createFile(indexFile);
-        } catch (IOException e) {
-        }
     }
 
-    public void writeIndex(ByteBuffer indexBuf) {
+    public boolean writeIndex(ByteBuffer indexBuf) {
+        boolean force = false;
         try {
             if (tempBuf.remaining() < indexBuf.limit()) {
                 tempBuf.flip();
+                if (indexFile == null){
+                    Path topicDir = DIR_ESSD.resolve(String.valueOf(topic));
+                    try {
+                        Files.createDirectories(topicDir);
+                        indexFile = topicDir.resolve(String.valueOf(queueId));
+                        Files.createFile(indexFile);
+                    } catch (IOException e) {
+                    }
+                }
                 FileChannel fileChannel = FileChannel.open(
                         indexFile, StandardOpenOption.WRITE, StandardOpenOption.APPEND
                 );
                 fileChannel.write(tempBuf);
                 fileChannel.force(false);
                 fileChannel.close();
+//                int partitionId = indexBuf.get() * INDEX_POS_SIZE;
+//                byte logNumAdder = indexBuf.get();
+//                int position = indexBuf.getInt();
+//                INDEXER_POS_BUF.put(partitionId, logNumAdder);
+//                INDEXER_POS_BUF.putInt(partitionId + 1, position);
+//                INDEXER_POS_BUF.force();
+//                indexBuf.rewind();
                 tempBuf = ByteBuffer.allocate(INDEX_TEMP_BUF_SIZE);
+                force = true;
             }
             tempBuf.put(indexBuf);
         } catch (IOException e) {
             e.printStackTrace();
         }
+        return force;
     }
 
     public ByteBuffer getTempBuf() {

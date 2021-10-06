@@ -5,7 +5,6 @@ import io.openmessaging.MessageQueue;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicLong;
 
 import static io.openmessaging.leo.DataManager.*;
 
@@ -15,14 +14,8 @@ import static io.openmessaging.leo.DataManager.*;
  */
 public class LeoMessageQueueImpl extends MessageQueue {
 
-//    private static final AtomicLong showLog = new AtomicLong();
-    private long startTime = 0;
-
     @Override
     public long append(String topic, int queueId, ByteBuffer data) {
-        if (startTime == 0){
-            startTime = System.currentTimeMillis();
-        }
         int topicHash = topic.hashCode();
         String key = (topicHash + " + " + queueId).intern();
         long offset = getOffset(key);
@@ -34,11 +27,6 @@ public class LeoMessageQueueImpl extends MessageQueue {
 
     @Override
     public Map<Integer, ByteBuffer> getRange(String topic, int queueId, long offset, int fetchNum) {
-//        if (showLog.getAndIncrement() == 0){
-//            System.out.println("第一阶段耗时:"+(System.currentTimeMillis() - startTime)+"ms");
-//        }else {
-//            return Collections.emptyMap();
-//        }
         int topicHash = topic.hashCode();
         Map<Integer, ByteBuffer> dataMap = readLog(topicHash, queueId, offset, fetchNum);
         if (dataMap != null) {
