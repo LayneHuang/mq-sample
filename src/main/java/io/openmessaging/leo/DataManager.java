@@ -90,7 +90,7 @@ public class DataManager {
                 // 根据 offset 排序后统一插入
                 topicQueueBufMap.forEach((topic, queueMap) -> {
                     queueMap.forEach((queueId, bufList) -> {
-                        Indexer indexer = INDEXERS.computeIfAbsent(topic + "+" + queueId, k -> new Indexer(topic, queueId));
+                        Indexer indexer = getIndexer(topic, queueId);
                         while (!bufList.isEmpty()) {
                             // TODO 先测试性能
 //                            indexer.writeIndex(bufList.poll().buf);
@@ -113,8 +113,12 @@ public class DataManager {
             PARTITIONS.put(id, partition);
             PARTITION_TL.set(partition);
         }
-        Indexer indexer = INDEXERS.computeIfAbsent(topic + "+" + queueId, k -> new Indexer(topic, queueId));
+        Indexer indexer = getIndexer(topic, queueId);
         partition.writeLog(topic, queueId, offset, data, indexer);
+    }
+
+    private static Indexer getIndexer(int topic, int queueId) {
+        return INDEXERS.computeIfAbsent(topic + "+" + queueId, k -> new Indexer(topic, queueId));
     }
 
     public static Map<Integer, ByteBuffer> readLog(int topic, int queueId, long offset, int fetchNum) {
@@ -123,7 +127,7 @@ public class DataManager {
             long start = offset * INDEX_BUF_SIZE;
             dataMap = new HashMap<>(fetchNum);
             int key = 0;
-            Indexer indexer = INDEXERS.computeIfAbsent(topic + "+" + queueId, k -> new Indexer(topic, queueId));
+            Indexer indexer = getIndexer(topic, queueId);
             for (ByteBuffer fullBuf : indexer.fullBufs) {
                 if (start >= INDEX_TEMP_BUF_SIZE) {
                     start -= INDEX_TEMP_BUF_SIZE;
