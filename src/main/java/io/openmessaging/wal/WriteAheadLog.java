@@ -81,10 +81,6 @@ public class WriteAheadLog {
             e.printStackTrace();
         }
         lock.writeLock().unlock();
-        // 间距100插入一索引, page内不冲突, 可以无需同步
-        if (pOffset % Constant.INDEX_DISTANCE == 0) {
-            saveIndex(topicId, queueId, infoPos);
-        }
         return logCount;
     }
 
@@ -96,7 +92,6 @@ public class WriteAheadLog {
                     Constant.WAL_BUFFER_SIZE
             );
         }
-//        walInfoBasic.show();
         infoMapBuffer = (MappedByteBuffer) walInfoBasic.encode(infoMapBuffer);
         infoMapBuffer.force();
     }
@@ -115,26 +110,18 @@ public class WriteAheadLog {
     }
 
     private void saveIndex(int topicId, int queueId, long walPos) {
-        ByteBuffer buffer = walIndex.computeIfAbsent(
-                WalInfoBasic.getKey(topicId, queueId),
-                k -> ByteBuffer.allocate(Constant.INDEX_CACHE_SIZE)
-        );
+        ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
         buffer.putLong(walPos);
-        if (!buffer.hasRemaining()) {
-            log.info("save idx, walPos: {}", walPos);
-            try (FileChannel channel = FileChannel.open(
-                    Constant.getWALIndexPath(topicId, queueId),
-                    StandardOpenOption.WRITE,
-                    StandardOpenOption.CREATE,
-                    StandardOpenOption.APPEND,
-                    StandardOpenOption.DSYNC
-            )) {
-                channel.write(buffer);
-                buffer.clear();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-            offset.walIndexPos += (Constant.INDEX_CACHE_SIZE / Long.BYTES);
+        try (FileChannel channel = FileChannel.open(
+                Constant.getWALIndexPath(topicId, queueId),
+                StandardOpenOption.WRITE,
+                StandardOpenOption.CREATE,
+                StandardOpenOption.APPEND
+        )) {
+            channel.write(buffer);
+        } catch (IOException e) {
+            e.printStackTrace();
         }
+        offset.walIndexPos += Long.BYTES;
     }
 }

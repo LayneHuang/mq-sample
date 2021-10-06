@@ -19,14 +19,24 @@ public class WalInfoBasic {
 
     public int queueId;
 
+    public int pOffset;
+
     public int valueSize;
 
     public long valuePos;
+
+    public int infoPos;
 
     public WalInfoBasic() {
     }
 
     public WalInfoBasic(int valueSize, long valuePos) {
+        this.valueSize = valueSize;
+        this.valuePos = valuePos;
+    }
+
+    public WalInfoBasic(int infoPos, int valueSize, long valuePos) {
+        this.infoPos = infoPos;
         this.valueSize = valueSize;
         this.valuePos = valuePos;
     }
@@ -44,6 +54,14 @@ public class WalInfoBasic {
         this.valuePos = valuePos;
     }
 
+    public WalInfoBasic(int topicId, int queueId, int pOffset, int valueSize, long valuePos) {
+        this.topicId = topicId;
+        this.queueId = queueId;
+        this.pOffset = pOffset;
+        this.valueSize = valueSize;
+        this.valuePos = valuePos;
+    }
+
     public ByteBuffer encode() {
         ByteBuffer infoBuffer = ByteBuffer.allocate(Constant.MSG_SIZE);
         return this.encode(infoBuffer);
@@ -54,17 +72,19 @@ public class WalInfoBasic {
         infoBuffer.putInt(topicId);
         // queueId
         infoBuffer.putInt(queueId);
+        // pOffset
+        infoBuffer.putInt(valueSize);
         // buffer size
         infoBuffer.putInt(valueSize);
         // buffer pos
         infoBuffer.putLong(valuePos);
-//        log.info("info buffer size: {}", infoBuffer.position());
         return infoBuffer;
     }
 
     public void decode(ByteBuffer buffer) {
         this.topicId = buffer.getInt();
         this.queueId = buffer.getInt();
+        this.pOffset = buffer.getInt();
         this.valueSize = buffer.getInt();
         this.valuePos = buffer.getLong();
     }
@@ -82,6 +102,7 @@ public class WalInfoBasic {
     }
 
     public ByteBuffer encodeSimple(ByteBuffer infoBuffer) {
+        infoBuffer.putInt(infoPos);
         // buffer size
         infoBuffer.putInt(valueSize);
         // buffer pos
@@ -89,9 +110,11 @@ public class WalInfoBasic {
         return infoBuffer;
     }
 
-    public void decodeSimple(ByteBuffer buffer) {
+    public ByteBuffer decodeSimple(ByteBuffer buffer) {
+        this.infoPos = buffer.getInt();
         this.valueSize = buffer.getInt();
         this.valuePos = buffer.getLong();
+        return buffer;
     }
 
     public void show() {

@@ -11,10 +11,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -32,6 +29,7 @@ public class LayneMessageQueueImpl extends MessageQueue {
     private static final Broker[] brokers = new Broker[Constant.WAL_FILE_COUNT];
 
     private static final PartitionInfoReader partitionInfoReader = new PartitionInfoReader();
+
     private static final WalInfoReader walInfoReader = new WalInfoReader();
 
     public LayneMessageQueueImpl() {
@@ -68,16 +66,17 @@ public class LayneMessageQueueImpl extends MessageQueue {
             partitionFetchNum = (int) (Math.min(partitionCount, offset + fetchNum) - offset);
             infoList.addAll(partitionInfoReader.read(topicId, queueId, offset, partitionFetchNum));
         }
-        long walFetchOffset = offset + partitionFetchNum;
         int walFetchNum = fetchNum - partitionFetchNum;
+        long walFetchOffset = 0;
         if (walFetchNum > 0) {
-            infoList.addAll(walInfoReader.read(
-                    topicId, queueId, walFetchOffset,
-                    walFetchNum, walList[walId].offset.walIndexPos
-            ));
+            walFetchOffset = infoList.stream()
+                    .map(info -> info.infoPos)
+                    .max(Comparator.naturalOrder())
+                    .get();
+            infoList.addAll(walInfoReader.read(topicId, queueId, walFetchOffset, walFetchNum));
         }
-//        log.info("topic: {}, queueId: {}, offset: {}, fetchNum: {}, partitionCount: {}, partitionFetchNum: {}, walFetchNum: {}",
-//                topic, queueId, offset, fetchNum, partitionCount, partitionFetchNum, walFetchNum);
+        log.info("topic: {}, queueId: {}, offset: {}, fetchNum: {}, walOffset:{}, partitionCount: {}, partitionFetchNum: {}, walFetchNum: {}",
+                topic, queueId, offset, fetchNum, walFetchOffset, partitionCount, partitionFetchNum, walFetchNum);
         return readValueFromWAL(walId, offset, fetchNum, infoList);
     }
 

@@ -32,10 +32,10 @@ public class PartitionInfoReader implements InfoReader {
             while (size < fetchNum) {
                 infoBuffer.flip();
                 while (infoBuffer.hasRemaining()) {
-                    int infoSize = infoBuffer.getInt();
-                    long infoPos = infoBuffer.getLong();
+                    WalInfoBasic infoBasic = new WalInfoBasic();
+                    infoBuffer = infoBasic.decodeSimple(infoBuffer);
 //                    log.info("info size: {}, pos: {}", infoSize, infoPos);
-                    result.add(new WalInfoBasic(topicId, queueId, infoSize, infoPos));
+                    result.add(infoBasic);
                     size++;
                 }
                 infoBuffer.clear();

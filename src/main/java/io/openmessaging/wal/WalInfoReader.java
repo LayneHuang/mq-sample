@@ -17,12 +17,6 @@ import java.util.List;
  */
 public class WalInfoReader implements InfoReader {
 
-    public List<WalInfoBasic> read(int topicId, int queueId, long offset,
-                                   int fetchNum, int indexOffset) {
-        long walPos = getReadRangeFromIndex(topicId, queueId, offset, indexOffset);
-        return read(topicId, queueId, walPos, fetchNum);
-    }
-
     @Override
     public List<WalInfoBasic> read(int topicId, int queueId, long offset, int fetchNum) {
         List<WalInfoBasic> result = new ArrayList<>();
@@ -35,7 +29,7 @@ public class WalInfoReader implements InfoReader {
                     if (result.size() >= fetchNum) break;
                     WalInfoBasic infoBasic = new WalInfoBasic();
                     infoBasic.decode(buffer);
-                    if (infoBasic.topicId == topicId && infoBasic.queueId == queueId) {
+                    if (infoBasic.topicId == topicId && infoBasic.queueId == queueId && infoBasic.pOffset >= offset) {
                         result.add(infoBasic);
                     }
                 }
@@ -44,19 +38,5 @@ public class WalInfoReader implements InfoReader {
             e.printStackTrace();
         }
         return result;
-    }
-
-    private long getReadRangeFromIndex(int topicId, int queueId, long offset, int indexOffset) {
-        long indexBeginPos = Math.min(offset / Constant.INDEX_DISTANCE, indexOffset);
-        long walBeginPos = 0;
-        ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
-        try (FileChannel indexChannel = FileChannel.open(
-                Constant.getWALIndexPath(topicId, queueId), StandardOpenOption.READ)) {
-            indexChannel.read(buffer, indexBeginPos);
-            walBeginPos = buffer.getLong();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return walBeginPos;
     }
 }

@@ -17,9 +17,9 @@ public class Partition extends Thread {
 
     private final int walId;
 
-    public final BlockingQueue<Long> readBq = new LinkedBlockingQueue<>(Constant.CACHE_LEN);
+    public final BlockingQueue<Long> readBq = new LinkedBlockingQueue<>(Constant.LOG_SEGMENT_SIZE);
 
-    public final BlockingQueue<PageForWrite> writeBq = new LinkedBlockingQueue<>(Constant.CACHE_LEN);
+    public final BlockingQueue<PageForWrite> writeBq = new LinkedBlockingQueue<>(Constant.LOG_SEGMENT_SIZE);
 
     private final Page page = new Page();
 
@@ -35,10 +35,13 @@ public class Partition extends Thread {
                 if (begin == -1) break;
                 // log.info("begin: {}", begin);
                 MappedByteBuffer mappedBuffer = infoChannel.map(FileChannel.MapMode.READ_ONLY, begin, Constant.READ_BEFORE_QUERY);
+                int pos = (int) begin;
                 while (mappedBuffer.hasRemaining()) {
                     WalInfoBasic msgInfo = new WalInfoBasic();
                     msgInfo.decode(mappedBuffer);
 //                    msgInfo.show();
+                    msgInfo.infoPos = pos;
+                    pos += Constant.MSG_SIZE;
                     ByteBuffer buffer = page.partition(msgInfo);
                     if (!buffer.hasRemaining()) {
                         PageForWrite pageForWrite = new PageForWrite(msgInfo.topicId, msgInfo.queueId, buffer);
