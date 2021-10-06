@@ -115,7 +115,7 @@ public class LayneMessageQueueImpl extends MessageQueue {
 
     private void check(long offset, int[] ansSize, long[] ansPos, Map<Integer, ByteBuffer> dataMap) {
         for (int i = 0; i < ansPos.length; ++i) {
-            log.info("ans, offset: {}, size: {}, pos: {}, res: {}", (offset + i), ansSize[i], ansPos[i], new String(dataMap.get((int) (offset + i)).array()));
+            log.debug("ans, offset: {}, size: {}, pos: {}, res: {}", (offset + i), ansSize[i], ansPos[i], new String(dataMap.get((int) (offset + i)).array()));
         }
     }
 }

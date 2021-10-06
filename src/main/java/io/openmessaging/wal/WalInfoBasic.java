@@ -72,6 +72,8 @@ public class WalInfoBasic {
         infoBuffer.putInt(topicId);
         // queueId
         infoBuffer.putInt(queueId);
+        // infoPos
+//        infoBuffer.putInt(infoPos);
         // pOffset
         infoBuffer.putInt(valueSize);
         // buffer size
@@ -84,6 +86,7 @@ public class WalInfoBasic {
     public void decode(ByteBuffer buffer) {
         this.topicId = buffer.getInt();
         this.queueId = buffer.getInt();
+//        this.infoPos = buffer.getInt();
         this.pOffset = buffer.getInt();
         this.valueSize = buffer.getInt();
         this.valuePos = buffer.getLong();
@@ -118,6 +121,6 @@ public class WalInfoBasic {
     }
 
     public void show() {
-        log.info("topic: {}, queue: {}, pos: {}, size: {}", topicId, queueId, valuePos, valueSize);
+        log.debug("topic: {}, queue: {}, pos: {}, size: {}", topicId, queueId, valuePos, valueSize);
     }
 }

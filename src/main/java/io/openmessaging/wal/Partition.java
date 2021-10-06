@@ -33,7 +33,7 @@ public class Partition extends Thread {
             while (true) {
                 long begin = readBq.take();
                 if (begin == -1) break;
-                // log.info("begin: {}", begin);
+                // log.debug("begin: {}", begin);
                 MappedByteBuffer mappedBuffer = infoChannel.map(FileChannel.MapMode.READ_ONLY, begin, Constant.READ_BEFORE_QUERY);
                 int pos = (int) begin;
                 while (mappedBuffer.hasRemaining()) {

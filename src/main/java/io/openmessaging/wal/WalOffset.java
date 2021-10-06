@@ -13,14 +13,9 @@ public class WalOffset {
     public int logCount;
 
     /**
-     * wal 索引偏移
-     */
-    public int walIndexPos;
-
-    /**
      * wal基础信息偏移
      */
-    public long infoPos;
+    public int infoPos;
 
     /**
      * wal内容(buffer)偏移

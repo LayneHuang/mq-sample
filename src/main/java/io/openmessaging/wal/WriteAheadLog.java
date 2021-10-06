@@ -33,7 +33,6 @@ public class WriteAheadLog {
     private MappedByteBuffer infoMapBuffer;
     private MappedByteBuffer valueMapBuffer;
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
-    private final Map<String, ByteBuffer> walIndex = new HashMap<>();
 
     public WriteAheadLog(int walId) {
         this.walId = walId;
@@ -54,10 +53,10 @@ public class WriteAheadLog {
                     StandardOpenOption.WRITE,
                     StandardOpenOption.CREATE
             );
-            offset.infoPos = infoChannel.position();
-            offset.valuePos = valueChannel.position();
-            offset.logCount = (int) (offset.infoPos / Constant.MSG_SIZE);
-//            log.info("init info pos: {}, value pos: {}, logCount: {}", offset.infoPos, offset.valuePos, offset.logCount);
+//            offset.infoPos = infoChannel.position();
+//            offset.valuePos = valueChannel.position();
+//            offset.logCount = (int) (offset.infoPos / Constant.MSG_SIZE);
+//            log.debug("init info pos: {}, value pos: {}, logCount: {}", offset.infoPos, offset.valuePos, offset.logCount);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -66,14 +65,13 @@ public class WriteAheadLog {
     public int flush(String topic, int queueId, ByteBuffer buffer, long pOffset) {
         int topicId = IdGenerator.getId(topic);
         WalInfoBasic walInfoBasic = new WalInfoBasic(topicId, queueId, buffer.limit());
-        long infoPos = 0;
         int logCount = 0;
         lock.writeLock().lock();
         try {
+            walInfoBasic.infoPos = offset.infoPos;
             walInfoBasic.valuePos = offset.valuePos;
             putInfo(walInfoBasic);
             putValue(buffer);
-            infoPos = offset.infoPos;
             offset.infoPos += Constant.MSG_SIZE;
             offset.valuePos += walInfoBasic.valueSize;
             logCount = ++offset.logCount;
@@ -107,21 +105,5 @@ public class WriteAheadLog {
         }
         valueMapBuffer.put(buffer);
         valueMapBuffer.force();
-    }
-
-    private void saveIndex(int topicId, int queueId, long walPos) {
-        ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
-        buffer.putLong(walPos);
-        try (FileChannel channel = FileChannel.open(
-                Constant.getWALIndexPath(topicId, queueId),
-                StandardOpenOption.WRITE,
-                StandardOpenOption.CREATE,
-                StandardOpenOption.APPEND
-        )) {
-            channel.write(buffer);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        offset.walIndexPos += Long.BYTES;
     }
 }

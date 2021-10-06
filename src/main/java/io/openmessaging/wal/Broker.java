@@ -36,7 +36,7 @@ public class Broker extends Thread {
 
     @Override
     public void run() {
-//        log.info("Broker :{} , Start", walId);
+//        log.debug("Broker :{} , Start", walId);
         while (true) {
             PageForWrite page = null;
             try {
@@ -45,7 +45,7 @@ public class Broker extends Thread {
                 e.printStackTrace();
             }
             if (page == null) {
-                log.info("Broker :{} , End", walId);
+                log.debug("Broker :{} , End", walId);
                 break;
             }
             int msgCount = page.buffer.position() / Constant.SIMPLE_MSG_SIZE;
@@ -54,7 +54,7 @@ public class Broker extends Thread {
                     WalInfoBasic.getKey(page.topicId, page.queueId),
                     k -> new AtomicLong()
             ).addAndGet(msgCount);
-//            log.info("write, topic:{}, queue:{}, pCount:{}", page.topicId, page.queueId, pCount);
+//            log.debug("write, topic:{}, queue:{}, pCount:{}", page.topicId, page.queueId, pCount);
         }
     }
 
