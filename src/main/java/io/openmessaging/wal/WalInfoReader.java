@@ -16,15 +16,21 @@ import java.util.List;
  * @since 2021/10/5
  */
 public class WalInfoReader implements InfoReader {
+
+    public List<WalInfoBasic> read(int topicId, int queueId, long offset,
+                                   int fetchNum, int indexOffset) {
+        long walPos = getReadRangeFromIndex(topicId, queueId, offset, indexOffset);
+        return read(topicId, queueId, walPos, fetchNum);
+    }
+
     @Override
     public List<WalInfoBasic> read(int topicId, int queueId, long offset, int fetchNum) {
         List<WalInfoBasic> result = new ArrayList<>();
-        long walPos = getReadRangeFromIndex(topicId, queueId, offset);
         ByteBuffer buffer = ByteBuffer.allocate(Constant.READ_BEFORE_QUERY);
         try (FileChannel indexChannel = FileChannel.open(
                 Constant.getWALIndexPath(topicId, queueId), StandardOpenOption.READ)) {
             while (result.size() < fetchNum) {
-                indexChannel.read(buffer, walPos);
+                indexChannel.read(buffer, offset);
                 while (buffer.hasRemaining()) {
                     if (result.size() >= fetchNum) break;
                     WalInfoBasic infoBasic = new WalInfoBasic();
@@ -40,8 +46,8 @@ public class WalInfoReader implements InfoReader {
         return result;
     }
 
-    private long getReadRangeFromIndex(int topicId, int queueId, long offset) {
-        long indexBeginPos = offset / Constant.INDEX_DISTANCE;
+    private long getReadRangeFromIndex(int topicId, int queueId, long offset, int indexOffset) {
+        long indexBeginPos = Math.min(offset / Constant.INDEX_DISTANCE, indexOffset);
         long walBeginPos = 0;
         ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
         try (FileChannel indexChannel = FileChannel.open(

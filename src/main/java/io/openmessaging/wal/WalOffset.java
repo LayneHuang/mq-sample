@@ -1,7 +1,5 @@
 package io.openmessaging.wal;
 
-import java.util.concurrent.atomic.AtomicInteger;
-
 /**
  * WALInfo
  *
@@ -13,6 +11,11 @@ public class WalOffset {
      * write ahead log 个数
      */
     public int logCount;
+
+    /**
+     * wal 索引偏移
+     */
+    public int walIndexPos;
 
     /**
      * wal基础信息偏移

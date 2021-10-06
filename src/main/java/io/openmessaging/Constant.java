@@ -42,7 +42,7 @@ public class Constant {
 
     public static final int WRITE_BEFORE_QUERY = SIMPLE_MSG_SIZE * 1024;
 
-    public static final int INDEX_DISTANCE = 100;
+    public static final int INDEX_DISTANCE = 10;
 
     public static final int INDEX_CACHE_SIZE = 8 * 1024;
 
@@ -60,6 +60,10 @@ public class Constant {
 
     public static Path getWALIndexPath(int topicId, int queueId) {
         return DIR_ESSD.resolve("IDX-" + topicId + "-" + queueId + ".md");
+    }
+
+    public static Path getMetaPath() {
+        return DIR_ESSD.resolve("META.md");
     }
 
     public static int hash(String topic) {

@@ -122,16 +122,19 @@ public class WriteAheadLog {
         buffer.putLong(walPos);
         if (!buffer.hasRemaining()) {
             log.info("save idx, walPos: {}", walPos);
-            try (FileChannel channel = FileChannel.open(Constant.getWALIndexPath(topicId, queueId),
+            try (FileChannel channel = FileChannel.open(
+                    Constant.getWALIndexPath(topicId, queueId),
                     StandardOpenOption.WRITE,
                     StandardOpenOption.CREATE,
                     StandardOpenOption.APPEND,
                     StandardOpenOption.DSYNC
             )) {
                 channel.write(buffer);
+                buffer.clear();
             } catch (IOException e) {
                 e.printStackTrace();
             }
+            offset.walIndexPos += (Constant.INDEX_CACHE_SIZE / Long.BYTES);
         }
     }
 }

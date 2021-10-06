@@ -12,7 +12,7 @@ public class PerformanceTester {
     static int i = 0;
 
     public static void main(String[] args) throws InterruptedException {
-        MessageQueue messageQueue = new LeoMessageQueueImpl();
+        MessageQueue messageQueue = new LayneMessageQueueImpl();
         long start = System.currentTimeMillis();
         Map<Integer, ByteBuffer> range;
         for (; i < 10000; i++) {

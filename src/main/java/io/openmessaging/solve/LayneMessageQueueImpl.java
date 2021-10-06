@@ -31,8 +31,8 @@ public class LayneMessageQueueImpl extends MessageQueue {
 
     private static final Broker[] brokers = new Broker[Constant.WAL_FILE_COUNT];
 
-    private static final InfoReader partitionInfoReader = new PartitionInfoReader();
-    private static final InfoReader walInfoReader = new WalInfoReader();
+    private static final PartitionInfoReader partitionInfoReader = new PartitionInfoReader();
+    private static final WalInfoReader walInfoReader = new WalInfoReader();
 
     public LayneMessageQueueImpl() {
         for (int i = 0; i < Constant.WAL_FILE_COUNT; ++i) {
@@ -71,7 +71,10 @@ public class LayneMessageQueueImpl extends MessageQueue {
         long walFetchOffset = offset + partitionFetchNum;
         int walFetchNum = fetchNum - partitionFetchNum;
         if (walFetchNum > 0) {
-            infoList.addAll(walInfoReader.read(topicId, queueId, walFetchOffset, walFetchNum));
+            infoList.addAll(walInfoReader.read(
+                    topicId, queueId, walFetchOffset,
+                    walFetchNum, walList[walId].offset.walIndexPos
+            ));
         }
         log.info("topic: {}, queueId: {}, offset: {}, fetchNum: {}, partitionCount: {}, partitionFetchNum: {}, walFetchNum: {}",
                 topic, queueId, offset, fetchNum, partitionCount, partitionFetchNum, walFetchNum);
