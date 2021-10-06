@@ -14,8 +14,13 @@ import static io.openmessaging.leo.DataManager.*;
  */
 public class LeoMessageQueueImpl extends MessageQueue {
 
+    long start = 0;
+
     @Override
     public long append(String topic, int queueId, ByteBuffer data) {
+        if (start == 0) {
+            start = System.currentTimeMillis();
+        }
         int topicHash = topic.hashCode();
         String key = (topicHash + " + " + queueId).intern();
         long offset = getOffset(key);
@@ -27,6 +32,10 @@ public class LeoMessageQueueImpl extends MessageQueue {
 
     @Override
     public Map<Integer, ByteBuffer> getRange(String topic, int queueId, long offset, int fetchNum) {
+        if (start != -1) {
+            System.out.println("75G cost: " + (System.currentTimeMillis() - start));
+            start = -1;
+        }
         int topicHash = topic.hashCode();
         Map<Integer, ByteBuffer> dataMap = readLog(topicHash, queueId, offset, fetchNum);
         if (dataMap != null) {
