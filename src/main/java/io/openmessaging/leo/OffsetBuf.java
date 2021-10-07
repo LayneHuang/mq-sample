@@ -6,10 +6,10 @@ import static io.openmessaging.leo.DataManager.INDEX_TEMP_BUF_SIZE;
 
 public class OffsetBuf {
 
-    public long offset;
+    public int offset;
     public ByteBuffer buf;
 
-    public OffsetBuf(long offset, ByteBuffer buf) {
+    public OffsetBuf(int offset, ByteBuffer buf) {
         this.offset = offset;
         this.buf = buf;
     }

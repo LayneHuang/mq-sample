@@ -11,6 +11,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.PriorityQueue;
@@ -22,11 +23,12 @@ public class DataManager {
 
     public static final String DIR_PMEM = "/pmem";
     public static final Path DIR_ESSD = Paths.get("/essd");
-    //    public static final Path DIR_ESSD = Paths.get(System.getProperty("user.dir")).resolve("target").resolve("work");
+//        public static final Path DIR_ESSD = Paths.get(System.getProperty("user.dir")).resolve("target").resolve("work");
     public static final ConcurrentHashMap<String, AtomicLong> APPEND_OFFSET_MAP = new ConcurrentHashMap<>();
 
     public static final Path LOGS_PATH = DIR_ESSD.resolve("log");
 
+    public static final short MSG_META_SIZE = 14;
     public static final short INDEX_BUF_SIZE = 8;
     public static final short INDEX_TEMP_BUF_NUM = 2048;
     public static final short INDEX_TEMP_BUF_SIZE = INDEX_BUF_SIZE * INDEX_TEMP_BUF_NUM;
@@ -56,13 +58,13 @@ public class DataManager {
                                     int position = logBuf.position();
                                     int topic = logBuf.getInt();
                                     int queueId = logBuf.getInt();
-                                    long offset = logBuf.getLong();
+                                    int offset = logBuf.getInt();
                                     short msgLen = logBuf.getShort();
                                     if (msgLen == 0) break;
                                     for (int i = 0; i < msgLen; i++) {
                                         logBuf.get();
                                     }
-                                    short dataSize = (short) (18 + msgLen);
+                                    short dataSize = (short) (MSG_META_SIZE + msgLen);
                                     // index
                                     indexBuf.put(partitionId);
                                     indexBuf.put(logNumAdder);
@@ -72,7 +74,7 @@ public class DataManager {
                                     topicQueueBufMap.putIfAbsent(topic, new HashMap<>());
                                     Map<Integer, PriorityQueue<OffsetBuf>> queueMap = topicQueueBufMap.get(topic);
                                     queueMap.putIfAbsent(queueId,
-                                            new PriorityQueue<>((o1, o2) -> (int) (o1.offset - o2.offset))
+                                            new PriorityQueue<>(Comparator.comparingInt(o -> o.offset))
                                     );
                                     PriorityQueue<OffsetBuf> bufList = queueMap.get(queueId);
                                     bufList.add(new OffsetBuf(offset, indexBuf));
@@ -105,7 +107,7 @@ public class DataManager {
 
     }
 
-    public static void writeLog(int topic, int queueId, long offset, ByteBuffer data) {
+    public static void writeLog(int topic, int queueId, int offset, ByteBuffer data) {
         DataPartition partition = PARTITION_TL.get();
         if (partition == null) {
             int id = PARTITION_ID_ADDER.getAndIncrement();
@@ -121,10 +123,10 @@ public class DataManager {
         return INDEXERS.computeIfAbsent(topic + "+" + queueId, k -> new Indexer(topic, queueId));
     }
 
-    public static Map<Integer, ByteBuffer> readLog(int topic, int queueId, long offset, int fetchNum) {
+    public static Map<Integer, ByteBuffer> readLog(int topic, int queueId, int offset, int fetchNum) {
         Map<Integer, ByteBuffer> dataMap = null;
         try {
-            long start = offset * INDEX_BUF_SIZE;
+            long start = (long) offset * INDEX_BUF_SIZE;
             dataMap = new HashMap<>(fetchNum);
             int key = 0;
             Indexer indexer = getIndexer(topic, queueId);
@@ -174,15 +176,15 @@ public class DataManager {
     private static void readLog(Map<Integer, ByteBuffer> dataMap, int key, ByteBuffer indexBuf) throws IOException {
         byte partitionId = indexBuf.get();
         byte logNum = indexBuf.get();
-        int position = indexBuf.getInt() + 18;
-        short dataSize = (short) (indexBuf.getShort() - 18);
+        int position = indexBuf.getInt() + MSG_META_SIZE;
+        short dataSize = (short) (indexBuf.getShort() - MSG_META_SIZE);
         Path logFile = LOGS_PATH.resolve(String.valueOf(partitionId)).resolve(String.valueOf(logNum));
         FileChannel logChannel = FileChannel.open(logFile, StandardOpenOption.READ);
 //        MappedByteBuffer dataBuf = logChannel.map(FileChannel.MapMode.READ_ONLY, position, dataSize);
         try {
 //            int topic = dataBuf.getInt();
 //            int queueId = dataBuf.getInt();
-//            long offset = dataBuf.getLong();
+//            int offset = dataBuf.getInt();
 //            short msgLen = dataBuf.getShort();
             ByteBuffer msgBuf = ByteBuffer.allocate(dataSize);
             logChannel.read(msgBuf, position);

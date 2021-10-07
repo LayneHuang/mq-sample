@@ -4,7 +4,9 @@ import io.openmessaging.MessageQueue;
 
 import java.nio.ByteBuffer;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 import static io.openmessaging.leo.DataManager.*;
 
@@ -16,17 +18,26 @@ public class LeoMessageQueueImpl extends MessageQueue {
 
     long start = 0;
 
+    Set<String> topicSet = new HashSet<>(100);
+
     @Override
     public long append(String topic, int queueId, ByteBuffer data) {
         if (start == 0) {
             start = System.currentTimeMillis();
+        }
+        if (!topicSet.contains(topic)) {
+            topicSet.add(topic);
+            System.out.println("tpc " + topic);
+        }
+        if (queueId > Short.MAX_VALUE) {
+            System.out.println("queueId " + queueId);
         }
         int topicHash = topic.hashCode();
         String key = (topicHash + " + " + queueId).intern();
         long offset = getOffset(key);
         // 更新最大位点
         // 保存 data 中的数据
-        writeLog(topicHash, queueId, offset, data);
+        writeLog(topicHash, queueId, (int) offset, data);
         return offset;
     }
 
@@ -37,7 +48,7 @@ public class LeoMessageQueueImpl extends MessageQueue {
             start = -1;
         }
         int topicHash = topic.hashCode();
-        Map<Integer, ByteBuffer> dataMap = readLog(topicHash, queueId, offset, fetchNum);
+        Map<Integer, ByteBuffer> dataMap = readLog(topicHash, queueId, (int) offset, fetchNum);
         if (dataMap != null) {
             return dataMap;
         } else {

@@ -41,10 +41,10 @@ public class DataPartition {
         logMappedBuf = logFileChannel.map(FileChannel.MapMode.READ_WRITE, 0, 1024 * 1024 * 1024);// 1G
     }
 
-    public void writeLog(int topic, int queueId, long offset, ByteBuffer data, Indexer indexer) {
+    public void writeLog(int topic, int queueId, int offset, ByteBuffer data, Indexer indexer) {
         ByteBuffer indexBuf = ByteBuffer.allocate(INDEX_BUF_SIZE);
         short msgLen = (short) data.limit();
-        short dataSize = (short) (18 + msgLen);
+        short dataSize = (short) (MSG_META_SIZE + msgLen);
         synchronized (indexer.LOCKER) {
             try {
                 if (logMappedBuf.remaining() < dataSize) {
@@ -55,7 +55,7 @@ public class DataPartition {
                 int position = logMappedBuf.position();
                 logMappedBuf.putInt(topic); // 4
                 logMappedBuf.putInt(queueId); // 4
-                logMappedBuf.putLong(offset); // 8
+                logMappedBuf.putInt(offset); // 4
                 logMappedBuf.putShort(msgLen); // 2
                 logMappedBuf.put(data);
                 logMappedBuf.force();
