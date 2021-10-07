@@ -22,8 +22,7 @@ public class LeoMessageQueueImpl extends MessageQueue {
             start = System.currentTimeMillis();
         }
         byte topicId = getTopicId(topic);
-        String key = (topicId + "+" + queueId).intern();
-        long offset = getOffset(key);
+        long offset = getOffset(topicId, (short) queueId);
         // 更新最大位点
         // 保存 data 中的数据
         writeLog(topicId, (short) queueId, (int) offset, data);
@@ -33,7 +32,8 @@ public class LeoMessageQueueImpl extends MessageQueue {
     private byte getTopicId(String topic) {
         byte topicId = (byte) (topic.charAt(5) - '0');
         if (topic.length() == 7) {
-            topicId = (byte) (topic.charAt(6) - '0');
+            topicId *= 10;
+            topicId += (byte) (topic.charAt(6) - '0');
         }
         return topicId;
     }
