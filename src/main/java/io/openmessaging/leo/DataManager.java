@@ -22,7 +22,7 @@ public class DataManager {
 
     public static final String DIR_PMEM = "/pmem";
     public static final Path DIR_ESSD = Paths.get("/essd");
-//        public static final Path DIR_ESSD = Paths.get(System.getProperty("user.dir")).resolve("target").resolve("work");
+    //    public static final Path DIR_ESSD = Paths.get(System.getProperty("user.dir")).resolve("target").resolve("work");
     public static final ConcurrentHashMap<String, AtomicLong> APPEND_OFFSET_MAP = new ConcurrentHashMap<>();
 
     public static final Path LOGS_PATH = DIR_ESSD.resolve("log");
@@ -129,11 +129,11 @@ public class DataManager {
             int key = 0;
             Indexer indexer = getIndexer(topic, queueId);
             for (int i = 0; i < indexer.fullBufs.size(); i++) {
-                ByteBuffer fullBuf = indexer.fullBufs.get(i);
                 if (start >= INDEX_TEMP_BUF_SIZE) {
                     start -= INDEX_TEMP_BUF_SIZE;
                     continue;
                 }
+                ByteBuffer fullBuf = indexer.fullBufs.get(i);
                 if (start > 0) {
                     fullBuf.position((int) start);
                 }
@@ -167,6 +167,10 @@ public class DataManager {
         return dataMap;
     }
 
+    // 75G 750s
+    // 50G 500s
+    // 1250s
+
     private static void readLog(Map<Integer, ByteBuffer> dataMap, int key, ByteBuffer indexBuf) throws IOException {
         byte partitionId = indexBuf.get();
         byte logNum = indexBuf.get();
@@ -174,15 +178,14 @@ public class DataManager {
         short dataSize = (short) (indexBuf.getShort() - 18);
         Path logFile = LOGS_PATH.resolve(String.valueOf(partitionId)).resolve(String.valueOf(logNum));
         FileChannel logChannel = FileChannel.open(logFile, StandardOpenOption.READ);
-        MappedByteBuffer dataBuf = logChannel.map(FileChannel.MapMode.READ_ONLY, position, dataSize);
+//        MappedByteBuffer dataBuf = logChannel.map(FileChannel.MapMode.READ_ONLY, position, dataSize);
         try {
 //            int topic = dataBuf.getInt();
 //            int queueId = dataBuf.getInt();
 //            long offset = dataBuf.getLong();
 //            short msgLen = dataBuf.getShort();
             ByteBuffer msgBuf = ByteBuffer.allocate(dataSize);
-            msgBuf.put(dataBuf);
-            unmap(dataBuf);
+            logChannel.read(msgBuf, position);
             logChannel.close();
             msgBuf.flip();
             dataMap.put(key, msgBuf);
