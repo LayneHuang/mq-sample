@@ -40,7 +40,7 @@ public class Partition extends Thread {
                     WalInfoBasic msgInfo = new WalInfoBasic();
                     msgInfo.decode(mappedBuffer);
 //                    msgInfo.show();
-                    msgInfo.infoPos = pos;
+//                    msgInfo.infoPos = pos;
                     pos += Constant.MSG_SIZE;
                     ByteBuffer buffer = page.partition(msgInfo);
                     if (!buffer.hasRemaining()) {

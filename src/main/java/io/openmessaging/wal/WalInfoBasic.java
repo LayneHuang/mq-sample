@@ -19,26 +19,18 @@ public class WalInfoBasic {
 
     public int queueId;
 
-    public int pOffset;
+    public long pOffset;
 
     public int valueSize;
 
-    public long valuePos;
-
-    public int infoPos;
+    public ByteBuffer value;
 
     public WalInfoBasic() {
     }
 
-    public WalInfoBasic(int valueSize, long valuePos) {
-        this.valueSize = valueSize;
-        this.valuePos = valuePos;
-    }
-
-    public WalInfoBasic(int infoPos, int valueSize, long valuePos) {
-        this.infoPos = infoPos;
-        this.valueSize = valueSize;
-        this.valuePos = valuePos;
+    public WalInfoBasic(int topicId, int queueId) {
+        this.topicId = topicId;
+        this.queueId = queueId;
     }
 
     public WalInfoBasic(int topicId, int queueId, int valueSize) {
@@ -47,24 +39,25 @@ public class WalInfoBasic {
         this.valueSize = valueSize;
     }
 
-    public WalInfoBasic(int topicId, int queueId, int valueSize, long valuePos) {
+    public WalInfoBasic(int topicId, int queueId, ByteBuffer value) {
         this.topicId = topicId;
         this.queueId = queueId;
-        this.valueSize = valueSize;
-        this.valuePos = valuePos;
-    }
-
-    public WalInfoBasic(int topicId, int queueId, int pOffset, int valueSize, long valuePos) {
-        this.topicId = topicId;
-        this.queueId = queueId;
-        this.pOffset = pOffset;
-        this.valueSize = valueSize;
-        this.valuePos = valuePos;
+        this.valueSize = value.limit();
+        this.value = value;
     }
 
     public ByteBuffer encode() {
         ByteBuffer infoBuffer = ByteBuffer.allocate(Constant.MSG_SIZE);
         return this.encode(infoBuffer);
+    }
+
+    public static final int BYTES = Byte.BYTES;
+
+    public byte[] encodeToB() {
+        byte[] result = new byte[BYTES + this.valueSize];
+        result[0] = (byte) topicId;
+        // todo
+        return result;
     }
 
     public ByteBuffer encode(ByteBuffer infoBuffer) {
@@ -79,7 +72,9 @@ public class WalInfoBasic {
         // buffer size
         infoBuffer.putInt(valueSize);
         // buffer pos
-        infoBuffer.putLong(valuePos);
+//        infoBuffer.putLong(valuePos);
+        // buffer
+        infoBuffer.put(value);
         return infoBuffer;
     }
 
@@ -89,7 +84,7 @@ public class WalInfoBasic {
 //        this.infoPos = buffer.getInt();
         this.pOffset = buffer.getInt();
         this.valueSize = buffer.getInt();
-        this.valuePos = buffer.getLong();
+//        this.valuePos = buffer.getLong();
     }
 
     public static String getKey(int topicId, int queueId) {
@@ -100,27 +95,4 @@ public class WalInfoBasic {
         return topicId + "-" + queueId;
     }
 
-    public String encodeSimple() {
-        return valuePos + "-" + valueSize;
-    }
-
-    public ByteBuffer encodeSimple(ByteBuffer infoBuffer) {
-        infoBuffer.putInt(infoPos);
-        // buffer size
-        infoBuffer.putInt(valueSize);
-        // buffer pos
-        infoBuffer.putLong(valuePos);
-        return infoBuffer;
-    }
-
-    public ByteBuffer decodeSimple(ByteBuffer buffer) {
-        this.infoPos = buffer.getInt();
-        this.valueSize = buffer.getInt();
-        this.valuePos = buffer.getLong();
-        return buffer;
-    }
-
-    public void show() {
-        log.debug("topic: {}, queue: {}, pos: {}, size: {}", topicId, queueId, valuePos, valueSize);
-    }
 }

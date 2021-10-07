@@ -11,7 +11,10 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -48,8 +51,8 @@ public class LayneMessageQueueImpl extends MessageQueue {
         AtomicLong offsetAdder = APPEND_OFFSET_MAP.computeIfAbsent(WalInfoBasic.getKey(topicId, queueId), k -> new AtomicLong());
         long result = offsetAdder.getAndIncrement();
         int walId = topicId % Constant.WAL_FILE_COUNT;
-        int logCount = walList[walId].flush(topic, queueId, data, result);
-        asyncReadWal(walId, logCount);
+//        int logCount = walList[walId].flush(topicId, queueId, data, result);
+//        asyncReadWal(walId, logCount);
         return result;
     }
 
@@ -68,17 +71,11 @@ public class LayneMessageQueueImpl extends MessageQueue {
         }
         int walFetchNum = fetchNum - partitionFetchNum;
         long walFetchOffset = offset;
-        if (walFetchNum > 0) {
-            if (!infoList.isEmpty()) {
-                walFetchOffset = infoList.stream()
-                        .map(info -> info.infoPos)
-                        .max(Comparator.naturalOrder())
-                        .get();
-            }
-            infoList.addAll(walInfoReader.read(topicId, queueId, walFetchOffset, walFetchNum));
-        }
         log.info("topic: {}, queueId: {}, offset: {}, fetchNum: {}, walOffset:{}, partitionCount: {}, partitionFetchNum: {}, walFetchNum: {}",
                 topic, queueId, offset, fetchNum, walFetchOffset, partitionCount, partitionFetchNum, walFetchNum);
+        if (walFetchNum > 0) {
+            infoList.addAll(walInfoReader.read(topicId, queueId, walFetchOffset, walFetchNum));
+        }
         return readValueFromWAL(walId, offset, fetchNum, infoList);
     }
 
@@ -103,21 +100,13 @@ public class LayneMessageQueueImpl extends MessageQueue {
             int idx = 0;
             for (WalInfoBasic infoBasic : infoList) {
                 ByteBuffer buffer = ByteBuffer.allocate(infoBasic.valueSize);
-                valueChannel.read(buffer, infoBasic.valuePos);
+//                valueChannel.read(buffer, infoBasic.valuePos);
                 result.put((int) offset + idx, buffer);
                 idx++;
             }
         } catch (IOException e) {
             e.printStackTrace();
         }
-//        check(offset, ansSize, ansPos, result);
-//        stopBroker();
         return result;
-    }
-
-    private void check(long offset, int[] ansSize, long[] ansPos, Map<Integer, ByteBuffer> dataMap) {
-        for (int i = 0; i < ansPos.length; ++i) {
-            log.debug("ans, offset: {}, size: {}, pos: {}, res: {}", (offset + i), ansSize[i], ansPos[i], new String(dataMap.get((int) (offset + i)).array()));
-        }
     }
 }

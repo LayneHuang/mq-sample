@@ -1,7 +1,6 @@
 package io.openmessaging.wal;
 
 import io.openmessaging.Constant;
-import io.openmessaging.IdGenerator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -10,8 +9,10 @@ import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -28,10 +29,8 @@ public class WriteAheadLog {
      */
     public final WalOffset offset = new WalOffset();
     private final int walId;
-    private FileChannel infoChannel;
-    private FileChannel valueChannel;
-    private MappedByteBuffer infoMapBuffer;
-    private MappedByteBuffer valueMapBuffer;
+    private FileChannel channel;
+    private MappedByteBuffer mapBuffer;
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
 
     public WriteAheadLog(int walId) {
@@ -41,69 +40,35 @@ public class WriteAheadLog {
 
     public void initChannels() {
         try {
-            infoChannel = FileChannel.open(
+            channel = FileChannel.open(
                     Constant.getWALInfoPath(walId),
                     StandardOpenOption.READ,
                     StandardOpenOption.WRITE,
                     StandardOpenOption.CREATE
             );
-            valueChannel = FileChannel.open(
-                    Constant.getWALValuePath(walId),
-                    StandardOpenOption.READ,
-                    StandardOpenOption.WRITE,
-                    StandardOpenOption.CREATE
-            );
-//            offset.infoPos = infoChannel.position();
-//            offset.valuePos = valueChannel.position();
-//            offset.logCount = (int) (offset.infoPos / Constant.MSG_SIZE);
-//            log.debug("init info pos: {}, value pos: {}, logCount: {}", offset.infoPos, offset.valuePos, offset.logCount);
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    public int flush(String topic, int queueId, ByteBuffer buffer, long pOffset) {
-        int topicId = IdGenerator.getId(topic);
-        WalInfoBasic walInfoBasic = new WalInfoBasic(topicId, queueId, buffer.limit());
-        int logCount = 0;
+    private static final ConcurrentHashMap<String, AtomicLong> APPEND_OFFSET_MAP = new ConcurrentHashMap<>();
+
+    public final BlockingQueue<Long> readBq = new LinkedBlockingQueue<>();
+
+    private ByteBuffer tmpBuffer;
+
+    public WalInfoBasic submit(int topicId, int queueId, ByteBuffer buffer) {
+        WalInfoBasic result = new WalInfoBasic(topicId, queueId, buffer);
         lock.writeLock().lock();
-        try {
-            walInfoBasic.infoPos = offset.infoPos;
-            walInfoBasic.valuePos = offset.valuePos;
-            putInfo(walInfoBasic);
-            putValue(buffer);
-            offset.infoPos += Constant.MSG_SIZE;
-            offset.valuePos += walInfoBasic.valueSize;
-            logCount = ++offset.logCount;
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+
         lock.writeLock().unlock();
-        return logCount;
+        result.pOffset = APPEND_OFFSET_MAP.computeIfAbsent(
+                WalInfoBasic.getKey(topicId, queueId),
+                k -> new AtomicLong()
+        ).getAndIncrement();
+        return result;
     }
 
-    private void putInfo(WalInfoBasic walInfoBasic) throws IOException {
-        if (infoMapBuffer == null || !infoMapBuffer.hasRemaining()) {
-            infoMapBuffer = infoChannel.map(
-                    FileChannel.MapMode.READ_WRITE,
-                    offset.infoPos,
-                    Constant.WAL_BUFFER_SIZE
-            );
-        }
-        infoMapBuffer = (MappedByteBuffer) walInfoBasic.encode(infoMapBuffer);
-        infoMapBuffer.force();
-    }
-
-    private void putValue(ByteBuffer buffer) throws IOException {
-        if (valueMapBuffer == null
-                || valueMapBuffer.remaining() < buffer.limit()) {
-            valueMapBuffer = valueChannel.map(
-                    FileChannel.MapMode.READ_WRITE,
-                    offset.valuePos,
-                    Constant.WAL_BUFFER_SIZE
-            );
-        }
-        valueMapBuffer.put(buffer);
-        valueMapBuffer.force();
+    private void encode(WalInfoBasic msg) {
     }
 }

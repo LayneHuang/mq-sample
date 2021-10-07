@@ -36,7 +36,7 @@ public class Constant {
 
     public static final int WRITE_BEFORE_QUERY = SIMPLE_MSG_SIZE * 1024;
 
-    public static final int INDEX_DISTANCE = 100;
+    public static final int INDEX_DISTANCE = 10;
 
     public static final int INDEX_CACHE_SIZE = Long.BYTES * 512;
 
