@@ -8,13 +8,13 @@ import static io.openmessaging.leo.DataManager.INDEX_TEMP_BUF_SIZE;
 
 public class Indexer {
 
-    public int topic;
-    public int queueId;
+    public byte topic;
+    public short queueId;
     public List<ByteBuffer> fullBufs = new ArrayList<>();
     private ByteBuffer tempBuf = ByteBuffer.allocate(INDEX_TEMP_BUF_SIZE);
     public final Object LOCKER = new Object();
 
-    public Indexer(int topic, int queueId) {
+    public Indexer(byte topic, short queueId) {
         this.topic = topic;
         this.queueId = queueId;
     }
