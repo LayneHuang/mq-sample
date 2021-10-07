@@ -12,14 +12,13 @@ public class Indexer {
     public short queueId;
     public List<ByteBuffer> fullBufs = new ArrayList<>();
     private ByteBuffer tempBuf = ByteBuffer.allocate(INDEX_TEMP_BUF_SIZE);
-    public final Object LOCKER = new Object();
 
     public Indexer(byte topic, short queueId) {
         this.topic = topic;
         this.queueId = queueId;
     }
 
-    public void writeIndex(ByteBuffer indexBuf) {
+    public synchronized void writeIndex(ByteBuffer indexBuf) {
         if (tempBuf.position() == tempBuf.limit()) {
             tempBuf.flip();
             fullBufs.add(tempBuf);
@@ -28,16 +27,14 @@ public class Indexer {
         tempBuf.put(indexBuf);
     }
 
-    public ByteBuffer getTempBuf() {
-        synchronized (LOCKER) {
-            ByteBuffer clone = ByteBuffer.allocate(tempBuf.position());
-            tempBuf.rewind();
-            while (clone.hasRemaining()) {
-                clone.put(tempBuf.get());
-            }
-            clone.flip();
-            return clone;
+    public synchronized ByteBuffer getTempBuf() {
+        ByteBuffer clone = ByteBuffer.allocate(tempBuf.position());
+        tempBuf.rewind();
+        while (clone.hasRemaining()) {
+            clone.put(tempBuf.get());
         }
+        clone.flip();
+        return clone;
     }
 
 }

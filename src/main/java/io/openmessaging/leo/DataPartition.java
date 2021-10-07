@@ -17,6 +17,7 @@ public class DataPartition {
     public byte logNumAdder = Byte.MIN_VALUE;
     public FileChannel logFileChannel;
     public MappedByteBuffer logMappedBuf;
+    public final Object LOCKER = new Object();
 
     public DataPartition(byte id) {
         this.id = id;
@@ -45,7 +46,7 @@ public class DataPartition {
         ByteBuffer indexBuf = ByteBuffer.allocate(INDEX_BUF_SIZE);
         short msgLen = (short) data.limit();
         short dataSize = (short) (MSG_META_SIZE + msgLen);
-        synchronized (indexer.LOCKER) {
+        synchronized (LOCKER) {
             try {
                 if (logMappedBuf.remaining() < dataSize) {
                     unmap(logMappedBuf);
@@ -68,8 +69,8 @@ public class DataPartition {
             } catch (IOException e) {
                 e.printStackTrace();
             }
-            indexer.writeIndex(indexBuf);
         }
+        indexer.writeIndex(indexBuf);
     }
 
 }
