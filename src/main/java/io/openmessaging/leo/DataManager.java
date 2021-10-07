@@ -22,7 +22,7 @@ public class DataManager {
 
     public static final String DIR_PMEM = "/pmem";
     public static final Path DIR_ESSD = Paths.get("/essd");
-    //    public static final Path DIR_ESSD = Paths.get(System.getProperty("user.dir")).resolve("target").resolve("work");
+//        public static final Path DIR_ESSD = Paths.get(System.getProperty("user.dir")).resolve("target").resolve("work");
     public static final ConcurrentHashMap<String, AtomicLong> APPEND_OFFSET_MAP = new ConcurrentHashMap<>();
 
     public static final Path LOGS_PATH = DIR_ESSD.resolve("log");
@@ -128,7 +128,8 @@ public class DataManager {
             dataMap = new HashMap<>(fetchNum);
             int key = 0;
             Indexer indexer = getIndexer(topic, queueId);
-            for (ByteBuffer fullBuf : indexer.fullBufs) {
+            for (int i = 0; i < indexer.fullBufs.size(); i++) {
+                ByteBuffer fullBuf = indexer.fullBufs.get(i);
                 if (start >= INDEX_TEMP_BUF_SIZE) {
                     start -= INDEX_TEMP_BUF_SIZE;
                     continue;
@@ -169,8 +170,8 @@ public class DataManager {
     private static void readLog(Map<Integer, ByteBuffer> dataMap, int key, ByteBuffer indexBuf) throws IOException {
         byte partitionId = indexBuf.get();
         byte logNum = indexBuf.get();
-        int position = indexBuf.getInt();
-        short dataSize = indexBuf.getShort();
+        int position = indexBuf.getInt() + 18;
+        short dataSize = (short) (indexBuf.getShort() - 18);
         Path logFile = LOGS_PATH.resolve(String.valueOf(partitionId)).resolve(String.valueOf(logNum));
         FileChannel logChannel = FileChannel.open(logFile, StandardOpenOption.READ);
         MappedByteBuffer dataBuf = logChannel.map(FileChannel.MapMode.READ_ONLY, position, dataSize);
@@ -178,9 +179,8 @@ public class DataManager {
 //            int topic = dataBuf.getInt();
 //            int queueId = dataBuf.getInt();
 //            long offset = dataBuf.getLong();
-            dataBuf.position(16);
-            short msgLen = dataBuf.getShort();
-            ByteBuffer msgBuf = ByteBuffer.allocate(msgLen);
+//            short msgLen = dataBuf.getShort();
+            ByteBuffer msgBuf = ByteBuffer.allocate(dataSize);
             msgBuf.put(dataBuf);
             unmap(dataBuf);
             logChannel.close();
