@@ -18,13 +18,16 @@ public class Indexer {
         this.queueId = queueId;
     }
 
-    public synchronized void writeIndex(ByteBuffer indexBuf) {
+    public synchronized void writeIndex(byte id, byte logNumAdder, int position, short dataSize) {
         if (tempBuf.position() == tempBuf.limit()) {
             tempBuf.flip();
             fullBufs.add(tempBuf);
             tempBuf = ByteBuffer.allocate(INDEX_TEMP_BUF_SIZE);
         }
-        tempBuf.put(indexBuf);
+        tempBuf.put(id);
+        tempBuf.put(logNumAdder);
+        tempBuf.putInt(position);
+        tempBuf.putShort(dataSize);
     }
 
     public synchronized ByteBuffer getTempBuf() {

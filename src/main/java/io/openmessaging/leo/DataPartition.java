@@ -17,7 +17,6 @@ public class DataPartition {
     public byte logNumAdder = Byte.MIN_VALUE;
     public FileChannel logFileChannel;
     public MappedByteBuffer logMappedBuf;
-    public final Object LOCKER = new Object();
 
     public DataPartition(byte id) {
         this.id = id;
@@ -39,38 +38,29 @@ public class DataPartition {
         Path logFile = logDir.resolve(String.valueOf(logNumAdder));
         Files.createFile(logFile);
         logFileChannel = FileChannel.open(logFile, StandardOpenOption.READ, StandardOpenOption.WRITE);
-        logMappedBuf = logFileChannel.map(FileChannel.MapMode.READ_WRITE, 0, 1024 * 1024 * 1024);// 1G
+        logMappedBuf = logFileChannel.map(FileChannel.MapMode.READ_WRITE, 0, 1024 * 1024 * 512);// 1G
     }
 
     public void writeLog(byte topic, short queueId, int offset, ByteBuffer data, Indexer indexer) {
-        ByteBuffer indexBuf = ByteBuffer.allocate(INDEX_BUF_SIZE);
         short msgLen = (short) data.limit();
         short dataSize = (short) (MSG_META_SIZE + msgLen);
-        synchronized (LOCKER) {
-            try {
-                if (logMappedBuf.remaining() < dataSize) {
-                    unmap(logMappedBuf);
-                    logFileChannel.close();
-                    openLog();
-                }
-                int position = logMappedBuf.position();
-                logMappedBuf.put(topic); // 1
-                logMappedBuf.putShort(queueId); // 2
-                logMappedBuf.putInt(offset); // 4
-                logMappedBuf.putShort(msgLen); // 2
-                logMappedBuf.put(data);
-                logMappedBuf.force();
-                // index
-                indexBuf.put(id);
-                indexBuf.put(logNumAdder);
-                indexBuf.putInt(position);
-                indexBuf.putShort(dataSize);
-                indexBuf.flip();
-            } catch (IOException e) {
-                e.printStackTrace();
+        try {
+            if (logMappedBuf.remaining() < dataSize) {
+                unmap(logMappedBuf);
+                logFileChannel.close();
+                openLog();
             }
+            int position = logMappedBuf.position();
+            logMappedBuf.put(topic); // 1
+            logMappedBuf.putShort(queueId); // 2
+            logMappedBuf.putInt(offset); // 4
+            logMappedBuf.putShort(msgLen); // 2
+            logMappedBuf.put(data);
+            logMappedBuf.force();
+            indexer.writeIndex(id, logNumAdder, position, dataSize);
+        } catch (IOException e) {
+            e.printStackTrace();
         }
-        indexer.writeIndex(indexBuf);
     }
 
 }
