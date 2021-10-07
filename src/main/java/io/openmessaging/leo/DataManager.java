@@ -110,7 +110,7 @@ public class DataManager {
     public static void writeLog(byte topic, short queueId, int offset, ByteBuffer data) {
         DataPartition partition = PARTITION_TL.get();
         if (partition == null) {
-            int id = PARTITION_ID_ADDER.getAndIncrement() % 10;
+            int id = PARTITION_ID_ADDER.getAndIncrement() % 4;
             partition = PARTITIONS.computeIfAbsent(id, key -> new DataPartition(key.byteValue()));
             PARTITION_TL.set(partition);
         }
