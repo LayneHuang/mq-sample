@@ -14,7 +14,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class BulletManager {
 
-    public static final int GUN_AMOUNT = 8;
+    public static final int GUN_AMOUNT = 2;
     public static final String DIR_PMEM = "/pmem";
     public static final Path DIR_ESSD = Paths.get("/essd");
     public static final Path LOGS_PATH = DIR_ESSD.resolve("log");

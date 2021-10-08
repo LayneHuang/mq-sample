@@ -60,7 +60,7 @@ public class Gun extends Thread {
     }
 
     private int currentCount = 0;
-    private int totalCount = 2;
+    private int totalCount = 10;
     private boolean mergeIO = true;
 
     public void append(int topic,int queueId,long offset,ByteBuffer data){
