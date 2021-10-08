@@ -6,10 +6,9 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
 import io.openmessaging.MessageQueue;
+import io.openmessaging.finkys.BulletManager;
 
-import static io.openmessaging.finkys.DataManager.getOffset;
-import static io.openmessaging.finkys.DataManager.readLog;
-import static io.openmessaging.finkys.DataManager.writeLog;
+import static io.openmessaging.finkys.BulletManager.readLog;
 
 /**
  * 这是一个简单的基于内存的实现，以方便选手理解题意；
@@ -23,23 +22,21 @@ public class FinkysTestMessageQueueImpl extends MessageQueue {
 
     @Override
     public long append(String topic, int queueId, ByteBuffer data) {
-        if (startTime == 0){
+        if (startTime == 0) {
             startTime = System.currentTimeMillis();
         }
-        int topicHash = topic.hashCode();
-        String key = (topicHash + " + " + queueId).intern();
-        long offset = getOffset(key);
-        // 更新最大位点
-        // 保存 data 中的数据
-        writeLog(topicHash, queueId, offset, data);
-        return offset;
+//        int topicHash = topic.hashCode();
+//        String key = (topicHash + " + " + queueId).intern();
+//        long offset = getOffset(key);
+//        writeLog(topicHash, queueId, offset, data);
+        return BulletManager.append(topic, queueId, data);
     }
 
     @Override
     public Map<Integer, ByteBuffer> getRange(String topic, int queueId, long offset, int fetchNum) {
-//        if (showLog.getAndIncrement() == 0){
-//            System.out.println("第一阶段耗时:"+(System.currentTimeMillis() - startTime)+"ms");
-//        }else {
+//        if (showLog.getAndIncrement() == 0) {
+//            System.out.println("第一阶段耗时:" + (System.currentTimeMillis() - startTime) + "ms");
+//        } else {
 //            return Collections.emptyMap();
 //        }
         int topicHash = topic.hashCode();

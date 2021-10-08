@@ -12,7 +12,7 @@ import java.util.Map;
 
 import static io.openmessaging.leo.DataManager.LOGS_PATH;
 
-public class MemoryIndexer {
+public class BulletIndexer {
 
     private static final int BOX_SIZE = 32;
 
@@ -38,7 +38,7 @@ public class MemoryIndexer {
         }
     }
 
-    public MemoryIndexer(int topic, int queueId) {
+    public BulletIndexer(int topic, int queueId) {
         this.topic = topic;
         this.queueId = queueId;
         currentBox = new MemoryBox();
