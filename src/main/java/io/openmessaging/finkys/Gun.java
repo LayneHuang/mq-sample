@@ -22,7 +22,7 @@ import static io.openmessaging.finkys.BulletManager.LOGS_PATH;
 public class Gun extends Thread {
 
     private static final int FLUSH_SIZE = 16 * 1024;
-    private static final int MERGE_SIZE = 10;
+    private static final int MERGE_SIZE = 5;
 
     private byte id;
     private Path logDir;
