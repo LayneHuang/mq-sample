@@ -37,11 +37,6 @@ public class FinkysTestMessageQueueImpl extends MessageQueue {
 
     @Override
     public Map<Integer, ByteBuffer> getRange(String topic, int queueId, long offset, int fetchNum) {
-        if (showLog.getAndIncrement() == 0){
-            System.out.println("第一阶段耗时:"+(System.currentTimeMillis() - startTime)+"ms");
-        }else {
-            return Collections.emptyMap();
-        }
 //        if (showLog.getAndIncrement() == 0){
 //            System.out.println("第一阶段耗时:"+(System.currentTimeMillis() - startTime)+"ms");
 //        }else {
