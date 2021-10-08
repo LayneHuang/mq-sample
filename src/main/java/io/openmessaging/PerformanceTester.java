@@ -1,6 +1,7 @@
 package io.openmessaging;
 
 import io.openmessaging.solve.LayneMessageQueueImpl;
+import io.openmessaging.solve.LeoMessageQueueImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,20 +27,20 @@ public class PerformanceTester {
         for (; i < 10000; i++) {
             String text = String.valueOf(i);
             ByteBuffer buf = ByteBuffer.wrap(text.getBytes(StandardCharsets.UTF_8));
-            messageQueue.append("A", 1, buf);
+            messageQueue.append("topicA", 1, buf);
         }
         Thread threadW1 = new Thread(() -> {
             for (; i < 20000; i++) {
                 String text = String.valueOf(i);
                 ByteBuffer buf = ByteBuffer.wrap(text.getBytes(StandardCharsets.UTF_8));
-                messageQueue.append("A", 1, buf);
+                messageQueue.append("topicA", 1, buf);
             }
         });
         Thread threadR1 = new Thread(() -> {
-            messageQueue.getRange("A", 1, 19500, 500);
+            messageQueue.getRange("topicA", 1, 19500, 500);
             System.out.println("FINISH");
             log.info("边写边查 threadR1");
-            check(messageQueue.getRange("A", 1, 9950, 100));
+            check(messageQueue.getRange("topicA", 1, 9950, 100));
             log.info("FINISH-1");
 
         });
