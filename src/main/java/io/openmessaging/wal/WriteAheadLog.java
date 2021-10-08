@@ -14,6 +14,8 @@ import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -52,7 +54,7 @@ public class WriteAheadLog {
         }
     }
 
-    private static final Map<String, Integer> APPEND_OFFSET_MAP = new ConcurrentHashMap<>();
+    private static final Map<String, AtomicInteger> APPEND_OFFSET_MAP = new ConcurrentHashMap<>();
 
     public final BlockingQueue<byte[]> readBq = new LinkedBlockingQueue<>();
 
@@ -61,8 +63,7 @@ public class WriteAheadLog {
         byte[] bs = result.encodeToB();
         lock.lock();
         String key = WalInfoBasic.getKey(topicId, queueId);
-        result.pOffset = APPEND_OFFSET_MAP.computeIfAbsent(key, k -> 0);
-        APPEND_OFFSET_MAP.put(key, (int) result.pOffset + 1);
+        result.pOffset = APPEND_OFFSET_MAP.computeIfAbsent(key, k -> new AtomicInteger()).getAndIncrement();
         result.walPos = pos;
         put(bs);
         // 索引
