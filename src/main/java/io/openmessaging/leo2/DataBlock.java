@@ -16,13 +16,18 @@ import static io.openmessaging.leo.DataManager.*;
 
 public class DataBlock {
 
+    public byte id;
+    public Path logDir;
     public byte logNumAdder = Byte.MIN_VALUE;
     public FileChannel logFileChannel;
     public MappedByteBuffer logMappedBuf;
     private final Object LOCKER = new Object();
 
-    public DataBlock() {
+    public DataBlock(byte id) {
+        this.id = id;
+        logDir = LOGS_PATH.resolve(String.valueOf(this.id));
         try {
+            Files.createDirectories(logDir);
             setupLog();
         } catch (IOException e) {
             e.printStackTrace();
@@ -35,7 +40,7 @@ public class DataBlock {
     }
 
     private void setupLog() throws IOException {
-        Path logFile = LOGS_PATH.resolve(String.valueOf(logNumAdder));
+        Path logFile = logDir.resolve(String.valueOf(logNumAdder));
         Files.createFile(logFile);
         logFileChannel = FileChannel.open(logFile, StandardOpenOption.READ, StandardOpenOption.WRITE);
         logMappedBuf = logFileChannel.map(FileChannel.MapMode.READ_WRITE, 0, 1024 * 1024 * 1024);// 1G

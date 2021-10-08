@@ -14,6 +14,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class DataManager {
@@ -31,6 +32,10 @@ public class DataManager {
     public static final short INDEX_TEMP_BUF_SIZE = INDEX_BUF_SIZE * INDEX_TEMP_BUF_NUM;
     public static ConcurrentHashMap<String, Indexer> INDEXERS = new ConcurrentHashMap<>(1000_000);
 
+    public static ThreadLocal<DataBlock> BLOCK_TL = new ThreadLocal<>();
+    public static AtomicInteger BLOCK_ID_ADDER = new AtomicInteger();
+    public static ConcurrentHashMap<Integer, DataBlock> BLOCKS = new ConcurrentHashMap<>(40);
+
     static {
         try {
             if (Files.notExists(LOGS_PATH)) {
@@ -41,9 +46,13 @@ public class DataManager {
         }
     }
 
-    public static DataBlock dataBlock = new DataBlock();
-
     public static void writeLog(byte topic, short queueId, int offset, ByteBuffer data) {
+        DataBlock dataBlock = BLOCK_TL.get();
+        if (dataBlock == null) {
+            int id = BLOCK_ID_ADDER.getAndIncrement() % 2;
+            dataBlock = BLOCKS.computeIfAbsent(id, key -> new DataBlock(key.byteValue()));
+            BLOCK_TL.set(dataBlock);
+        }
         dataBlock.writeLog(topic, queueId, offset, data);
     }
 
