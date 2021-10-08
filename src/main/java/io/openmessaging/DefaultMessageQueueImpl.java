@@ -1,6 +1,7 @@
 package io.openmessaging;
 
 import io.openmessaging.solve.FinkysMessageQueueImpl;
+import io.openmessaging.solve.LeoMessageQueueImpl;
 
 import java.nio.ByteBuffer;
 import java.util.Map;
@@ -11,7 +12,7 @@ import java.util.Map;
  */
 public class DefaultMessageQueueImpl extends MessageQueue {
 
-    MessageQueue messageQueue = new FinkysMessageQueueImpl();
+    MessageQueue messageQueue = new LeoMessageQueueImpl();
 
     @Override
     public long append(String topic, int queueId, ByteBuffer data) {
