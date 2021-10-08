@@ -9,8 +9,11 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.BrokenBarrierException;
+import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import sun.misc.Cleaner;
 import sun.nio.ch.DirectBuffer;
@@ -26,12 +29,15 @@ public class Gun extends Thread {
     private byte logNumAdder = Byte.MIN_VALUE;
     private FileChannel logFileChannel;
     private MappedByteBuffer logMappedBuf;
+    private final Object LOCKER = new Object();
+    private CyclicBarrier barrier;
     public LinkedBlockingQueue<Bullet> clip = new LinkedBlockingQueue<>();
 
 
     public Gun(byte id) {
         this.id = id;
         logDir = LOGS_PATH.resolve(String.valueOf(this.id));
+        barrier = new CyclicBarrier(4);
         try {
             Files.createDirectories(logDir);
             setupLog();
@@ -51,6 +57,81 @@ public class Gun extends Thread {
         Files.createFile(logFile);
         logFileChannel = FileChannel.open(logFile, StandardOpenOption.READ, StandardOpenOption.WRITE);
         logMappedBuf = logFileChannel.map(FileChannel.MapMode.READ_WRITE, 0, 1024 * 1024 * 1024);
+    }
+
+    private int currentCount = 0;
+    private int totalCount = 4;
+    private boolean mergeIO = true;
+
+    public void append(int topic,int queueId,long offset,ByteBuffer data){
+        BulletIndexer indexer = BulletManager.INDEXERS.computeIfAbsent(topic + "+" + queueId, k -> new BulletIndexer(topic, queueId));
+        short msgLen = (short) data.limit();
+        short dataSize = (short) (18 + msgLen);
+        if (mergeIO){
+            try {
+                synchronized (LOCKER){
+                    if (logMappedBuf.remaining() < dataSize) {
+                        currentCount = 0;
+                        logMappedBuf.force();
+                        unmap(logMappedBuf);
+                        logFileChannel.close();
+                        openLog();
+                        barrier.reset();
+                    }
+                    currentCount ++;
+                    int position = logMappedBuf.position();
+                    logMappedBuf.putInt(topic); // 4
+                    logMappedBuf.putInt(queueId); // 4
+                    logMappedBuf.putLong(offset); // 8
+                    logMappedBuf.putShort(msgLen); // 2
+                    logMappedBuf.put(data);
+                    if (currentCount >= totalCount){
+                        currentCount = 0;
+                        logMappedBuf.force();
+                    }
+                    // index
+                    indexer.writeIndex(id, logNumAdder, position, dataSize);
+                }
+                try {
+                    barrier.await(1000,TimeUnit.MILLISECONDS);
+                } catch (TimeoutException e) {
+                    synchronized (LOCKER){
+                        if (mergeIO){
+                            mergeIO = false;
+                            logMappedBuf.force();
+                        }
+                    }
+//                totalCount = currentCount;
+//                barrier = new CyclicBarrier(totalCount);
+                } catch (Exception e){
+
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }else {
+            try {
+                synchronized (LOCKER){
+                    if (logMappedBuf.remaining() < dataSize) {
+                        logMappedBuf.force();
+                        unmap(logMappedBuf);
+                        logFileChannel.close();
+                        openLog();
+                    }
+                    int position = logMappedBuf.position();
+                    logMappedBuf.putInt(topic); // 4
+                    logMappedBuf.putInt(queueId); // 4
+                    logMappedBuf.putLong(offset); // 8
+                    logMappedBuf.putShort(msgLen); // 2
+                    logMappedBuf.put(data);
+                    logMappedBuf.force();
+                    // index
+                    indexer.writeIndex(id, logNumAdder, position, dataSize);
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     @Override

@@ -27,10 +27,10 @@ public class BulletManager {
         try {
             if (Files.notExists(LOGS_PATH)) {
                 Files.createDirectories(LOGS_PATH);
-                for (int i = 0; i < GUN_AMOUNT; i++) {
-                    guns[i] = new Gun((byte) i);
-                    guns[i].start();
-                }
+//                for (int i = 0; i < GUN_AMOUNT; i++) {
+//                    guns[i] = new Gun((byte) i);
+//                    guns[i].start();
+//                }
             } else {
                 // 重启
 //                List<Path> logDirs = Files.list(LOGS_PATH).collect(Collectors.toList());
@@ -85,17 +85,18 @@ public class BulletManager {
         int topicHash = topic.hashCode();
         String key = (topicHash + " + " + queueId).intern();
         long offset = getOffset(key);
-        Bullet bullet = new Bullet(topicHash, queueId, offset, data);
-        bullet.acquire();
+//        Bullet bullet = new Bullet(topicHash, queueId, offset, data);
+//        bullet.acquire();
         Gun gun = GUN_TL.get();
         if (gun == null) {
             int id = GUN_ID_ADDER.getAndIncrement();
             gun = guns[id % GUN_AMOUNT];
             GUN_TL.set(gun);
         }
-        gun.clip.offer(bullet);
+        gun.append(topicHash,queueId,offset,data);
+//        gun.clip.offer(bullet);
 //        clip.offer(bullet);
-        bullet.acquire();
+//        bullet.acquire();
         return offset;
     }
 

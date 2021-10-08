@@ -46,11 +46,13 @@ public class BulletIndexer {
     }
 
     public void writeIndex(byte partitionId, byte logNumAdder, int position, short dataSize) {
-        if (currentBox.index >= BOX_SIZE) {
-            currentBox = new MemoryBox();
-            bufferList.add(currentBox);
+        synchronized (LOCKER){
+            if (currentBox.index >= BOX_SIZE) {
+                currentBox = new MemoryBox();
+                bufferList.add(currentBox);
+            }
+            currentBox.add(partitionId,logNumAdder,position,dataSize);
         }
-        currentBox.add(partitionId,logNumAdder,position,dataSize);
     }
 
     public Map<Integer, ByteBuffer> getRange(long offsetStart, int fetchNum) throws IOException {
