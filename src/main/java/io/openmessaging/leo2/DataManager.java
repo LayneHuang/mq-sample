@@ -52,7 +52,7 @@ public class DataManager {
     public static void writeLog(byte topic, short queueId, int offset, ByteBuffer data) {
         DataBlock dataBlock = BLOCK_TL.get();
         if (dataBlock == null) {
-            int id = BLOCK_ID_ADDER.getAndIncrement() % 2;
+            int id = BLOCK_ID_ADDER.getAndIncrement() % 4;
             dataBlock = BLOCKS.computeIfAbsent(id, key -> new DataBlock(key.byteValue()));
             BLOCK_TL.set(dataBlock);
         }

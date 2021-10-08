@@ -48,7 +48,7 @@ public class DataBlock {
     }
 
     private int tempSize = 0;
-    private final CyclicBarrier barrier = new CyclicBarrier(THREAD_MAX / 2);
+    private final CyclicBarrier barrier = new CyclicBarrier(THREAD_MAX / 4);
 
     public void writeLog(byte topic, short queueId, int offset, ByteBuffer data) {
         short msgLen = (short) data.limit();
