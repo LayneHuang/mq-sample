@@ -1,4 +1,4 @@
-package io.openmessaging.leo;
+package io.openmessaging.leo2;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;

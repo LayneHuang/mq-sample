@@ -6,7 +6,7 @@ import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.Map;
 
-import static io.openmessaging.leo.DataManager.*;
+import static io.openmessaging.leo2.DataManager.*;
 
 /**
  * 这是一个简单的基于内存的实现，以方便选手理解题意；
