@@ -22,6 +22,7 @@ public class DataPartition {
     public FileChannel indexPosFileChannel;
     public Path indexPosFile;
     public ByteBuffer indexPosBuf = ByteBuffer.allocate(5);
+    private int count = 1;
 
     public DataPartition(byte id) {
         this.id = id;
@@ -53,6 +54,7 @@ public class DataPartition {
         synchronized (indexer.LOCKER) {
             try {
                 if (logMappedBuf.remaining() < dataSize) {
+                    logMappedBuf.force();
                     unmap(logMappedBuf);
                     logFileChannel.close();
                     openLog();
@@ -63,7 +65,9 @@ public class DataPartition {
                 logMappedBuf.putLong(offset); // 8
                 logMappedBuf.putShort(msgLen); // 2
                 logMappedBuf.put(data);
-                logMappedBuf.force();
+                if (count++ % 2 == 0){
+                    logMappedBuf.force();
+                }
                 // index
                 indexer.writeIndex(id,logNumAdder,position,dataSize);
             } catch (IOException e) {
