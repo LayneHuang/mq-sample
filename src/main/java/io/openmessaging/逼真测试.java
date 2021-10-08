@@ -1,15 +1,11 @@
 package io.openmessaging;
 
 import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Random;
-import java.util.concurrent.atomic.AtomicLong;
 
-import io.openmessaging.solve.FinkysTestMessageQueueImpl;
-import io.openmessaging.solve.LeoMessageQueueImpl;
+import io.openmessaging.solve.FinkysMessageQueueImpl;
 
 public class 逼真测试 {
 
@@ -20,7 +16,7 @@ public class 逼真测试 {
     private static final int DATA_SIZE_MIN = 100;
     private static final int DATA_SIZE_MAX = 17 * 1024;
     private static final long RANDOM_SEED = 157625465123L;
-    private static final long MAX_SIZE_PER_THREAD = 256 * 1024 * 1024L; // 1G
+    private static final long MAX_SIZE_PER_THREAD = 128 * 1024 * 1024L; // 1G
 //    private static final int QUEUE_COUNT_MIN = 1;
 //    private static final int QUEUE_COUNT_MAX = 10000;
 
@@ -43,7 +39,7 @@ public class 逼真测试 {
 
     private static byte[] bytes = new byte[17 * 1024];
 
-    public static MessageQueue messageQueue = new FinkysTestMessageQueueImpl();
+    public static MessageQueue messageQueue = new FinkysMessageQueueImpl();
 
     public static void main(String[] args) throws InterruptedException {
         random.nextBytes(bytes);
