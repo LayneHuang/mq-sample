@@ -9,7 +9,6 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -23,6 +22,7 @@ import static io.openmessaging.finkys.BulletManager.LOGS_PATH;
 public class Gun extends Thread {
 
     private static final int FLUSH_SIZE = 16 * 1024;
+    private static final int MERGE_SIZE = 10;
 
     private byte id;
     private Path logDir;
@@ -37,7 +37,7 @@ public class Gun extends Thread {
     public Gun(byte id) {
         this.id = id;
         logDir = LOGS_PATH.resolve(String.valueOf(this.id));
-        barrier = new CyclicBarrier(4);
+        barrier = new CyclicBarrier(MERGE_SIZE);
         try {
             Files.createDirectories(logDir);
             setupLog();
@@ -60,7 +60,6 @@ public class Gun extends Thread {
     }
 
     private int currentCount = 0;
-    private int totalCount = 10;
     private boolean mergeIO = true;
 
     public void append(int topic,int queueId,long offset,ByteBuffer data){
@@ -87,7 +86,7 @@ public class Gun extends Thread {
                     logMappedBuf.putLong(offset); // 8
                     logMappedBuf.putShort(msgLen); // 2
                     logMappedBuf.put(data);
-                    if (currentCount >= totalCount || currentSize >= FLUSH_SIZE){
+                    if (currentCount >= MERGE_SIZE || currentSize >= FLUSH_SIZE){
                         currentCount = 0;
                         currentSize = 0;
                         logMappedBuf.force();
@@ -104,8 +103,8 @@ public class Gun extends Thread {
                             logMappedBuf.force();
                         }
                     }
-//                totalCount = currentCount;
-//                barrier = new CyclicBarrier(totalCount);
+//                MERGE_SIZE = currentCount;
+//                barrier = new CyclicBarrier(MERGE_SIZE);
                 } catch (Exception e){
 
                 }
