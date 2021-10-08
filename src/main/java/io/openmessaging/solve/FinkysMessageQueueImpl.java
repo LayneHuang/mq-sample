@@ -34,11 +34,11 @@ public class FinkysMessageQueueImpl extends MessageQueue {
 
     @Override
     public Map<Integer, ByteBuffer> getRange(String topic, int queueId, long offset, int fetchNum) {
-        if (showLog.getAndIncrement() == 0) {
-            System.out.println("75G耗时:" + (System.currentTimeMillis() - startTime) + "ms");
-        } else {
-            return Collections.emptyMap();
-        }
+//        if (showLog.getAndIncrement() == 0) {
+//            System.out.println("75G耗时:" + (System.currentTimeMillis() - startTime) + "ms");
+//        } else {
+//            return Collections.emptyMap();
+//        }
         int topicHash = topic.hashCode();
         Map<Integer, ByteBuffer> dataMap = readLog(topicHash, queueId, offset, fetchNum);
         if (dataMap != null) {
