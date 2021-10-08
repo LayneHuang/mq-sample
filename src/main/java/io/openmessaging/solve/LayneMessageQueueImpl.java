@@ -60,6 +60,7 @@ public class LayneMessageQueueImpl extends MessageQueue {
         if (queryCnt % 10000 == 0) {
             log.info("queryCount: {}, ok: {} , force:{} ", queryCnt, okCnt, forceCnt);
         }
+        if (queryCnt > 15000) return 0;
         int topicId = IdGenerator.getId(topic);
         int walId = topicId % Constant.WAL_FILE_COUNT;
         WalInfoBasic submitResult = walList[walId].submit(topicId, queueId, data);
