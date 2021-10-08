@@ -14,6 +14,12 @@ public class PerformanceTester {
     static int i = 0;
 
     public static void main(String[] args) throws InterruptedException {
+        log.info("cao: {}, {}", (257 & 0xff), ((257 >> 4) & 0xff));
+        log.info("res: {}", ((16 << 4) | 1));
+        gao();
+    }
+
+    private static void gao() throws InterruptedException {
         MessageQueue messageQueue = new LayneMessageQueueImpl();
         long start = System.currentTimeMillis();
         Map<Integer, ByteBuffer> range;
@@ -37,29 +43,18 @@ public class PerformanceTester {
             log.info("FINISH-1");
 
         });
-//        Thread threadW2 = new Thread(() -> {
-//            for (; i < 30000; i++) {
-//                String text = String.valueOf(i);
-//                ByteBuffer buf = ByteBuffer.wrap(text.getBytes(StandardCharsets.UTF_8));
-//                messageQueue.append("B", 1, buf);
-//            }
-//        });
         threadW1.start();
         threadW1.join();
         threadR1.start();
         threadR1.join();
-//        threadW2.start();
-//        threadW2.join();
-//        System.out.println("最后查");
-//        messageQueue.getRange("A", 1, 9950, 100)
-//                .forEach((key, value) -> System.out.println("最后查: " + key + ": " + new String(value.array())));
         log.info("cost: {}", System.currentTimeMillis() - start);
     }
 
     private static void check(Map<Integer, ByteBuffer> map) {
         map.forEach((key, value) -> {
-            if (!String.valueOf(key).equals(new String(value.array()))) {
-                log.debug("FUCK");
+            String s = new String(value.array());
+            if (!String.valueOf(key).equals(s)) {
+                log.debug("FUCK: {}, {}", key, s);
             }
         });
     }

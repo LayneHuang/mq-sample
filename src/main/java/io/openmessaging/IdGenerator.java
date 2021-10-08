@@ -12,11 +12,18 @@ public class IdGenerator {
 
     private static final HashMap<String, Integer> ID_MAP = new HashMap();
 
+    private static int cnt = 0;
+
+    private static final Object lock = new Object();
+
     public static int getId(String key) {
         if (ID_MAP.containsKey(key)) return ID_MAP.get(key);
-        int result = Constant.hash(key);
-        ID_MAP.put(key, result);
+        int result = -1;
+        synchronized (lock) {
+            if (ID_MAP.containsKey(key)) return ID_MAP.get(key);
+            result = cnt++;
+            ID_MAP.put(key, result);
+        }
         return result;
     }
-
 }

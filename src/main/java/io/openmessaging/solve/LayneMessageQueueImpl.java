@@ -3,7 +3,10 @@ package io.openmessaging.solve;
 import io.openmessaging.Constant;
 import io.openmessaging.IdGenerator;
 import io.openmessaging.MessageQueue;
-import io.openmessaging.wal.*;
+import io.openmessaging.wal.Broker;
+import io.openmessaging.wal.WalInfoBasic;
+import io.openmessaging.wal.WalInfoReader;
+import io.openmessaging.wal.WriteAheadLog;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -11,9 +14,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -27,82 +28,65 @@ public class LayneMessageQueueImpl extends MessageQueue {
 
     private static final WriteAheadLog[] walList = new WriteAheadLog[Constant.WAL_FILE_COUNT];
 
-    private static final Partition[] partitions = new Partition[Constant.WAL_FILE_COUNT];
+//    private static final Partition[] partitions = new Partition[Constant.WAL_FILE_COUNT];
 
     private static final Broker[] brokers = new Broker[Constant.WAL_FILE_COUNT];
 
-    private static final PartitionInfoReader partitionInfoReader = new PartitionInfoReader();
+//    private static final PartitionInfoReader partitionInfoReader = new PartitionInfoReader();
 
     private static final WalInfoReader walInfoReader = new WalInfoReader();
 
     public LayneMessageQueueImpl() {
         for (int i = 0; i < Constant.WAL_FILE_COUNT; ++i) {
             walList[i] = new WriteAheadLog(i);
-            partitions[i] = new Partition(i);
-            brokers[i] = new Broker(i, PARTITION_OFFSET_MAP, partitions[i].writeBq);
-            partitions[i].start();
+//            partitions[i] = new Partition(i);
+            brokers[i] = new Broker(i, walList[i].readBq);
+//            partitions[i].start();
             brokers[i].start();
         }
     }
 
+    private int okCnt = 0;
+    private int forceCnt = 0;
+
     @Override
     public long append(String topic, int queueId, ByteBuffer data) {
         int topicId = IdGenerator.getId(topic);
-        AtomicLong offsetAdder = APPEND_OFFSET_MAP.computeIfAbsent(WalInfoBasic.getKey(topicId, queueId), k -> new AtomicLong());
-        long result = offsetAdder.getAndIncrement();
         int walId = topicId % Constant.WAL_FILE_COUNT;
-//        int logCount = walList[walId].flush(topicId, queueId, data, result);
-//        asyncReadWal(walId, logCount);
-        return result;
+        WalInfoBasic submitResult = walList[walId].submit(topicId, queueId, data);
+        while (true) {
+            if (submitResult.walPos >= brokers[walId].walPos.get()) {
+                okCnt++;
+                break;
+            }
+        }
+        return submitResult.pOffset;
     }
 
     @Override
     public Map<Integer, ByteBuffer> getRange(String topic, int queueId, long offset, int fetchNum) {
+        log.info("ok cnt:{} , force cnt: {}", okCnt, forceCnt);
         int topicId = IdGenerator.getId(topic);
         int walId = topicId % Constant.WAL_FILE_COUNT;
-        long partitionCount = PARTITION_OFFSET_MAP
-                .computeIfAbsent(WalInfoBasic.getKey(topicId, queueId), k -> new AtomicLong())
-                .get();
-        int partitionFetchNum = 0;
-        List<WalInfoBasic> infoList = new ArrayList<>();
-        if (offset < partitionCount) {
-            partitionFetchNum = (int) (Math.min(partitionCount, offset + fetchNum) - offset);
-            infoList.addAll(partitionInfoReader.read(topicId, queueId, offset, partitionFetchNum));
-        }
-        int walFetchNum = fetchNum - partitionFetchNum;
-        long walFetchOffset = offset;
-        log.info("topic: {}, queueId: {}, offset: {}, fetchNum: {}, walOffset:{}, partitionCount: {}, partitionFetchNum: {}, walFetchNum: {}",
-                topic, queueId, offset, fetchNum, walFetchOffset, partitionCount, partitionFetchNum, walFetchNum);
-        if (walFetchNum > 0) {
-            infoList.addAll(walInfoReader.read(topicId, queueId, walFetchOffset, walFetchNum));
-        }
-        return readValueFromWAL(walId, offset, fetchNum, infoList);
+        WriteAheadLog.Idx idx = walList[walId].IDX.get(WalInfoBasic.getKey(topicId, queueId));
+        log.info("query, idxSize: {}", idx.size);
+        return readValueFromWAL(walId, (int) offset, fetchNum, idx.list);
     }
 
-    private void asyncReadWal(int walId, int logCount) {
-        long curWalPos = (long) logCount * Constant.MSG_SIZE;
-        if (curWalPos > 0 && curWalPos % Constant.READ_BEFORE_QUERY == 0) {
-            try {
-                partitions[walId].readBq.put(curWalPos - Constant.READ_BEFORE_QUERY);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
-    private Map<Integer, ByteBuffer> readValueFromWAL(int walId, long offset, int fetchNum,
-                                                      List<WalInfoBasic> infoList) {
+    private Map<Integer, ByteBuffer> readValueFromWAL(int walId, int offset, int fetchNum,
+                                                      int[] idx) {
         Map<Integer, ByteBuffer> result = new HashMap<>(fetchNum);
         try (FileChannel valueChannel = FileChannel.open(
-                Constant.getWALValuePath(walId),
+                Constant.getWALInfoPath(walId),
                 StandardOpenOption.READ)
         ) {
-            int idx = 0;
-            for (WalInfoBasic infoBasic : infoList) {
-                ByteBuffer buffer = ByteBuffer.allocate(infoBasic.valueSize);
-//                valueChannel.read(buffer, infoBasic.valuePos);
-                result.put((int) offset + idx, buffer);
-                idx++;
+            for (int i = 0; i < fetchNum; ++i) {
+                int key = offset + i;
+                if ((key << 1) >= idx.length) continue;
+                ByteBuffer buffer = ByteBuffer.allocate(idx[(key << 1) | 1]);
+                valueChannel.read(buffer, idx[key << 1]);
+                result.put(key, buffer);
+                log.info("key: {}, value:{}, pos: {}, size: {}", key, new String(buffer.array()), idx[key << 1], idx[(key << 1) | 1]);
             }
         } catch (IOException e) {
             e.printStackTrace();

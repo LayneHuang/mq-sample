@@ -5,11 +5,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * WalCache
@@ -22,51 +22,38 @@ public class Broker extends Thread {
 
     private final int walId;
 
-    private final BlockingQueue<PageForWrite> writeBq;
+    private final BlockingQueue<byte[]> writeBq;
 
-    private final ConcurrentHashMap<String, AtomicLong> pageOffset;
+    public AtomicInteger walPos = new AtomicInteger();
 
-    public Broker(int walId,
-                  ConcurrentHashMap<String, AtomicLong> pageOffset,
-                  BlockingQueue<PageForWrite> writeBq) {
+    public Broker(int walId, BlockingQueue<byte[]> writeBq) {
         this.walId = walId;
-        this.pageOffset = pageOffset;
         this.writeBq = writeBq;
     }
 
     @Override
     public void run() {
-//        log.debug("Broker :{} , Start", walId);
-        while (true) {
-            PageForWrite page = null;
-            try {
-                page = writeBq.take();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-            if (page == null) {
-                log.debug("Broker :{} , End", walId);
-                break;
-            }
-            int msgCount = page.buffer.position() / Constant.SIMPLE_MSG_SIZE;
-            write(page);
-            long pCount = pageOffset.computeIfAbsent(
-                    WalInfoBasic.getKey(page.topicId, page.queueId),
-                    k -> new AtomicLong()
-            ).addAndGet(msgCount);
-//            log.debug("write, topic:{}, queue:{}, pCount:{}", page.topicId, page.queueId, pCount);
-        }
-    }
-
-    private void write(PageForWrite page) {
         try (FileChannel fileChannel = FileChannel.open(
-                Constant.getPath(page.topicId, page.queueId),
+                Constant.getWALInfoPath(walId),
+                StandardOpenOption.READ,
                 StandardOpenOption.WRITE,
-                StandardOpenOption.CREATE,
-                StandardOpenOption.APPEND
+                StandardOpenOption.CREATE
         )) {
-            page.buffer.flip();
-            fileChannel.write(page.buffer);
+            MappedByteBuffer buffer = null;
+            while (true) {
+                try {
+                    byte[] bs = writeBq.take();
+                    if (bs.length == 0) break;
+                    if (buffer == null || buffer.remaining() < bs.length) {
+                        buffer = fileChannel.map(FileChannel.MapMode.READ_WRITE, walPos.get(), Constant.WRITE_BEFORE_QUERY);
+                    }
+                    buffer.put(bs);
+                    buffer.force();
+                    walPos.addAndGet(bs.length);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
         } catch (IOException e) {
             e.printStackTrace();
         }

@@ -26,7 +26,8 @@ public class Page {
                 infoBasic.getKey(),
                 k -> ByteBuffer.allocate(Constant.WRITE_BEFORE_QUERY)
         );
-        return infoBasic.encodeSimple(buffer);
+//        return infoBasic.encodeSimple(buffer);
+        return buffer;
     }
 
     public void clear(WalInfoBasic infoBasic) {

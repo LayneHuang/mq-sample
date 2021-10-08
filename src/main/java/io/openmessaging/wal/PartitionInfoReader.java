@@ -33,7 +33,7 @@ public class PartitionInfoReader implements InfoReader {
                 infoBuffer.flip();
                 while (infoBuffer.hasRemaining()) {
                     WalInfoBasic infoBasic = new WalInfoBasic();
-                    infoBuffer = infoBasic.decodeSimple(infoBuffer);
+//                    infoBuffer = infoBasic.decodeSimple(infoBuffer);
 //                    log.debug("info size: {}, pos: {}", infoSize, infoPos);
                     result.add(infoBasic);
                     size++;

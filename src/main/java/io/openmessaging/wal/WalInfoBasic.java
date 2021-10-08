@@ -23,6 +23,8 @@ public class WalInfoBasic {
 
     public int valueSize;
 
+    public int walPos;
+
     public ByteBuffer value;
 
     public WalInfoBasic() {
@@ -51,12 +53,22 @@ public class WalInfoBasic {
         return this.encode(infoBuffer);
     }
 
-    public static final int BYTES = Byte.BYTES;
+    public static final int BYTES = 1 + 2 + 4;
 
     public byte[] encodeToB() {
         byte[] result = new byte[BYTES + this.valueSize];
+        // topicId
         result[0] = (byte) topicId;
-        // todo
+        // queueId
+        result[1] = (byte) ((queueId >> 4) & 0xff);
+        result[2] = (byte) (queueId & 0xff);
+        // value size
+        result[3] = (byte) ((valueSize >> 12) & 0xff);
+        result[4] = (byte) ((valueSize >> 8) & 0xff);
+        result[5] = (byte) ((valueSize >> 4) & 0xff);
+        result[6] = (byte) (valueSize & 0xff);
+        // value
+        System.arraycopy(value.array(), 0, result, BYTES, result.length - BYTES);
         return result;
     }
 
