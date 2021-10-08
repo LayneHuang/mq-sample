@@ -10,8 +10,11 @@ public class Loader extends Thread {
 
     private final int walId;
 
-    public Loader(int walId) {
+    private final WriteAheadLog log;
+
+    public Loader(int walId, WriteAheadLog log) {
         this.walId = walId;
+        this.log = log;
     }
 
     public void run() {

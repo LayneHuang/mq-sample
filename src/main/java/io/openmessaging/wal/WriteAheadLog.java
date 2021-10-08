@@ -35,14 +35,19 @@ public class WriteAheadLog {
         WalInfoBasic result = new WalInfoBasic(topicId, queueId, buffer);
         byte[] bs = result.encodeToB();
         lock.lock();
-        String key = WalInfoBasic.getKey(topicId, queueId);
-        result.pOffset = APPEND_OFFSET_MAP.computeIfAbsent(key, k -> new AtomicInteger()).getAndIncrement();
-        result.walPos = pos;
-        put(bs);
-        // 索引
-        Idx idx = IDX.computeIfAbsent(WalInfoBasic.getKey(topicId, queueId), k -> new Idx());
-        idx.add(result.walPos + WalInfoBasic.BYTES, result.valueSize);
-        lock.unlock();
+        try {
+            String key = WalInfoBasic.getKey(topicId, queueId);
+            result.pOffset = APPEND_OFFSET_MAP.computeIfAbsent(key, k -> new AtomicInteger()).getAndIncrement();
+            result.walPos = pos;
+            put(bs);
+            // 索引
+            Idx idx = IDX.computeIfAbsent(WalInfoBasic.getKey(topicId, queueId), k -> new Idx());
+            idx.add(result.walPos + WalInfoBasic.BYTES, result.valueSize);
+        } catch (Exception e) {
+            log.info(e.toString());
+        } finally {
+            lock.unlock();
+        }
 //        log.info("topic: {} , queue: {}, offset:{}, value: {}, pos: {}, size: {}, idxSize: {}",
 //                topicId, queueId, result.pOffset, new String(buffer.array()), result.walPos, result.valueSize, idx.size);
         return result;
@@ -72,18 +77,20 @@ public class WriteAheadLog {
     }
 
     public void force() {
-        lock.lock();
-        if (cur > 0) {
-            byte[] cTmp = new byte[cur];
-            System.arraycopy(tmp, 0, cTmp, 0, cur);
-            cur = 0;
-            try {
-                readBq.put(cTmp);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+        if (cur <= 0) {
+            return;
         }
-        lock.unlock();
+        lock.lock();
+        byte[] cTmp = new byte[cur];
+        System.arraycopy(tmp, 0, cTmp, 0, cur);
+        cur = 0;
+        try {
+            readBq.put(cTmp);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } finally {
+            lock.unlock();
+        }
     }
 
     public Map<String, Idx> IDX = new ConcurrentHashMap<>();

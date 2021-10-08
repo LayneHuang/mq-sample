@@ -36,7 +36,7 @@ public class LayneMessageQueueImpl extends MessageQueue {
         for (int i = 0; i < Constant.WAL_FILE_COUNT; ++i) {
             walList[i] = new WriteAheadLog();
         }
-//        reload();
+        reload();
         for (int i = 0; i < Constant.WAL_FILE_COUNT; ++i) {
             brokers[i] = new Broker(i, walList[i].readBq);
             brokers[i].start();
@@ -44,8 +44,9 @@ public class LayneMessageQueueImpl extends MessageQueue {
     }
 
     private void reload() {
+        IdGenerator.load();
         for (int i = 0; i < Constant.WAL_FILE_COUNT; ++i) {
-            loader[i] = new Loader(i);
+            loader[i] = new Loader(i, walList[i]);
             loader[i].start();
         }
     }
