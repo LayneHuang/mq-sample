@@ -13,6 +13,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import static io.openmessaging.leo.DataManager.*;
+import static io.openmessaging.leo2.DataManager.THREAD_MAX;
 
 public class DataBlock {
 
@@ -47,7 +48,7 @@ public class DataBlock {
     }
 
     private int tempSize = 0;
-    private final CyclicBarrier barrier = new CyclicBarrier(40);
+    private final CyclicBarrier barrier = new CyclicBarrier(THREAD_MAX);
 
     public void writeLog(byte topic, short queueId, int offset, ByteBuffer data) {
         short msgLen = (short) data.limit();

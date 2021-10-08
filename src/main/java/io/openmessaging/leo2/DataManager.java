@@ -26,6 +26,7 @@ public class DataManager {
 
     public static final Path LOGS_PATH = DIR_ESSD.resolve("log");
 
+    public static final short THREAD_MAX = 40;
     public static final short MSG_META_SIZE = 9;
     public static final short INDEX_BUF_SIZE = 8;
     public static final short INDEX_TEMP_BUF_NUM = 2048;
@@ -34,7 +35,7 @@ public class DataManager {
 
     public static ThreadLocal<DataBlock> BLOCK_TL = new ThreadLocal<>();
     public static AtomicInteger BLOCK_ID_ADDER = new AtomicInteger();
-    public static ConcurrentHashMap<Integer, DataBlock> BLOCKS = new ConcurrentHashMap<>(40);
+    public static ConcurrentHashMap<Integer, DataBlock> BLOCKS = new ConcurrentHashMap<>(THREAD_MAX);
 
     static {
         try {
@@ -45,6 +46,8 @@ public class DataManager {
             e.printStackTrace();
         }
     }
+
+    // block 2 64k 75G cost: 330965
 
     public static void writeLog(byte topic, short queueId, int offset, ByteBuffer data) {
         DataBlock dataBlock = BLOCK_TL.get();
