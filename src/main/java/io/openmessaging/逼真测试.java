@@ -6,19 +6,21 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.atomic.AtomicLong;
 
+import io.openmessaging.solve.FinkysTestMessageQueueImpl;
 import io.openmessaging.solve.LeoMessageQueueImpl;
 
 public class 逼真测试 {
 
-    private static final int THREAD_COUNT = 10;
+    private static final int THREAD_COUNT = 20;
     private static final int TOPIC_COUNT = 100;
     private static final int MSG_COUNT_MIN = 1;
     private static final int MSG_COUNT_MAX = 30;
     private static final int DATA_SIZE_MIN = 100;
     private static final int DATA_SIZE_MAX = 17 * 1024;
     private static final long RANDOM_SEED = 157625465123L;
-    private static final long MAX_SIZE_PER_THREAD = 1 * 1024 * 1024 * 1024L; // 1G
+    private static final long MAX_SIZE_PER_THREAD = 256 * 1024 * 1024L; // 1G
 //    private static final int QUEUE_COUNT_MIN = 1;
 //    private static final int QUEUE_COUNT_MAX = 10000;
 
@@ -29,6 +31,7 @@ public class 逼真测试 {
         public int queueId;
         public int dataSize;
         public int offset;
+        public ByteBuffer data;
 
         public Message(String topic, int queueId, int dataSize, int offset) {
             this.topic = topic;
@@ -39,6 +42,8 @@ public class 逼真测试 {
     }
 
     private static byte[] bytes = new byte[17 * 1024];
+
+    public static MessageQueue messageQueue = new FinkysTestMessageQueueImpl();
 
     public static void main(String[] args) throws InterruptedException {
         random.nextBytes(bytes);
@@ -60,6 +65,10 @@ public class 逼真测试 {
                     msgListArray[i % THREAD_COUNT].add(msg);
                     threadMsgSize[i % THREAD_COUNT] += dataSize;
                     totalSize += dataSize;
+                    msg.data = ByteBuffer.allocate(msg.dataSize);
+                    msg.data.putInt(msg.offset);
+                    msg.data.put(bytes, 0, msg.dataSize - 4);
+                    msg.data.flip();
                 }
                 queueId++;
             }
@@ -80,22 +89,14 @@ public class 逼真测试 {
         }
         System.out.println("totalSize : " + totalSize / 1024.f / 1024.f / 1024.f + " GB");
 
-        MessageQueue messageQueue = new LeoMessageQueueImpl();
-
         for (int i = 0; i < threads.length; i++) {
             int finalI = i;
-            threads[i] = new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    List<Message> messages = msgListArray[finalI];
-                    for (Message message : messages) {
-                        ByteBuffer buf = ByteBuffer.allocate(message.dataSize);
-                        buf.putInt(message.offset);
-                        buf.put(bytes, 0, message.dataSize - 4);
-                        messageQueue.append(message.topic, message.queueId, buf);
-                    }
-                    System.out.println("THREAD-" + finalI + " 完成");
+            threads[i] = new Thread(() -> {
+                List<Message> messages = msgListArray[finalI];
+                for (Message message : messages) {
+                    messageQueue.append(message.topic, message.queueId, message.data);
                 }
+                System.out.println("THREAD-" + finalI + " 完成");
             });
         }
         long startTime = System.currentTimeMillis();
