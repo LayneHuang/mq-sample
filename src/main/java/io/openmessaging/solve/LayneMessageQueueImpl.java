@@ -54,10 +54,15 @@ public class LayneMessageQueueImpl extends MessageQueue {
         int topicId = IdGenerator.getId(topic);
         int walId = topicId % Constant.WAL_FILE_COUNT;
         WalInfoBasic submitResult = walList[walId].submit(topicId, queueId, data);
+        int wait = 0;
         while (true) {
-            if (submitResult.walPos >= brokers[walId].walPos.get()) {
+            if (submitResult.walPos <= brokers[walId].walPos.get()) {
                 okCnt++;
                 break;
+            }
+            wait++;
+            if (wait > 100) {
+                walList[walId].force();
             }
         }
         return submitResult.pOffset;
@@ -69,7 +74,7 @@ public class LayneMessageQueueImpl extends MessageQueue {
         int topicId = IdGenerator.getId(topic);
         int walId = topicId % Constant.WAL_FILE_COUNT;
         WriteAheadLog.Idx idx = walList[walId].IDX.get(WalInfoBasic.getKey(topicId, queueId));
-        log.info("query, idxSize: {}", idx.size);
+//        log.info("query, idxSize: {}", idx.size);
         return readValueFromWAL(walId, (int) offset, fetchNum, idx.list);
     }
 
@@ -86,7 +91,7 @@ public class LayneMessageQueueImpl extends MessageQueue {
                 ByteBuffer buffer = ByteBuffer.allocate(idx[(key << 1) | 1]);
                 valueChannel.read(buffer, idx[key << 1]);
                 result.put(key, buffer);
-                log.info("key: {}, value:{}, pos: {}, size: {}", key, new String(buffer.array()), idx[key << 1], idx[(key << 1) | 1]);
+//                log.info("key: {}, value:{}, pos: {}, size: {}", key, new String(buffer.array()), idx[key << 1], idx[(key << 1) | 1]);
             }
         } catch (IOException e) {
             e.printStackTrace();

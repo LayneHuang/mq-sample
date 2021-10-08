@@ -69,8 +69,8 @@ public class WriteAheadLog {
         Idx idx = IDX.computeIfAbsent(WalInfoBasic.getKey(topicId, queueId), k -> new Idx());
         idx.add(result.walPos + WalInfoBasic.BYTES, result.valueSize);
         lock.unlock();
-        log.info("topic: {} , queue: {}, offset:{}, value: {}, pos: {}, size: {}, idxSize: {}",
-                topicId, queueId, result.pOffset, new String(buffer.array()), result.walPos, result.valueSize, idx.size);
+//        log.info("topic: {} , queue: {}, offset:{}, value: {}, pos: {}, size: {}, idxSize: {}",
+//                topicId, queueId, result.pOffset, new String(buffer.array()), result.walPos, result.valueSize, idx.size);
         return result;
     }
 
