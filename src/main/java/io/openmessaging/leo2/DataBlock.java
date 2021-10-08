@@ -71,7 +71,7 @@ public class DataBlock {
                 logMappedBuf.putShort(msgLen); // 2
                 logMappedBuf.put(data);
                 tempSize += dataSize;
-                forced = tempSize >= 1024 * 64;
+                forced = tempSize >= 1024 * 32;
                 if (forced) {
                     tempSize = 0;
                 }
