@@ -75,7 +75,7 @@ public class WriteAheadLog {
         return result;
     }
 
-    private static final int WRITE_SIZE = 4 * 1024;
+    private static final int WRITE_SIZE = 32 * 1024;
 
     private final byte[] tmp = new byte[WRITE_SIZE];
 

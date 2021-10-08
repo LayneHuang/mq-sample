@@ -20,7 +20,7 @@ public class Constant {
 
     public static final String DIR_PMEM = "/pmem";
 
-    public static final int WAL_FILE_COUNT = 5;
+    public static final int WAL_FILE_COUNT = 20;
 
     public static final int LOG_SEGMENT_SIZE = 1024;
 
@@ -34,7 +34,7 @@ public class Constant {
 
     public static final int READ_BEFORE_QUERY = MSG_SIZE * 512;
 
-    public static final int WRITE_BEFORE_QUERY = SIMPLE_MSG_SIZE * 1024;
+    public static final int WRITE_BEFORE_QUERY = 2 * 1024 * 1024;
 
     public static final int INDEX_DISTANCE = 10;
 
