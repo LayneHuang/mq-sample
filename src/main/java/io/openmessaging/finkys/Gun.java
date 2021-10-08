@@ -11,12 +11,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import static io.openmessaging.leo.DataManager.LOGS_PATH;
-import static io.openmessaging.leo.DataManager.unmap;
+import sun.misc.Cleaner;
+import sun.nio.ch.DirectBuffer;
+
+import static io.openmessaging.finkys.BulletManager.LOGS_PATH;
 
 public class Gun extends Thread {
 
-    private static final int FLUSH_SIZE = 16 * 1024;
+    private static final int FLUSH_SIZE = 4 * 1024;
 
     private byte id;
     private Path logDir;
@@ -109,5 +111,12 @@ public class Gun extends Thread {
             bullet.release();
         }
         bullets.clear();
+    }
+
+    private static void unmap(MappedByteBuffer indexMapBuf) {
+        Cleaner cleaner = ((DirectBuffer) indexMapBuf).cleaner();
+        if (cleaner != null) {
+            cleaner.clean();
+        }
     }
 }

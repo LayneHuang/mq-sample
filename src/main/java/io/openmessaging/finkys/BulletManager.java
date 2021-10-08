@@ -13,9 +13,9 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class BulletManager {
 
-    public static final int GUN_AMOUNT = 4;
+    public static final int GUN_AMOUNT = 8;
     public static final String DIR_PMEM = "/pmem";
-    public static final Path DIR_ESSD = Paths.get("D:/essd");
+    public static final Path DIR_ESSD = Paths.get("/essd");
     public static final Path LOGS_PATH = DIR_ESSD.resolve("log");
     public static final ConcurrentHashMap<String, AtomicLong> APPEND_OFFSET_MAP = new ConcurrentHashMap<>();
     public static ConcurrentHashMap<String, BulletIndexer> INDEXERS = new ConcurrentHashMap<>(1000_000);
