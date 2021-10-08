@@ -53,24 +53,25 @@ public class DataPartition {
         short dataSize = (short) (18 + msgLen);
         synchronized (indexer.LOCKER) {
             try {
-                if (logMappedBuf.remaining() < dataSize) {
-                    logMappedBuf.force();
-                    unmap(logMappedBuf);
-                    logFileChannel.close();
-                    openLog();
-                }
-                int position = logMappedBuf.position();
-                logMappedBuf.putInt(topic); // 4
-                logMappedBuf.putInt(queueId); // 4
-                logMappedBuf.putLong(offset); // 8
-                logMappedBuf.putShort(msgLen); // 2
-                logMappedBuf.put(data);
-                if (count++ % 2 == 0){
-                    logMappedBuf.force();
-                }
+//                if (logMappedBuf.remaining() < dataSize) {
+//                    logMappedBuf.force();
+//                    unmap(logMappedBuf);
+//                    logFileChannel.close();
+//                    openLog();
+//                }
+//                int position = logMappedBuf.position();
+//                logMappedBuf.putInt(topic); // 4
+//                logMappedBuf.putInt(queueId); // 4
+//                logMappedBuf.putLong(offset); // 8
+//                logMappedBuf.putShort(msgLen); // 2
+//                logMappedBuf.put(data);
+//                if (count++ % 2 == 0){
+//                    logMappedBuf.force();
+//                }
+                int position = 0;
                 // index
                 indexer.writeIndex(id,logNumAdder,position,dataSize);
-            } catch (IOException e) {
+            } catch (Exception e) {
                 e.printStackTrace();
             }
         }
