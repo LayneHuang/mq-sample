@@ -51,6 +51,7 @@ public class Gun extends Thread {
     @Override
     public void run() {
         try {
+            System.out.println("GUN-"+id+": start!");
             while (true) {
                 Bullet bullet = BulletManager.clip.poll(50, TimeUnit.MILLISECONDS);
                 if (bullet == null) {

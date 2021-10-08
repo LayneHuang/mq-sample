@@ -13,6 +13,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class BulletManager {
 
+    public static final int GUN_AMOUNT = 4;
     public static final String DIR_PMEM = "/pmem";
     public static final Path DIR_ESSD = Paths.get("D:/essd");
     public static final Path LOGS_PATH = DIR_ESSD.resolve("log");
@@ -24,9 +25,9 @@ public class BulletManager {
         try {
             if (Files.notExists(LOGS_PATH)) {
                 Files.createDirectories(LOGS_PATH);
-                for (int i = 0; i < 4; i++) {
+                for (int i = 0; i < GUN_AMOUNT; i++) {
                     Gun gun = new Gun((byte) i);
-                    gun.run();
+                    gun.start();
                 }
             } else {
                 // 重启
