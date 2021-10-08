@@ -1,5 +1,6 @@
 package io.openmessaging.wal;
 
+import io.openmessaging.Constant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,8 +24,6 @@ public class WriteAheadLog {
     /**
      * 同步水位
      */
-    public final WalOffset offset = new WalOffset();
-
     private final Lock lock = new ReentrantLock();
 
     private static final Map<String, AtomicInteger> APPEND_OFFSET_MAP = new ConcurrentHashMap<>();
@@ -38,11 +37,18 @@ public class WriteAheadLog {
         try {
             String key = WalInfoBasic.getKey(topicId, queueId);
             result.pOffset = APPEND_OFFSET_MAP.computeIfAbsent(key, k -> new AtomicInteger()).getAndIncrement();
+            // wal 分段
+            if (pos + result.getSize() >= Constant.WRITE_BEFORE_QUERY) {
+                pos = 0;
+                part++;
+                put(new byte[0]);
+            }
+            result.walPart = part;
             result.walPos = pos;
             put(bs);
             // 索引
             Idx idx = IDX.computeIfAbsent(WalInfoBasic.getKey(topicId, queueId), k -> new Idx());
-            idx.add(result.walPos + WalInfoBasic.BYTES, result.valueSize);
+            idx.add(result.walPart, result.walPos + WalInfoBasic.BYTES, result.valueSize);
         } catch (Exception e) {
             log.info(e.toString());
         } finally {
@@ -60,6 +66,8 @@ public class WriteAheadLog {
     private int cur = 0;
 
     private int pos = 0;
+
+    private int part = 0;
 
     private void put(byte[] bs) {
         try {
@@ -97,17 +105,31 @@ public class WriteAheadLog {
 
     public static class Idx {
         public static final int IDX_SIZE = 4;
+        private static final int BASE_DIS = 16;
+        private static final int BASE = (1 << BASE_DIS) - 1;
         public int[] list = new int[1024];
         public int size = 0;
 
-        public void add(int walPos, int valueSize) {
+        public void add(int walPart, int walPos, int valueSize) {
             while (size + IDX_SIZE > list.length) {
                 int[] nList = new int[list.length + (list.length >> 1)];
                 if (size >= 0) System.arraycopy(list, 0, nList, 0, size);
                 list = nList;
             }
             list[size++] = walPos;
-            list[size++] = valueSize;
+            list[size++] = ((walPart & BASE) << BASE_DIS) | (valueSize & BASE);
+        }
+
+        public int getWalPart(int pos) {
+            return (list[(pos << 1) | 1] >> BASE_DIS) & BASE;
+        }
+
+        public int getWalValueSize(int pos) {
+            return list[(pos << 1) | 1] & BASE;
+        }
+
+        public int getWalValuePos(int pos) {
+            return list[pos << 1];
         }
     }
 }

@@ -34,7 +34,7 @@ public class Constant {
 
     public static final int READ_BEFORE_QUERY = MSG_SIZE * 512;
 
-    public static final int WRITE_BEFORE_QUERY = 2 * 1024 * 1024;
+    public static final int WRITE_BEFORE_QUERY = (1 << 24);
 
     public static final int INDEX_DISTANCE = 10;
 
@@ -42,6 +42,10 @@ public class Constant {
 
     public static Path getWALInfoPath(int walId) {
         return DIR_ESSD.resolve("WAL-INFO-" + walId + ".md");
+    }
+
+    public static Path getWALInfoPath(int walId, int part) {
+        return DIR_ESSD.resolve("WAL-INFO-" + walId + "-" + part + ".md");
     }
 
     public static Path getWALValuePath(int walId) {

@@ -23,6 +23,8 @@ public class WalInfoBasic {
 
     public int valueSize;
 
+    public int walPart;
+
     public int walPos;
 
     public ByteBuffer value;
@@ -70,6 +72,10 @@ public class WalInfoBasic {
         // value
         System.arraycopy(value.array(), 0, result, BYTES, result.length - BYTES);
         return result;
+    }
+
+    public int getSize() {
+        return BYTES + this.valueSize;
     }
 
     public ByteBuffer encode(ByteBuffer infoBuffer) {
