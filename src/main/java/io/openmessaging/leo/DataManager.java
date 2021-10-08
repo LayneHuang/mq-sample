@@ -3,7 +3,6 @@ package io.openmessaging.leo;
 import sun.misc.Cleaner;
 import sun.nio.ch.DirectBuffer;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
@@ -23,8 +22,8 @@ import java.util.concurrent.atomic.AtomicLong;
 public class DataManager {
 
     public static final String DIR_PMEM = "/pmem";
-//    public static final Path DIR_ESSD = Paths.get("/essd");
-            public static final Path DIR_ESSD = Paths.get(System.getProperty("user.dir")).resolve("target").resolve("work");
+    public static final Path DIR_ESSD = Paths.get("/essd");
+    //  public static final Path DIR_ESSD = Paths.get(System.getProperty("user.dir")).resolve("target").resolve("work");
     public static final ConcurrentHashMap<String, AtomicLong> APPEND_OFFSET_MAP = new ConcurrentHashMap<>();
 
     public static final Path LOGS_PATH = DIR_ESSD.resolve("log");
@@ -94,9 +93,10 @@ public class DataManager {
                 topicQueueBufMap.forEach((topic, queueMap) -> {
                     queueMap.forEach((queueId, bufList) -> {
                         Indexer indexer = getIndexer(topic, queueId);
+                        ByteBuffer buf;
                         while (!bufList.isEmpty()) {
-                            // TODO 先测试性能
-//                            indexer.writeIndex(bufList.poll().buf);
+                            buf = bufList.poll().buf;
+                            indexer.writeIndex(buf.get(), buf.get(), buf.getInt(), buf.getShort());
                         }
                     });
                 });
@@ -180,12 +180,7 @@ public class DataManager {
         short dataSize = (short) (indexBuf.getShort() - MSG_META_SIZE);
         Path logFile = LOGS_PATH.resolve(String.valueOf(partitionId)).resolve(String.valueOf(logNum));
         FileChannel logChannel = FileChannel.open(logFile, StandardOpenOption.READ);
-//        MappedByteBuffer dataBuf = logChannel.map(FileChannel.MapMode.READ_ONLY, position, dataSize);
         try {
-//            byte topic = dataBuf.get();
-//            short queueId = dataBuf.getShort();
-//            int offset = dataBuf.getInt();
-//            short msgLen = dataBuf.getShort();
             ByteBuffer msgBuf = ByteBuffer.allocate(dataSize);
             logChannel.read(msgBuf, position);
             logChannel.close();

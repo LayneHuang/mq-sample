@@ -6,7 +6,7 @@ import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.Map;
 
-import static io.openmessaging.leo2.DataManager.*;
+import static io.openmessaging.leo.DataManager.*;
 
 /**
  * 这是一个简单的基于内存的实现，以方便选手理解题意；
@@ -14,13 +14,13 @@ import static io.openmessaging.leo2.DataManager.*;
  */
 public class LeoMessageQueueImpl extends MessageQueue {
 
-    long start = 0;
+//    long start = 0;
 
     @Override
     public long append(String topic, int queueId, ByteBuffer data) {
-        if (start == 0) {
-            start = System.currentTimeMillis();
-        }
+//        if (start == 0) {
+//            start = System.currentTimeMillis();
+//        }
         byte topicId = getTopicId(topic);
         long offset = getOffset(topicId, (short) queueId);
         // 更新最大位点
@@ -40,10 +40,10 @@ public class LeoMessageQueueImpl extends MessageQueue {
 
     @Override
     public Map<Integer, ByteBuffer> getRange(String topic, int queueId, long offset, int fetchNum) {
-        if (start != -1) {
-            System.out.println("75G cost: " + (System.currentTimeMillis() - start));
-            return null;
-        }
+//        if (start != -1) {
+//            System.out.println("75G cost: " + (System.currentTimeMillis() - start));
+//            return null;
+//        }
         byte topicId = getTopicId(topic);
         Map<Integer, ByteBuffer> dataMap = readLog(topicId, (short) queueId, (int) offset, fetchNum);
         if (dataMap != null) {
