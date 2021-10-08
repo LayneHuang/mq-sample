@@ -52,7 +52,7 @@ public class WriteAheadLog {
         }
     }
 
-    private static final Map<String, Integer> APPEND_OFFSET_MAP = new HashMap<>();
+    private static final Map<String, Integer> APPEND_OFFSET_MAP = new ConcurrentHashMap<>();
 
     public final BlockingQueue<byte[]> readBq = new LinkedBlockingQueue<>();
 

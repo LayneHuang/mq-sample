@@ -63,6 +63,7 @@ public class LayneMessageQueueImpl extends MessageQueue {
             wait++;
             if (wait > 100) {
                 walList[walId].force();
+                forceCnt++;
             }
         }
         return submitResult.pOffset;
