@@ -9,6 +9,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 import sun.misc.Cleaner;
@@ -18,13 +19,15 @@ import static io.openmessaging.finkys.BulletManager.LOGS_PATH;
 
 public class Gun extends Thread {
 
-    private static final int FLUSH_SIZE = 4 * 1024;
+    private static final int FLUSH_SIZE = 16 * 1024;
 
     private byte id;
     private Path logDir;
     private byte logNumAdder = Byte.MIN_VALUE;
     private FileChannel logFileChannel;
     private MappedByteBuffer logMappedBuf;
+    public LinkedBlockingQueue<Bullet> clip = new LinkedBlockingQueue<>();
+
 
     public Gun(byte id) {
         this.id = id;
@@ -55,7 +58,8 @@ public class Gun extends Thread {
         try {
             System.out.println("GUN-"+id+": start!");
             while (true) {
-                Bullet bullet = BulletManager.clip.poll(50, TimeUnit.MILLISECONDS);
+                Bullet bullet = clip.poll(50, TimeUnit.MILLISECONDS);
+//                Bullet bullet = BulletManager.clip.poll(50, TimeUnit.MILLISECONDS);
                 if (bullet == null) {
                     fire();
                     continue;

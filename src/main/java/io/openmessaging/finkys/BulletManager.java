@@ -9,16 +9,18 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class BulletManager {
 
-    public static final int GUN_AMOUNT = 8;
+    public static final int GUN_AMOUNT = 4;
     public static final String DIR_PMEM = "/pmem";
-    public static final Path DIR_ESSD = Paths.get("/essd");
+    public static final Path DIR_ESSD = Paths.get("D:/essd");
     public static final Path LOGS_PATH = DIR_ESSD.resolve("log");
     public static final ConcurrentHashMap<String, AtomicLong> APPEND_OFFSET_MAP = new ConcurrentHashMap<>();
     public static ConcurrentHashMap<String, BulletIndexer> INDEXERS = new ConcurrentHashMap<>(1000_000);
+    public static Gun[] guns = new Gun[GUN_AMOUNT];
     public static LinkedBlockingQueue<Bullet> clip = new LinkedBlockingQueue<>();
 
     static {
@@ -26,8 +28,8 @@ public class BulletManager {
             if (Files.notExists(LOGS_PATH)) {
                 Files.createDirectories(LOGS_PATH);
                 for (int i = 0; i < GUN_AMOUNT; i++) {
-                    Gun gun = new Gun((byte) i);
-                    gun.start();
+                    guns[i] = new Gun((byte) i);
+                    guns[i].start();
                 }
             } else {
                 // 重启
@@ -76,13 +78,23 @@ public class BulletManager {
         }
     }
 
+    public static ThreadLocal<Gun> GUN_TL = new ThreadLocal<>();
+    public static AtomicInteger GUN_ID_ADDER = new AtomicInteger();
+
     public static long append(String topic, int queueId, ByteBuffer data) {
         int topicHash = topic.hashCode();
         String key = (topicHash + " + " + queueId).intern();
         long offset = getOffset(key);
         Bullet bullet = new Bullet(topicHash, queueId, offset, data);
         bullet.acquire();
-        clip.offer(bullet);
+        Gun gun = GUN_TL.get();
+        if (gun == null) {
+            int id = GUN_ID_ADDER.getAndIncrement();
+            gun = guns[id % GUN_AMOUNT];
+            GUN_TL.set(gun);
+        }
+        gun.clip.offer(bullet);
+//        clip.offer(bullet);
         bullet.acquire();
         return offset;
     }
