@@ -53,14 +53,17 @@ public class LayneMessageQueueImpl extends MessageQueue {
     private int okCnt = 0;
     private int forceCnt = 0;
     private int queryCnt = 0;
+    private long start = 0;
 
     @Override
     public long append(String topic, int queueId, ByteBuffer data) {
+        if (start == 0) {
+            start = System.currentTimeMillis();
+        }
         queryCnt++;
         if (queryCnt % 10000 == 0) {
             log.info("queryCount: {}, ok: {} , force:{} ", queryCnt, okCnt, forceCnt);
         }
-        if (queryCnt > 15000) return 0;
         int topicId = IdGenerator.getId(topic);
         int walId = topicId % Constant.WAL_FILE_COUNT;
         WalInfoBasic submitResult = walList[walId].submit(topicId, queueId, data);
@@ -81,6 +84,10 @@ public class LayneMessageQueueImpl extends MessageQueue {
 
     @Override
     public Map<Integer, ByteBuffer> getRange(String topic, int queueId, long offset, int fetchNum) {
+        if (start != -1) {
+            System.out.println("75G cost: " + (System.currentTimeMillis() - start));
+            return null;
+        }
         int topicId = IdGenerator.getId(topic);
         int walId = topicId % Constant.WAL_FILE_COUNT;
         WriteAheadLog.Idx idx = walList[walId].IDX.get(WalInfoBasic.getKey(topicId, queueId));
