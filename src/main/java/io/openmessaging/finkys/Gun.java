@@ -60,7 +60,7 @@ public class Gun extends Thread {
     }
 
     private int currentCount = 0;
-    private int totalCount = 4;
+    private int totalCount = 10;
     private boolean mergeIO = true;
 
     public void append(int topic,int queueId,long offset,ByteBuffer data){
@@ -72,12 +72,14 @@ public class Gun extends Thread {
                 synchronized (LOCKER){
                     if (logMappedBuf.remaining() < dataSize) {
                         currentCount = 0;
+                        currentSize = 0;
                         logMappedBuf.force();
                         unmap(logMappedBuf);
                         logFileChannel.close();
                         openLog();
                         barrier.reset();
                     }
+                    currentSize += dataSize;
                     currentCount ++;
                     int position = logMappedBuf.position();
                     logMappedBuf.putInt(topic); // 4
@@ -85,8 +87,9 @@ public class Gun extends Thread {
                     logMappedBuf.putLong(offset); // 8
                     logMappedBuf.putShort(msgLen); // 2
                     logMappedBuf.put(data);
-                    if (currentCount >= totalCount){
+                    if (currentCount >= totalCount || currentSize >= FLUSH_SIZE){
                         currentCount = 0;
+                        currentSize = 0;
                         logMappedBuf.force();
                     }
                     // index
