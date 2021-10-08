@@ -1,21 +1,14 @@
 package io.openmessaging.wal;
 
-import io.openmessaging.Constant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.MappedByteBuffer;
-import java.nio.channels.FileChannel;
-import java.nio.file.StandardOpenOption;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -31,28 +24,8 @@ public class WriteAheadLog {
      * 同步水位
      */
     public final WalOffset offset = new WalOffset();
-    private final int walId;
-    private FileChannel channel;
-    private MappedByteBuffer mapBuffer;
+
     private final Lock lock = new ReentrantLock();
-
-    public WriteAheadLog(int walId) {
-        this.walId = walId;
-        initChannels();
-    }
-
-    public void initChannels() {
-        try {
-            channel = FileChannel.open(
-                    Constant.getWALInfoPath(walId),
-                    StandardOpenOption.READ,
-                    StandardOpenOption.WRITE,
-                    StandardOpenOption.CREATE
-            );
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
 
     private static final Map<String, AtomicInteger> APPEND_OFFSET_MAP = new ConcurrentHashMap<>();
 
@@ -75,7 +48,7 @@ public class WriteAheadLog {
         return result;
     }
 
-    private static final int WRITE_SIZE = 32 * 1024;
+    private static final int WRITE_SIZE = 64 * 1024;
 
     private final byte[] tmp = new byte[WRITE_SIZE];
 

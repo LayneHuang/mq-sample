@@ -3,10 +3,7 @@ package io.openmessaging.solve;
 import io.openmessaging.Constant;
 import io.openmessaging.IdGenerator;
 import io.openmessaging.MessageQueue;
-import io.openmessaging.wal.Broker;
-import io.openmessaging.wal.WalInfoBasic;
-import io.openmessaging.wal.WalInfoReader;
-import io.openmessaging.wal.WriteAheadLog;
+import io.openmessaging.wal.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,21 +13,20 @@ import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 
 public class LayneMessageQueueImpl extends MessageQueue {
     private static final Logger log = LoggerFactory.getLogger(LayneMessageQueueImpl.class);
 
-    private static final ConcurrentHashMap<String, AtomicLong> APPEND_OFFSET_MAP = new ConcurrentHashMap<>();
+//    private static final ConcurrentHashMap<String, AtomicLong> APPEND_OFFSET_MAP = new ConcurrentHashMap<>();
 
-    private static final ConcurrentHashMap<String, AtomicLong> PARTITION_OFFSET_MAP = new ConcurrentHashMap<>();
+//    private static final ConcurrentHashMap<String, AtomicLong> PARTITION_OFFSET_MAP = new ConcurrentHashMap<>();
 
     private static final WriteAheadLog[] walList = new WriteAheadLog[Constant.WAL_FILE_COUNT];
 
 //    private static final Partition[] partitions = new Partition[Constant.WAL_FILE_COUNT];
 
     private static final Broker[] brokers = new Broker[Constant.WAL_FILE_COUNT];
+    private static final Loader[] loader = new Loader[Constant.WAL_FILE_COUNT];
 
 //    private static final PartitionInfoReader partitionInfoReader = new PartitionInfoReader();
 
@@ -38,19 +34,32 @@ public class LayneMessageQueueImpl extends MessageQueue {
 
     public LayneMessageQueueImpl() {
         for (int i = 0; i < Constant.WAL_FILE_COUNT; ++i) {
-            walList[i] = new WriteAheadLog(i);
-//            partitions[i] = new Partition(i);
+            walList[i] = new WriteAheadLog();
+        }
+//        reload();
+        for (int i = 0; i < Constant.WAL_FILE_COUNT; ++i) {
             brokers[i] = new Broker(i, walList[i].readBq);
-//            partitions[i].start();
             brokers[i].start();
+        }
+    }
+
+    private void reload() {
+        for (int i = 0; i < Constant.WAL_FILE_COUNT; ++i) {
+            loader[i] = new Loader(i);
+            loader[i].start();
         }
     }
 
     private int okCnt = 0;
     private int forceCnt = 0;
+    private int queryCnt = 0;
 
     @Override
     public long append(String topic, int queueId, ByteBuffer data) {
+        queryCnt++;
+        if (queryCnt % 10000 == 0) {
+            log.info("queryCount: {}, ok: {} , force:{} ", queryCnt, okCnt, forceCnt);
+        }
         int topicId = IdGenerator.getId(topic);
         int walId = topicId % Constant.WAL_FILE_COUNT;
         WalInfoBasic submitResult = walList[walId].submit(topicId, queueId, data);
@@ -61,7 +70,7 @@ public class LayneMessageQueueImpl extends MessageQueue {
                 break;
             }
             wait++;
-            if (wait > 100) {
+            if (wait > 2000) {
                 walList[walId].force();
                 forceCnt++;
             }
@@ -71,7 +80,6 @@ public class LayneMessageQueueImpl extends MessageQueue {
 
     @Override
     public Map<Integer, ByteBuffer> getRange(String topic, int queueId, long offset, int fetchNum) {
-        log.info("ok cnt:{} , force cnt: {}", okCnt, forceCnt);
         int topicId = IdGenerator.getId(topic);
         int walId = topicId % Constant.WAL_FILE_COUNT;
         WriteAheadLog.Idx idx = walList[walId].IDX.get(WalInfoBasic.getKey(topicId, queueId));
