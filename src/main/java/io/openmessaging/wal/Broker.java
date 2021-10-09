@@ -23,13 +23,11 @@ public class Broker extends Thread {
 
     private final int walId;
 
-    private final BlockingQueue<byte[]> writeBq;
+    private final BlockingQueue<WritePage> writeBq;
 
-    public AtomicInteger walPart = new AtomicInteger();
+    public AtomicInteger finishNum = new AtomicInteger();
 
-    public AtomicInteger walPos = new AtomicInteger();
-
-    public Broker(int walId, BlockingQueue<byte[]> writeBq) {
+    public Broker(int walId, BlockingQueue<WritePage> writeBq) {
         this.walId = walId;
         this.writeBq = writeBq;
     }
@@ -47,13 +45,17 @@ public class Broker extends Thread {
                     0,
                     Constant.WRITE_BEFORE_QUERY
             );
+            int curPart = 0;
             while (true) {
-                byte[] bs = writeBq.poll(5, TimeUnit.SECONDS);
-                if (bs == null) break;
-                if (bs.length == 0) {
+                WritePage page = writeBq.poll(5, TimeUnit.SECONDS);
+                if (page == null) {
+//                    log.info("Broker {} Finished", walId);
+                    break;
+                }
+                if (page.part != curPart) {
                     channel.close();
                     channel = FileChannel.open(
-                            Constant.getWALInfoPath(walId, walPart.incrementAndGet()),
+                            Constant.getWALInfoPath(walId, page.part),
                             StandardOpenOption.READ,
                             StandardOpenOption.WRITE,
                             StandardOpenOption.CREATE);
@@ -62,19 +64,11 @@ public class Broker extends Thread {
                             0,
                             Constant.WRITE_BEFORE_QUERY
                     );
-                    walPos.set(0);
-                } else {
-                    if (buffer.remaining() < bs.length) {
-                        buffer = channel.map(
-                                FileChannel.MapMode.READ_WRITE,
-                                walPos.get(),
-                                Constant.WRITE_BEFORE_QUERY
-                        );
-                    }
-                    buffer.put(bs);
-                    buffer.force();
-                    walPos.addAndGet(bs.length);
+                    curPart = page.part;
                 }
+                buffer.put(page.value);
+                buffer.force();
+                finishNum.incrementAndGet();
             }
         } catch (InterruptedException | IOException e) {
             e.printStackTrace();

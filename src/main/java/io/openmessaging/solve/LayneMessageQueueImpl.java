@@ -65,10 +65,7 @@ public class LayneMessageQueueImpl extends MessageQueue {
         WalInfoBasic submitResult = walList[walId].submit(topicId, queueId, data);
         int wait = 0;
         while (true) {
-            int part = brokers[walId].walPart.get();
-            int pos = brokers[walId].walPos.get();
-            if (submitResult.walPart < part ||
-                    (submitResult.walPart == part && submitResult.walPos <= pos)) {
+            if (submitResult.submitNum <= brokers[walId].finishNum.get()) {
                 okCnt++;
                 break;
             }

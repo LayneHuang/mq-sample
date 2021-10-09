@@ -28,7 +28,7 @@ public class WriteAheadLog {
 
     private static final Map<String, AtomicInteger> APPEND_OFFSET_MAP = new ConcurrentHashMap<>();
 
-    public final BlockingQueue<byte[]> readBq = new LinkedBlockingQueue<>();
+    public final BlockingQueue<WritePage> readBq = new LinkedBlockingQueue<>();
 
     public WalInfoBasic submit(int topicId, int queueId, ByteBuffer buffer) {
         WalInfoBasic result = new WalInfoBasic(topicId, queueId, buffer);
@@ -41,10 +41,10 @@ public class WriteAheadLog {
             if (pos + result.getSize() >= Constant.WRITE_BEFORE_QUERY) {
                 pos = 0;
                 part++;
-                put(new byte[0]);
             }
             result.walPart = part;
             result.walPos = pos;
+            result.submitNum = submitNum;
             put(bs);
             // 索引
             Idx idx = IDX.computeIfAbsent(WalInfoBasic.getKey(topicId, queueId), k -> new Idx());
@@ -69,16 +69,19 @@ public class WriteAheadLog {
 
     private int part = 0;
 
+    private int submitNum = 0;
+
     private void put(byte[] bs) {
         try {
             for (byte b : bs) {
                 if (cur == WRITE_SIZE) {
-                    readBq.put(tmp);
+                    readBq.put(new WritePage(part, pos, tmp));
+                    submitNum++;
                     cur = 0;
                 }
                 tmp[cur++] = b;
+                pos++;
             }
-            pos += bs.length;
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
@@ -89,11 +92,13 @@ public class WriteAheadLog {
             return;
         }
         lock.lock();
-        byte[] cTmp = new byte[cur];
-        System.arraycopy(tmp, 0, cTmp, 0, cur);
-        cur = 0;
         try {
-            readBq.put(cTmp);
+            byte[] cTmp = new byte[cur];
+            System.arraycopy(tmp, 0, cTmp, 0, cur);
+            readBq.put(new WritePage(part, pos, cTmp));
+            submitNum++;
+            pos += cur;
+            cur = 0;
         } catch (InterruptedException e) {
             e.printStackTrace();
         } finally {
