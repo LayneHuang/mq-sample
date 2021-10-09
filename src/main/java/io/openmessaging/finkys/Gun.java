@@ -21,8 +21,8 @@ import static io.openmessaging.finkys.BulletManager.LOGS_PATH;
 
 public class Gun extends Thread {
 
-    private static final int FLUSH_SIZE = 16 * 1024;
-    private static final int MERGE_SIZE = 5;
+    private static final int FLUSH_SIZE = 64 * 1024;
+    private static int MERGE_SIZE = 20;
 
     private byte id;
     private Path logDir;
@@ -95,16 +95,21 @@ public class Gun extends Thread {
                     indexer.writeIndex(id, logNumAdder, position, dataSize);
                 }
                 try {
-                    barrier.await(1000,TimeUnit.MILLISECONDS);
+                    barrier.await(100,TimeUnit.MILLISECONDS);
                 } catch (TimeoutException e) {
+//                    synchronized (LOCKER){
+//                        if (mergeIO){
+//                            mergeIO = false;
+//                            logMappedBuf.force();
+//                        }
+//                    }
                     synchronized (LOCKER){
-                        if (mergeIO){
-                            mergeIO = false;
-                            logMappedBuf.force();
-                        }
+                        MERGE_SIZE = currentCount < 2 ? 2 : currentCount;
+                        barrier = new CyclicBarrier(MERGE_SIZE);
+                        currentCount = 0;
+                        currentSize = 0;
+                        logMappedBuf.force();
                     }
-//                MERGE_SIZE = currentCount;
-//                barrier = new CyclicBarrier(MERGE_SIZE);
                 } catch (Exception e){
 
                 }

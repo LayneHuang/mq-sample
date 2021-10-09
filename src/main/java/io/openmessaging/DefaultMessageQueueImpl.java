@@ -12,7 +12,7 @@ import java.util.Map;
  */
 public class DefaultMessageQueueImpl extends MessageQueue {
 
-    MessageQueue messageQueue = new LeoMessageQueueImpl();
+    MessageQueue messageQueue = new FinkysMessageQueueImpl();
 
     @Override
     public long append(String topic, int queueId, ByteBuffer data) {
