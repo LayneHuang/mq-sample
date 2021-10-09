@@ -30,13 +30,14 @@ public class WriteAheadLog {
 
     public WalInfoBasic submit(int topicId, int queueId, ByteBuffer buffer) {
         WalInfoBasic result = new WalInfoBasic(topicId, queueId, buffer);
+        String key = WalInfoBasic.getKey(topicId, queueId);
+        result.pOffset = APPEND_OFFSET_MAP.computeIfAbsent(key, k -> new AtomicInteger()).getAndIncrement();
         byte[] bs = result.encodeToB();
         lock.lock();
         try {
-            String key = WalInfoBasic.getKey(topicId, queueId);
-            result.pOffset = APPEND_OFFSET_MAP.computeIfAbsent(key, k -> new AtomicInteger()).getAndIncrement();
             // wal 分段
             if (pos + result.getSize() >= Constant.WRITE_BEFORE_QUERY) {
+                force();
                 pos = 0;
                 part++;
             }
@@ -83,19 +84,23 @@ public class WriteAheadLog {
         return submitNum;
     }
 
-    public void force() {
+    public void force() throws InterruptedException {
         if (cur <= 0) {
             return;
         }
-        lock.lock();
+        byte[] cTmp = new byte[cur];
+        System.arraycopy(tmp, 0, cTmp, 0, cur);
+        readBq.put(new WritePage(part, pos, cTmp));
+        submitNum++;
+        pos += cur;
+        cur = 0;
+    }
+
+    public void syncForce() {
         try {
-            byte[] cTmp = new byte[cur];
-            System.arraycopy(tmp, 0, cTmp, 0, cur);
-            readBq.put(new WritePage(part, pos, cTmp));
-            submitNum++;
-            pos += cur;
-            cur = 0;
-        } catch (InterruptedException e) {
+            lock.lock();
+            force();
+        } catch (Exception e) {
             e.printStackTrace();
         } finally {
             lock.unlock();

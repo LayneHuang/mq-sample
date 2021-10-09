@@ -61,7 +61,7 @@ public class LayneMessageQueueImpl extends MessageQueue {
         while (submitResult.submitNum > brokers[walId].finishNum.get()) {
             wait++;
             if (wait > 2000) {
-                walList[walId].force();
+                walList[walId].syncForce();
             }
         }
         return submitResult.pOffset;
