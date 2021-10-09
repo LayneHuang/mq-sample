@@ -48,7 +48,7 @@ public class DataBlock {
     }
 
     private int tempSize = 0;
-    private int barrierCount = THREAD_MAX / 4;
+    private volatile int barrierCount = THREAD_MAX / 4;
     private CyclicBarrier barrier = new CyclicBarrier(barrierCount);
 
     public void writeLog(byte topic, short queueId, int offset, ByteBuffer data) {
@@ -72,7 +72,7 @@ public class DataBlock {
                 logMappedBuf.putShort(msgLen); // 2
                 logMappedBuf.put(data);
                 tempSize += dataSize;
-                forced = tempSize >= 1024 * 32;
+                forced = tempSize >= 1024 * 64;
                 if (forced) {
                     tempSize = 0;
                 }
@@ -82,17 +82,21 @@ public class DataBlock {
                 barrier.reset();
             } else {
                 try {
-                    int arrive = barrier.await(250, TimeUnit.MILLISECONDS);
+                    int arrive = barrier.await(500, TimeUnit.MILLISECONDS);
                     if (arrive == 0) {
                         System.out.println("不够 force");
                         logMappedBuf.force();
                     }
                 } catch (TimeoutException e) {
                     System.out.println("超时 force");
-                    synchronized (LOCKER) {
-                        logMappedBuf.force();
-                        barrierCount--;
-                        barrier = new CyclicBarrier(barrierCount);
+                    logMappedBuf.force();
+                    if (barrierCount > 10) {
+                        synchronized (LOCKER) {
+                            if (barrierCount > 10) {
+                                barrierCount--;
+                                barrier = new CyclicBarrier(barrierCount);
+                            }
+                        }
                     }
                 } catch (BrokenBarrierException ignored) {
                 }
