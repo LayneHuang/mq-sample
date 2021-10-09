@@ -84,6 +84,7 @@ public class DataBlock {
                 try {
                     int arrive = barrier.await(500, TimeUnit.MILLISECONDS);
                     if (arrive == 0) {
+                        System.out.println("不够 force");
                         logMappedBuf.force();
                     }
                 } catch (TimeoutException e) {
