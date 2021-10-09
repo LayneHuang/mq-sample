@@ -43,7 +43,7 @@ public class PerformanceTester {
                 targetMap.put(toKey(topic, queueId, offset), buf);
             }
         });
-
+        log.info("query, offset:{}, fetchNum:{}", queryOffset, queryNum);
         Map<Integer, ByteBuffer> ansMap = messageQueue.getRange(topic, queueId, queryOffset, queryNum);
         for (int i = 0; i < queryNum; ++i) {
             if (!(new String(targetMap.get(toKey(topic, queueId, queryOffset + i)).array())).equals(
