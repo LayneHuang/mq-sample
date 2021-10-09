@@ -27,7 +27,7 @@ public class PerformanceTester {
         int queueId = 1;
         long queryOffset = 0;
         int queryNum = 500;
-        for (; i < 10000; i++) {
+        for (; i < 100000; i++) {
             String text = String.valueOf(i);
             ByteBuffer buf = ByteBuffer.wrap(text.getBytes(StandardCharsets.UTF_8));
             long offset = messageQueue.append(topic, queueId, buf);
@@ -36,7 +36,7 @@ public class PerformanceTester {
         }
 
         Thread threadW1 = new Thread(() -> {
-            for (; i < 20000; i++) {
+            for (; i < 200000; i++) {
                 String text = String.valueOf(i);
                 ByteBuffer buf = ByteBuffer.wrap(text.getBytes(StandardCharsets.UTF_8));
                 long offset = messageQueue.append(topic, queueId, buf);
@@ -62,7 +62,7 @@ public class PerformanceTester {
         String topic = "topic1";
         int queueId = 1;
         long queryOffset = 0;
-        int queryNum = 20000;
+        int queryNum = 200000;
         MessageQueue messageQueue = new LeoMessageQueueImpl();
         Map<Integer, ByteBuffer> ansMap = messageQueue.getRange(topic, queueId, queryOffset, queryNum);
         ansMap.forEach((key, value) -> {
@@ -70,6 +70,7 @@ public class PerformanceTester {
                 log.info("FUCK YOU~");
             }
         });
+        log.info("OK");
     }
 
     private static String toKey(String topic, int queueId, long offset) {
