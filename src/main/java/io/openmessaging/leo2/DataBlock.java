@@ -14,8 +14,7 @@ import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-import static io.openmessaging.leo.DataManager.*;
-import static io.openmessaging.leo2.DataManager.THREAD_MAX;
+import static io.openmessaging.leo2.DataManager.*;
 
 public class DataBlock {
 

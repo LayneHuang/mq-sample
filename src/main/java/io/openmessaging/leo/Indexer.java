@@ -31,7 +31,7 @@ public class Indexer {
         tempBuf.putShort(dataSize);
     }
 
-    public synchronized ByteBuffer getTempBuf() {
+    public ByteBuffer getTempBuf() {
         ByteBuffer clone = ByteBuffer.allocate(tempBuf.position());
         tempBuf.rewind();
         while (clone.hasRemaining()) {
