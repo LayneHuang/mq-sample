@@ -72,7 +72,7 @@ public class DataBlock {
                 logMappedBuf.putShort(msgLen); // 2
                 logMappedBuf.put(data);
                 tempSize += dataSize;
-                forced = tempSize >= 1024 * 64;
+                forced = tempSize >= 1024 * 32;
                 if (forced) {
                     tempSize = 0;
                 }
@@ -82,7 +82,7 @@ public class DataBlock {
                 barrier.reset();
             } else {
                 try {
-                    int arrive = barrier.await(500, TimeUnit.MILLISECONDS);
+                    int arrive = barrier.await(250, TimeUnit.MILLISECONDS);
                     if (arrive == 0) {
                         System.out.println("不够 force");
                         logMappedBuf.force();
