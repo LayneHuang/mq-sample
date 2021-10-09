@@ -1,6 +1,5 @@
 package io.openmessaging;
 
-import io.openmessaging.solve.LayneMessageQueueImpl;
 import io.openmessaging.solve.LeoMessageQueueImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,13 +14,11 @@ public class PerformanceTester {
     static int i = 0;
 
     public static void main(String[] args) throws InterruptedException {
-        log.info("cao: {}, {}", (257 & 0xff), ((257 >> 4) & 0xff));
-        log.info("res: {}", ((16 << 4) | 1));
         gao();
     }
 
     private static void gao() throws InterruptedException {
-        MessageQueue messageQueue = new LayneMessageQueueImpl();
+        MessageQueue messageQueue = new LeoMessageQueueImpl();
         long start = System.currentTimeMillis();
         Map<Integer, ByteBuffer> range;
         for (; i < 10000; i++) {
@@ -57,6 +54,7 @@ public class PerformanceTester {
             if (!String.valueOf(key).equals(s)) {
                 log.debug("FUCK: {}, {}", key, s);
             }
+//            log.debug("TRUE: {}, {}", key, s);
         });
     }
 }
