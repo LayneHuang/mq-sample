@@ -85,7 +85,7 @@ public class DataBlock {
                 barrier.reset();
             } else {
                 try {
-                    int arrive = barrier.await(250, TimeUnit.MILLISECONDS);
+                    int arrive = barrier.await(200, TimeUnit.MILLISECONDS);
                     if (arrive == 0) {
                         System.out.println("SNE-F");
                         logMappedBuf.force();
@@ -93,9 +93,9 @@ public class DataBlock {
                 } catch (TimeoutException e) {
                     System.out.println("TO-F");
                     logMappedBuf.force();
-                    if (barrierCount > 5) {
+                    if (barrierCount > 10) {
                         synchronized (LOCKER) {
-                            if (barrierCount > 5) {
+                            if (barrierCount > 10) {
                                 barrierCount--;
                                 barrier = new CyclicBarrier(barrierCount);
                             }
