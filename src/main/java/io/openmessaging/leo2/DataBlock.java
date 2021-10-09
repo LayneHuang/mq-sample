@@ -60,7 +60,10 @@ public class DataBlock {
             boolean forced;
             synchronized (LOCKER) {
                 if (logMappedBuf.remaining() < dataSize) {
-                    logMappedBuf.force();
+                    if (tempSize > 0) {
+                        logMappedBuf.force();
+                        tempSize = 0;
+                    }
                     unmap(logMappedBuf);
                     logFileChannel.close();
                     openLog();
@@ -85,13 +88,17 @@ public class DataBlock {
                     if (arrive == 0) {
                         System.out.println("SNE-F");
                         synchronized (LOCKER) {
-                            logMappedBuf.force();
+                            if (tempSize > 0) {
+                                logMappedBuf.force();
+                                tempSize = 0;
+                            }
                         }
                     }
                 } catch (TimeoutException e) {
                     System.out.println("TO-F");
                     synchronized (LOCKER) {
                         logMappedBuf.force();
+                        tempSize = 0;
                         if (barrierCount > 5) {
                             barrierCount--;
                             barrier = new CyclicBarrier(barrierCount);
