@@ -21,9 +21,7 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 public class WriteAheadLog {
     private static final Logger log = LoggerFactory.getLogger(WriteAheadLog.class);
-    /**
-     * 同步水位
-     */
+
     private final Lock lock = new ReentrantLock();
 
     private static final Map<String, AtomicInteger> APPEND_OFFSET_MAP = new ConcurrentHashMap<>();
@@ -44,8 +42,7 @@ public class WriteAheadLog {
             }
             result.walPart = part;
             result.walPos = pos;
-            result.submitNum = submitNum;
-            put(bs);
+            result.submitNum = put(bs);
             // 索引
             Idx idx = IDX.computeIfAbsent(WalInfoBasic.getKey(topicId, queueId), k -> new Idx());
             idx.add(result.walPart, result.walPos + WalInfoBasic.BYTES, result.valueSize);
@@ -66,10 +63,10 @@ public class WriteAheadLog {
     private int pos = 0;
 
     private int part = 0;
-
+    // 提交时在第几块
     private int submitNum = 0;
 
-    private void put(byte[] bs) {
+    private int put(byte[] bs) {
         try {
             for (byte b : bs) {
                 if (cur == WRITE_SIZE) {
@@ -83,6 +80,7 @@ public class WriteAheadLog {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
+        return submitNum;
     }
 
     public void force() {

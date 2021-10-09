@@ -1,6 +1,7 @@
 package io.openmessaging;
 
 import io.openmessaging.solve.LeoMessageQueueImpl;
+import io.openmessaging.wal.WalInfoBasic;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -15,7 +16,22 @@ public class PerformanceTester {
     static int i = 0;
 
     public static void main(String[] args) throws InterruptedException {
-        gao2();
+//        gao2();
+        check();
+    }
+
+    public static void check() {
+        String text = "SOMETHING_IS_HAPPEN123";
+        WalInfoBasic info = new WalInfoBasic(2, 2, ByteBuffer.wrap(text.getBytes(StandardCharsets.UTF_8)));
+        byte[] encodeB = info.encodeToB();
+        ByteBuffer buffer = ByteBuffer.allocate(encodeB.length);
+        buffer.put(encodeB);
+        buffer.flip();
+        WalInfoBasic info2 = new WalInfoBasic();
+        info2.decode(buffer, true);
+        log.info("{}", info.topicId == info2.topicId);
+        log.info("{}", info.queueId == info2.queueId);
+        log.info("{}", text.equals(new String(info2.value.array())));
     }
 
     private static void gao() throws InterruptedException {

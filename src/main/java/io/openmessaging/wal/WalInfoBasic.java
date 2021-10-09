@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 
 /**
  * WalInfoBasic
@@ -30,6 +31,9 @@ public class WalInfoBasic {
 
     public ByteBuffer value;
 
+    public WalInfoBasic() {
+    }
+
     public WalInfoBasic(int topicId, int queueId, ByteBuffer value) {
         this.topicId = topicId;
         this.queueId = queueId;
@@ -37,23 +41,42 @@ public class WalInfoBasic {
         this.value = value;
     }
 
-    public static final int BYTES = 1 + 2 + 4;
+    public static final int BYTES = 1 + 2 * 2;
 
     public byte[] encodeToB() {
         byte[] result = new byte[BYTES + this.valueSize];
         // topicId
         result[0] = (byte) topicId;
         // queueId
-        result[1] = (byte) ((queueId >> 4) & 0xff);
+        result[1] = (byte) ((queueId >> 8) & 0xff);
         result[2] = (byte) (queueId & 0xff);
         // value size
-        result[3] = (byte) ((valueSize >> 12) & 0xff);
-        result[4] = (byte) ((valueSize >> 8) & 0xff);
-        result[5] = (byte) ((valueSize >> 4) & 0xff);
-        result[6] = (byte) (valueSize & 0xff);
+        result[3] = (byte) ((valueSize >> 8) & 0xff);
+        result[4] = (byte) (valueSize & 0xff);
         // value
         System.arraycopy(value.array(), 0, result, BYTES, result.length - BYTES);
         return result;
+    }
+
+    public void decode(ByteBuffer buffer, boolean hasValue) {
+        // topicId
+        topicId = buffer.get();
+        // queueId
+        queueId = buffer.get();
+        queueId <<= 8;
+        queueId |= buffer.get();
+        // valueSize
+        valueSize = buffer.get();
+        valueSize <<= 8;
+        valueSize |= buffer.get();
+        // value
+        if (!hasValue) {
+            return;
+        }
+        value = ByteBuffer.allocate(valueSize);
+        for (int i = 0; i < valueSize; ++i) {
+            value.put(buffer.get());
+        }
     }
 
     public int getSize() {
