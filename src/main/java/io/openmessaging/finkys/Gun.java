@@ -86,7 +86,7 @@ public class Gun extends Thread {
                     logMappedBuf.putLong(offset); // 8
                     logMappedBuf.putShort(msgLen); // 2
                     logMappedBuf.put(data);
-                    if (currentCount >= MERGE_SIZE || currentSize >= FLUSH_SIZE){
+                    if (currentSize >= FLUSH_SIZE){
                         currentCount = 0;
                         currentSize = 0;
                         logMappedBuf.force();
@@ -95,7 +95,16 @@ public class Gun extends Thread {
                     indexer.writeIndex(id, logNumAdder, position, dataSize);
                 }
                 try {
-                    barrier.await(100,TimeUnit.MILLISECONDS);
+                    int arrive = barrier.await(100, TimeUnit.MILLISECONDS);
+                    if (arrive == 0) {
+                        synchronized (LOCKER) {
+                            if (currentSize > 0) {
+                                logMappedBuf.force();
+                                currentCount = 0;
+                                currentSize = 0;
+                            }
+                        }
+                    }
                 } catch (TimeoutException e) {
 //                    synchronized (LOCKER){
 //                        if (mergeIO){
