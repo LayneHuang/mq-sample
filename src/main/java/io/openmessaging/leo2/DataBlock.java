@@ -60,9 +60,7 @@ public class DataBlock {
             boolean forced;
             synchronized (LOCKER) {
                 if (logMappedBuf.remaining() < dataSize) {
-                    if (tempSize > 0) {
-                        logMappedBuf.force();
-                    }
+                    logMappedBuf.force();
                     unmap(logMappedBuf);
                     logFileChannel.close();
                     openLog();
@@ -76,28 +74,27 @@ public class DataBlock {
                 tempSize += dataSize;
                 forced = tempSize >= 1024 * 64;
                 if (forced) {
+                    logMappedBuf.force();
                     tempSize = 0;
+                    barrier.reset();
                 }
             }
-            if (forced) {
-                logMappedBuf.force();
-                barrier.reset();
-            } else {
+            if (!forced) {
                 try {
                     int arrive = barrier.await(25L * barrierCount, TimeUnit.MILLISECONDS);
                     if (arrive == 0) {
                         System.out.println("SNE-F");
-                        logMappedBuf.force();
+                        synchronized (LOCKER) {
+                            logMappedBuf.force();
+                        }
                     }
                 } catch (TimeoutException e) {
                     System.out.println("TO-F");
-                    logMappedBuf.force();
-                    if (barrierCount > 5) {
-                        synchronized (LOCKER) {
-                            if (barrierCount > 5) {
-                                barrierCount--;
-                                barrier = new CyclicBarrier(barrierCount);
-                            }
+                    synchronized (LOCKER) {
+                        logMappedBuf.force();
+                        if (barrierCount > 5) {
+                            barrierCount--;
+                            barrier = new CyclicBarrier(barrierCount);
                         }
                     }
                 } catch (BrokenBarrierException ignored) {
