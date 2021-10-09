@@ -48,7 +48,7 @@ public class DataBlock {
     }
 
     private int tempSize = 0;
-    private int barrierCount = THREAD_MAX / 2;
+    private int barrierCount = THREAD_MAX / 4;
     private CyclicBarrier barrier = new CyclicBarrier(barrierCount);
 
     public void writeLog(byte topic, short queueId, int offset, ByteBuffer data) {
@@ -82,7 +82,10 @@ public class DataBlock {
                 barrier.reset();
             } else {
                 try {
-                    barrier.await(1000, TimeUnit.MILLISECONDS);
+                    int arrive = barrier.await(500, TimeUnit.MILLISECONDS);
+                    if (arrive == 0) {
+                        logMappedBuf.force();
+                    }
                 } catch (TimeoutException e) {
                     System.out.println("超时 force");
                     synchronized (LOCKER) {
