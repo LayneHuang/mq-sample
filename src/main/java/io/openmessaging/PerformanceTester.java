@@ -15,7 +15,7 @@ public class PerformanceTester {
     static int i = 0;
 
     public static void main(String[] args) throws InterruptedException {
-        gao();
+        gao2();
     }
 
     private static void gao() throws InterruptedException {
@@ -58,6 +58,20 @@ public class PerformanceTester {
         log.info("cost: {}", System.currentTimeMillis() - start);
     }
 
+    private static void gao2() {
+        String topic = "topic1";
+        int queueId = 1;
+        long queryOffset = 0;
+        int queryNum = 20000;
+        MessageQueue messageQueue = new LeoMessageQueueImpl();
+        Map<Integer, ByteBuffer> ansMap = messageQueue.getRange(topic, queueId, queryOffset, queryNum);
+        ansMap.forEach((key, value) -> {
+            if (!key.toString().equals(new String(value.array()))) {
+                log.info("FUCK YOU~");
+            }
+        });
+    }
+
     private static String toKey(String topic, int queueId, long offset) {
         return topic + "-" + queueId + "-" + offset;
     }
@@ -72,14 +86,5 @@ public class PerformanceTester {
 
     private static long toOffset(String key) {
         return Integer.parseInt(key.split("-")[2]);
-    }
-
-    private static void check(Map<Integer, ByteBuffer> map) {
-        map.forEach((key, value) -> {
-            String s = new String(value.array());
-            if (!String.valueOf(key).equals(s)) {
-                log.debug("FUCK: {}, {}", key, s);
-            }
-        });
     }
 }
