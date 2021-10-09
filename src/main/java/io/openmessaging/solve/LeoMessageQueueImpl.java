@@ -42,6 +42,7 @@ public class LeoMessageQueueImpl extends MessageQueue {
     public Map<Integer, ByteBuffer> getRange(String topic, int queueId, long offset, int fetchNum) {
         if (start != -1) {
             System.out.println("75G cost: " + (System.currentTimeMillis() - start));
+//            start = -1;
             return null;
         }
         byte topicId = getTopicId(topic);

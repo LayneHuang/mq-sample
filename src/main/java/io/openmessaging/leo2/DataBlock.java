@@ -1,5 +1,7 @@
 package io.openmessaging.leo2;
 
+import io.openmessaging.leo.Indexer;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
@@ -48,12 +50,13 @@ public class DataBlock {
     }
 
     private int tempSize = 0;
-    private volatile int barrierCount = THREAD_MAX / 4;
+    private volatile int barrierCount = THREAD_MAX / 2;
     private CyclicBarrier barrier = new CyclicBarrier(barrierCount);
 
-    public void writeLog(byte topic, short queueId, int offset, ByteBuffer data) {
+    public void writeLog(byte topic, short queueId, int offset, ByteBuffer data, Indexer indexer) {
         short msgLen = (short) data.limit();
         short dataSize = (short) (MSG_META_SIZE + msgLen);
+        int position;
         try {
             boolean forced;
             synchronized (LOCKER) {
@@ -65,7 +68,7 @@ public class DataBlock {
                     logFileChannel.close();
                     openLog();
                 }
-                int position = logMappedBuf.position();
+                position = logMappedBuf.position();
                 logMappedBuf.put(topic); // 1
                 logMappedBuf.putShort(queueId); // 2
                 logMappedBuf.putInt(offset); // 4
@@ -82,17 +85,17 @@ public class DataBlock {
                 barrier.reset();
             } else {
                 try {
-                    int arrive = barrier.await(500, TimeUnit.MILLISECONDS);
+                    int arrive = barrier.await(250, TimeUnit.MILLISECONDS);
                     if (arrive == 0) {
-                        System.out.println("不够 force");
+                        System.out.println("SNE-F");
                         logMappedBuf.force();
                     }
                 } catch (TimeoutException e) {
-                    System.out.println("超时 force");
+                    System.out.println("TO-F");
                     logMappedBuf.force();
-                    if (barrierCount > 10) {
+                    if (barrierCount > 5) {
                         synchronized (LOCKER) {
-                            if (barrierCount > 10) {
+                            if (barrierCount > 5) {
                                 barrierCount--;
                                 barrier = new CyclicBarrier(barrierCount);
                             }
@@ -101,6 +104,7 @@ public class DataBlock {
                 } catch (BrokenBarrierException ignored) {
                 }
             }
+            indexer.writeIndex(id, logNumAdder, position, dataSize);
         } catch (Exception e) {
             e.printStackTrace();
         }

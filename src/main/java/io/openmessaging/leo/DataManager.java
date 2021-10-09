@@ -43,63 +43,63 @@ public class DataManager {
                 Files.createDirectories(LOGS_PATH);
             } else {
                 // 重启
-                Map<Byte, Map<Short, PriorityQueue<OffsetBuf>>> topicQueueBufMap = new HashMap<>(100);
-                Files.list(LOGS_PATH).forEach(partitionDir -> {
-                    byte partitionId = Byte.parseByte(String.valueOf(partitionDir.getFileName()));
-                    try {
-                        Files.list(partitionDir).forEach(logFile -> {
-                            byte logNumAdder = Byte.parseByte(String.valueOf(logFile.getFileName()));
-                            try {
-                                FileChannel logFileChannel = FileChannel.open(logFile, StandardOpenOption.READ, StandardOpenOption.WRITE);
-                                long fileSize = logFileChannel.size();
-                                MappedByteBuffer logBuf = logFileChannel.map(FileChannel.MapMode.READ_ONLY, 0, fileSize);
-                                while (logBuf.hasRemaining()) {
-                                    ByteBuffer indexBuf = ByteBuffer.allocate(INDEX_BUF_SIZE);
-                                    int position = logBuf.position();
-                                    byte topic = logBuf.get();
-                                    short queueId = logBuf.getShort();
-                                    int offset = logBuf.getInt();
-                                    short msgLen = logBuf.getShort();
-                                    if (msgLen == 0) break;
-                                    for (int i = 0; i < msgLen; i++) {
-                                        logBuf.get();
-                                    }
-                                    short dataSize = (short) (MSG_META_SIZE + msgLen);
-                                    // index
-                                    indexBuf.put(partitionId);
-                                    indexBuf.put(logNumAdder);
-                                    indexBuf.putInt(position);
-                                    indexBuf.putShort(dataSize);
-                                    indexBuf.flip();
-                                    topicQueueBufMap.putIfAbsent(topic, new HashMap<>());
-                                    Map<Short, PriorityQueue<OffsetBuf>> queueMap = topicQueueBufMap.get(topic);
-                                    queueMap.putIfAbsent(queueId,
-                                            new PriorityQueue<>(Comparator.comparingInt(o -> o.offset))
-                                    );
-                                    PriorityQueue<OffsetBuf> bufList = queueMap.get(queueId);
-                                    bufList.add(new OffsetBuf(offset, indexBuf));
-                                }
-                                unmap(logBuf);
-                                logFileChannel.close();
-                            } catch (IOException e) {
-                                e.printStackTrace();
-                            }
-                        });
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                });
-                // 根据 offset 排序后统一插入
-                topicQueueBufMap.forEach((topic, queueMap) -> {
-                    queueMap.forEach((queueId, bufList) -> {
-                        Indexer indexer = getIndexer(topic, queueId);
-                        ByteBuffer buf;
-                        while (!bufList.isEmpty()) {
-                            buf = bufList.poll().buf;
-                            indexer.writeIndex(buf.get(), buf.get(), buf.getInt(), buf.getShort());
-                        }
-                    });
-                });
+//                Map<Byte, Map<Short, PriorityQueue<OffsetBuf>>> topicQueueBufMap = new HashMap<>(100);
+//                Files.list(LOGS_PATH).forEach(partitionDir -> {
+//                    byte partitionId = Byte.parseByte(String.valueOf(partitionDir.getFileName()));
+//                    try {
+//                        Files.list(partitionDir).forEach(logFile -> {
+//                            byte logNumAdder = Byte.parseByte(String.valueOf(logFile.getFileName()));
+//                            try {
+//                                FileChannel logFileChannel = FileChannel.open(logFile, StandardOpenOption.READ, StandardOpenOption.WRITE);
+//                                long fileSize = logFileChannel.size();
+//                                MappedByteBuffer logBuf = logFileChannel.map(FileChannel.MapMode.READ_ONLY, 0, fileSize);
+//                                while (logBuf.hasRemaining()) {
+//                                    ByteBuffer indexBuf = ByteBuffer.allocate(INDEX_BUF_SIZE);
+//                                    int position = logBuf.position();
+//                                    byte topic = logBuf.get();
+//                                    short queueId = logBuf.getShort();
+//                                    int offset = logBuf.getInt();
+//                                    short msgLen = logBuf.getShort();
+//                                    if (msgLen == 0) break;
+//                                    for (int i = 0; i < msgLen; i++) {
+//                                        logBuf.get();
+//                                    }
+//                                    short dataSize = (short) (MSG_META_SIZE + msgLen);
+//                                    // index
+//                                    indexBuf.put(partitionId);
+//                                    indexBuf.put(logNumAdder);
+//                                    indexBuf.putInt(position);
+//                                    indexBuf.putShort(dataSize);
+//                                    indexBuf.flip();
+//                                    topicQueueBufMap.putIfAbsent(topic, new HashMap<>());
+//                                    Map<Short, PriorityQueue<OffsetBuf>> queueMap = topicQueueBufMap.get(topic);
+//                                    queueMap.putIfAbsent(queueId,
+//                                            new PriorityQueue<>(Comparator.comparingInt(o -> o.offset))
+//                                    );
+//                                    PriorityQueue<OffsetBuf> bufList = queueMap.get(queueId);
+//                                    bufList.add(new OffsetBuf(offset, indexBuf));
+//                                }
+//                                unmap(logBuf);
+//                                logFileChannel.close();
+//                            } catch (IOException e) {
+//                                e.printStackTrace();
+//                            }
+//                        });
+//                    } catch (IOException e) {
+//                        e.printStackTrace();
+//                    }
+//                });
+//                // 根据 offset 排序后统一插入
+//                topicQueueBufMap.forEach((topic, queueMap) -> {
+//                    queueMap.forEach((queueId, bufList) -> {
+//                        Indexer indexer = getIndexer(topic, queueId);
+//                        ByteBuffer buf;
+//                        while (!bufList.isEmpty()) {
+//                            buf = bufList.poll().buf;
+//                            indexer.writeIndex(buf.get(), buf.get(), buf.getInt(), buf.getShort());
+//                        }
+//                    });
+//                });
             }
         } catch (
                 Exception e) {

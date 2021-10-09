@@ -1,5 +1,6 @@
 package io.openmessaging.leo2;
 
+import io.openmessaging.leo.Indexer;
 import sun.misc.Cleaner;
 import sun.nio.ch.DirectBuffer;
 
@@ -56,7 +57,8 @@ public class DataManager {
             dataBlock = BLOCKS.computeIfAbsent(id, key -> new DataBlock(key.byteValue()));
             BLOCK_TL.set(dataBlock);
         }
-        dataBlock.writeLog(topic, queueId, offset, data);
+        Indexer indexer = getIndexer(topic, queueId);
+        dataBlock.writeLog(topic, queueId, offset, data, indexer);
     }
 
     private static Indexer getIndexer(byte topic, short queueId) {
