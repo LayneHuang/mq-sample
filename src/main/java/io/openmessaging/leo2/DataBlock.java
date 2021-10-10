@@ -9,10 +9,7 @@ import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.util.concurrent.BrokenBarrierException;
-import java.util.concurrent.CyclicBarrier;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import java.util.concurrent.*;
 
 import static io.openmessaging.leo2.DataManager.*;
 
@@ -23,7 +20,6 @@ public class DataBlock {
     public byte logNumAdder = Byte.MIN_VALUE;
     public FileChannel logFileChannel;
     public MappedByteBuffer logMappedBuf;
-    private final Object LOCKER = new Object();
 
     public DataBlock(byte id) {
         this.id = id;
@@ -48,15 +44,18 @@ public class DataBlock {
         logMappedBuf = logFileChannel.map(FileChannel.MapMode.READ_WRITE, 0, 1024 * 1024 * 1024);// 1G
     }
 
-    private volatile int barrierCount = THREAD_MAX / 2;
-    private CyclicBarrier barrier = new CyclicBarrier(barrierCount);
+    private final Object WRITE_LOCKER = new Object();
+    private final Semaphore semaphore = new Semaphore(20);
+    private final int barrierCount = THREAD_MAX / 2;
+    private final CyclicBarrier barrier = new CyclicBarrier(barrierCount);
 
     public void writeLog(byte topic, short queueId, int offset, ByteBuffer data, Indexer indexer) {
         short msgLen = (short) data.limit();
         short dataSize = (short) (MSG_META_SIZE + msgLen);
         int position;
         try {
-            synchronized (LOCKER) {
+            semaphore.acquire();
+            synchronized (WRITE_LOCKER) {
                 if (logMappedBuf.remaining() < dataSize) {
                     logMappedBuf.force();
                     unmap(logMappedBuf);
@@ -71,25 +70,24 @@ public class DataBlock {
                 logMappedBuf.put(data);
             }
             try {
-                int arrive = barrier.await(20L * barrierCount, TimeUnit.MILLISECONDS);
+                int arrive = barrier.await(250, TimeUnit.MILLISECONDS);
                 if (arrive == 0) {
                     System.out.println("SNE-F");
-                    synchronized (LOCKER) {
+                    synchronized (WRITE_LOCKER) {
                         logMappedBuf.force();
                     }
+                    semaphore.release(20);
                 }
             } catch (TimeoutException e) {
+                // 只有一个超时，其他都是 BrokenBarrierException
                 System.out.println("TO-F");
-                synchronized (LOCKER) {
+                synchronized (WRITE_LOCKER) {
                     barrier.reset();
                     logMappedBuf.force();
-//                    if (barrierCount > 5) {
-//                        barrierCount--;
-//                        barrier = new CyclicBarrier(barrierCount);
-//                    }
                 }
-            } catch (BrokenBarrierException ignored) {
-                // 只有一个超时，其他都是 Broken
+                semaphore.release();
+            } catch (BrokenBarrierException | InterruptedException e) {
+                semaphore.release();
             }
             indexer.writeIndex(id, logNumAdder, position, dataSize);
         } catch (Exception e) {
@@ -97,85 +95,45 @@ public class DataBlock {
         }
     }
 
+//    public static class ForceTest extends Thread{
+//        @Override
+//        public void run() {
+//            try {
+//                int arrive = barrier1.await(1000, TimeUnit.MILLISECONDS);
+//                if (arrive == 0) {
+//                    System.out.println(arrive + "SNE-F");
+//                }
+//            } catch (TimeoutException e) {
+//                barrier1.reset();
+//                System.out.println("TO-F");
+//            } catch (BrokenBarrierException e) {
+//            } catch (InterruptedException e) {
+//                e.printStackTrace();
+//            }
+//        }
+//    }
+//   static CyclicBarrier barrier1 = new CyclicBarrier(20);
+//
 //    public static void main(String[] args) throws InterruptedException {
-//        CyclicBarrier barrier = new CyclicBarrier(3);
-//        Thread thread1 = new Thread(() -> {
-//            try {
-//                System.out.println("thread1 ");
-//                int arrive = barrier.await(1000, TimeUnit.MILLISECONDS);
-//                System.out.println("thread1 " + arrive);
-//            } catch (BrokenBarrierException e) {
-//                e.printStackTrace();
-//            } catch (InterruptedException e) {
-//                e.printStackTrace();
-//            } catch (TimeoutException e) {
-//                e.printStackTrace();
-//                barrier.reset();
-//            }
-//        });
-//        thread1.start();
-//        Thread thread2 = new Thread(() -> {
-//            try {
-//                System.out.println("thread2 ");
-//                int arrive = barrier.await(5000, TimeUnit.MILLISECONDS);
-//                System.out.println("thread2 " + arrive);
-//            } catch (BrokenBarrierException e) {
-//                e.printStackTrace();
-//            } catch (InterruptedException e) {
-//                e.printStackTrace();
-//            } catch (TimeoutException e) {
-//                e.printStackTrace();
-//                barrier.reset();
-//            }
-//        });
-//        thread2.start();
-//        Thread thread3 = new Thread(() -> {
-//            try {
-//                System.out.println("thread3 ");
-//                int arrive = barrier.await(10000, TimeUnit.MILLISECONDS);
-//                System.out.println("thread3 " + arrive);
-//            } catch (BrokenBarrierException e) {
-//                e.printStackTrace();
-//            } catch (InterruptedException e) {
-//                e.printStackTrace();
-//            } catch (TimeoutException e) {
-//                e.printStackTrace();
-//                barrier.reset();
-//            }
-//        });
-//        thread3.start();
-//        Thread.sleep(15_000);
-//        thread1 = new Thread(() -> {
-//            try {
-//                System.out.println("thread1 ");
-//                int arrive = barrier.await(1000, TimeUnit.MILLISECONDS);
-//                System.out.println("thread1 " + arrive);
-//            } catch (Exception e) {
-//                e.printStackTrace();
-//            }
-//        });
-//        thread1.start();
-//        thread2 = new Thread(() -> {
-//            try {
-//                System.out.println("thread2 ");
-//                int arrive = barrier.await(5000, TimeUnit.MILLISECONDS);
-//                System.out.println("thread2 " + arrive);
-//            } catch (Exception e) {
-//                e.printStackTrace();
-//            }
-//        });
-//        thread2.start();
-//        thread3 = new Thread(() -> {
-//            try {
-//                System.out.println("thread3 ");
-//                int arrive = barrier.await(10000, TimeUnit.MILLISECONDS);
-//                System.out.println("thread3 " + arrive);
-//            } catch (Exception e) {
-//                e.printStackTrace();
-//            }
-//        });
-//        thread3.start();
-//        Thread.sleep(15_000);
+//        ForceTest[] forceTests = new ForceTest[19];
+//        for (int i = 0; i < 19; i++) {
+//            forceTests[i] = new ForceTest();
+//            forceTests[i].start();
+//        }
+//        for (int i = 0; i < 19; i++) {
+//            forceTests[i].join();
+//        }
+//        System.out.println("all done");
+//        Thread.sleep(10_000);
+//        for (int i = 0; i < 19; i++) {
+//            forceTests[i] = new ForceTest();
+//            forceTests[i].start();
+//        }
+//        for (int i = 0; i < 19; i++) {
+//            forceTests[i].join();
+//        }
+//        System.out.println("all done");
+//        Thread.sleep(10_000);
 //    }
 
 }
