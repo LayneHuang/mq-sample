@@ -70,7 +70,6 @@ public class LayneMessageQueueImpl extends MessageQueue {
             log.info("time over: {}", submitResult.logCount);
             return 0;
         }
-        log.debug("check now: {}, {}, {}", topic, queueId, new String(getRange(topic, queueId, submitResult.pOffset, 1).get(0).array()));
         return submitResult.pOffset;
     }
 
