@@ -54,7 +54,10 @@ public class LayneMessageQueueImpl extends MessageQueue {
             start = System.currentTimeMillis();
         }
         long cost = System.currentTimeMillis() - start;
-        if (cost > 15 * 60 * 1000) return 0;
+        if (cost > 15 * 60 * 1000) {
+            log.info("time over: {}", cost);
+            return 0;
+        }
         int topicId = IdGenerator.getId(topic);
         int walId = topicId % Constant.WAL_FILE_COUNT;
         WalInfoBasic submitResult = walList[walId].submit(topicId, queueId, data);
@@ -72,7 +75,7 @@ public class LayneMessageQueueImpl extends MessageQueue {
     @Override
     public Map<Integer, ByteBuffer> getRange(String topic, int queueId, long offset, int fetchNum) {
         if (start != -1) {
-            log.debug("75G cost: " + (System.currentTimeMillis() - start));
+            log.info("75G cost: " + (System.currentTimeMillis() - start));
         }
         queryCnt++;
         if (queryCnt > 3) return null;
