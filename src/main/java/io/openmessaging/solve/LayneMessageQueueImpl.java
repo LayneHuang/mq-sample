@@ -96,13 +96,15 @@ public class LayneMessageQueueImpl extends MessageQueue {
         return result.pOffset;
     }
 
+    private long queryCnt;
+
     @Override
     public Map<Integer, ByteBuffer> getRange(String topic, int queueId, long offset, int fetchNum) {
-//        if (start != -1) {
-//            log.info("75G cost: " + (System.currentTimeMillis() - start));
-//        }
-//        queryCnt++;
-//        if (queryCnt > 3) return null;
+        if (start != -1) {
+            log.info("75G cost: " + (System.currentTimeMillis() - start));
+        }
+        queryCnt++;
+        if (queryCnt > 3) return null;
         int topicId = IdGenerator.getId(topic);
         int walId = topicId % Constant.WAL_FILE_COUNT;
         Idx idx = IDX.get(WalInfoBasic.getKey(topicId, queueId));
