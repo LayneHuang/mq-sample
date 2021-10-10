@@ -27,7 +27,7 @@ public class WalInfoBasic {
 
     public int walPos;
 
-    public int submitNum;
+    public int logCount;
 
     public ByteBuffer value;
 
@@ -83,12 +83,11 @@ public class WalInfoBasic {
         return BYTES + this.valueSize;
     }
 
-    public static String getKey(int topicId, int queueId) {
-        return topicId + "-" + queueId;
+    public static int getKey(int topicId, int queueId) {
+        return (queueId << 10) | topicId;
     }
 
-    public String getKey() {
-        return topicId + "-" + queueId;
+    public int getKey() {
+        return (queueId << 10) | topicId;
     }
-
 }

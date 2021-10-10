@@ -10,8 +10,10 @@ public class WritePage {
     public int part;
     public int pos;
     public byte[] value;
+    public int logCount;
 
-    public WritePage(int part, int pos, byte[] value, int valueSize) {
+    public WritePage(int logCount, int part, int pos, byte[] value, int valueSize) {
+        this.logCount = logCount;
         this.part = part;
         this.pos = pos;
         this.value = new byte[valueSize];
