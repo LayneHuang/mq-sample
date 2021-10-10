@@ -17,7 +17,7 @@ import java.util.HashMap;
  */
 public class IdGenerator {
     private static final Logger log = LoggerFactory.getLogger(IdGenerator.class);
-    private static final HashMap<String, Integer> ID_MAP = new HashMap();
+    private static final HashMap<String, Integer> ID_MAP = new HashMap(128);
 
     private static int cnt = 0;
 
@@ -35,10 +35,10 @@ public class IdGenerator {
         return result;
     }
 
-    public static void load() {
+    public static boolean load() {
         if (!Constant.getMetaPath().toFile().exists()) {
             log.info("no meta");
-            return;
+            return false;
         }
         ByteBuffer buffer = ByteBuffer.allocate(4 * 1024);
         try (FileChannel channel = FileChannel.open(Constant.getMetaPath(),
@@ -62,7 +62,8 @@ public class IdGenerator {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        log.info("reload finished");
+        log.info("mate reload finished");
+        return true;
     }
 
     private static void save(String key, int value) {

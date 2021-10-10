@@ -38,7 +38,9 @@ public class LayneMessageQueueImpl extends MessageQueue {
     }
 
     private void reload() {
-        IdGenerator.load();
+        if (!IdGenerator.load()) {
+            return;
+        }
         for (int i = 0; i < Constant.WAL_FILE_COUNT; ++i) {
             loader[i] = new Loader(i, walList[i]);
             loader[i].start();
