@@ -79,6 +79,7 @@ public class DataBlock {
                     }
                 }
             } catch (TimeoutException e) {
+                barrier.reset();
                 System.out.println("TO-F");
                 synchronized (LOCKER) {
                     logMappedBuf.force();
@@ -94,5 +95,86 @@ public class DataBlock {
             e.printStackTrace();
         }
     }
+
+//    public static void main(String[] args) throws InterruptedException {
+//        CyclicBarrier barrier = new CyclicBarrier(4);
+//        Thread thread1 = new Thread(() -> {
+//            try {
+//                System.out.println("thread1 ");
+//                int arrive = barrier.await(1000, TimeUnit.MILLISECONDS);
+//                System.out.println("thread1 " + arrive);
+//            } catch (BrokenBarrierException e) {
+//                e.printStackTrace();
+//            } catch (InterruptedException e) {
+//                e.printStackTrace();
+//            } catch (TimeoutException e) {
+//                e.printStackTrace();
+//                barrier.reset();
+//            }
+//        });
+//        thread1.start();
+//        Thread thread2 = new Thread(() -> {
+//            try {
+//                System.out.println("thread2 ");
+//                int arrive = barrier.await(1000, TimeUnit.MILLISECONDS);
+//                System.out.println("thread2 " + arrive);
+//            } catch (BrokenBarrierException e) {
+//                e.printStackTrace();
+//            } catch (InterruptedException e) {
+//                e.printStackTrace();
+//            } catch (TimeoutException e) {
+//                e.printStackTrace();
+//                barrier.reset();
+//            }
+//        });
+//        thread2.start();
+//        Thread thread3 = new Thread(() -> {
+//            try {
+//                System.out.println("thread3 ");
+//                int arrive = barrier.await(1000, TimeUnit.MILLISECONDS);
+//                System.out.println("thread3 " + arrive);
+//            } catch (BrokenBarrierException e) {
+//                e.printStackTrace();
+//            } catch (InterruptedException e) {
+//                e.printStackTrace();
+//            } catch (TimeoutException e) {
+//                e.printStackTrace();
+//                barrier.reset();
+//            }
+//        });
+//        thread3.start();
+//        Thread.sleep(5_000);
+//        thread1 = new Thread(() -> {
+//            try {
+//                System.out.println("thread1 ");
+//                int arrive = barrier.await(1000, TimeUnit.MILLISECONDS);
+//                System.out.println("thread1 " + arrive);
+//            } catch (Exception e) {
+//                e.printStackTrace();
+//            }
+//        });
+//        thread1.start();
+//        thread2 = new Thread(() -> {
+//            try {
+//                System.out.println("thread2 ");
+//                int arrive = barrier.await(1000, TimeUnit.MILLISECONDS);
+//                System.out.println("thread2 " + arrive);
+//            } catch (Exception e) {
+//                e.printStackTrace();
+//            }
+//        });
+//        thread2.start();
+//        thread3 = new Thread(() -> {
+//            try {
+//                System.out.println("thread3 ");
+//                int arrive = barrier.await(1000, TimeUnit.MILLISECONDS);
+//                System.out.println("thread3 " + arrive);
+//            } catch (Exception e) {
+//                e.printStackTrace();
+//            }
+//        });
+//        thread3.start();
+//        Thread.sleep(5_000);
+//    }
 
 }
