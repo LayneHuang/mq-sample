@@ -56,7 +56,6 @@ public class DataBlock {
         short dataSize = (short) (MSG_META_SIZE + msgLen);
         int position;
         try {
-            boolean forced;
             synchronized (LOCKER) {
                 if (logMappedBuf.remaining() < dataSize) {
                     logMappedBuf.force();
