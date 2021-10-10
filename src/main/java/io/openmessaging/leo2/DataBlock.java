@@ -48,7 +48,6 @@ public class DataBlock {
         logMappedBuf = logFileChannel.map(FileChannel.MapMode.READ_WRITE, 0, 1024 * 1024 * 1024);// 1G
     }
 
-    private int tempSize = 0;
     private volatile int barrierCount = THREAD_MAX / 2;
     private CyclicBarrier barrier = new CyclicBarrier(barrierCount);
 
@@ -60,10 +59,7 @@ public class DataBlock {
             boolean forced;
             synchronized (LOCKER) {
                 if (logMappedBuf.remaining() < dataSize) {
-                    if (tempSize > 0) {
-                        logMappedBuf.force();
-                        tempSize = 0;
-                    }
+                    logMappedBuf.force();
                     unmap(logMappedBuf);
                     logFileChannel.close();
                     openLog();
@@ -74,38 +70,25 @@ public class DataBlock {
                 logMappedBuf.putInt(offset); // 4
                 logMappedBuf.putShort(msgLen); // 2
                 logMappedBuf.put(data);
-                tempSize += dataSize;
-                forced = tempSize >= 1024 * 64;
-                if (forced) {
-                    logMappedBuf.force();
-                    tempSize = 0;
-                    barrier.reset();
-                }
             }
-            if (!forced) {
-                try {
-                    int arrive = barrier.await(25L * barrierCount, TimeUnit.MILLISECONDS);
-                    if (arrive == 0) {
-                        System.out.println("SNE-F");
-                        synchronized (LOCKER) {
-                            if (tempSize > 0) {
-                                logMappedBuf.force();
-                                tempSize = 0;
-                            }
-                        }
-                    }
-                } catch (TimeoutException e) {
-                    System.out.println("TO-F");
+            try {
+                int arrive = barrier.await(20L * barrierCount, TimeUnit.MILLISECONDS);
+                if (arrive == 0) {
+                    System.out.println("SNE-F");
                     synchronized (LOCKER) {
                         logMappedBuf.force();
-                        tempSize = 0;
-                        if (barrierCount > 5) {
-                            barrierCount--;
-                            barrier = new CyclicBarrier(barrierCount);
-                        }
                     }
-                } catch (BrokenBarrierException ignored) {
                 }
+            } catch (TimeoutException e) {
+                System.out.println("TO-F");
+                synchronized (LOCKER) {
+                    logMappedBuf.force();
+//                    if (barrierCount > 5) {
+//                        barrierCount--;
+//                        barrier = new CyclicBarrier(barrierCount);
+//                    }
+                }
+            } catch (BrokenBarrierException ignored) {
             }
             indexer.writeIndex(id, logNumAdder, position, dataSize);
         } catch (Exception e) {
