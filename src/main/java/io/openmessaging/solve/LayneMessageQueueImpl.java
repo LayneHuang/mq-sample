@@ -57,11 +57,6 @@ public class LayneMessageQueueImpl extends MessageQueue {
         if (start == 0) {
             start = System.currentTimeMillis();
         }
-        long cost = System.currentTimeMillis() - start;
-        if (cost > 10 * 60 * 1000) {
-            log.info("time over: {}", cost);
-            return 0;
-        }
         int topicId = IdGenerator.getId(topic);
         int walId = topicId % Constant.WAL_FILE_COUNT;
         WalInfoBasic submitResult = walList[walId].submit(topicId, queueId, data);
@@ -70,6 +65,11 @@ public class LayneMessageQueueImpl extends MessageQueue {
             wait++;
             if (wait > 2000) encoders[walId].syncForce();
         }
+        long cost = System.currentTimeMillis() - start;
+        if (cost > 10 * 60 * 1000) {
+            log.info("time over: {}", submitResult.logCount);
+            return 0;
+        }
         log.debug("check now: {}, {}, {}", topic, queueId, new String(getRange(topic, queueId, submitResult.pOffset, 1).get(0).array()));
         return submitResult.pOffset;
     }
@@ -77,10 +77,10 @@ public class LayneMessageQueueImpl extends MessageQueue {
     @Override
     public Map<Integer, ByteBuffer> getRange(String topic, int queueId, long offset, int fetchNum) {
         if (start != -1) {
-//            log.info("75G cost: " + (System.currentTimeMillis() - start));
+            log.info("75G cost: " + (System.currentTimeMillis() - start));
         }
         queryCnt++;
-//        if (queryCnt > 3) return null;
+        if (queryCnt > 3) return null;
         int topicId = IdGenerator.getId(topic);
         int walId = topicId % Constant.WAL_FILE_COUNT;
         Idx idx = IDX.get(WalInfoBasic.getKey(topicId, queueId));

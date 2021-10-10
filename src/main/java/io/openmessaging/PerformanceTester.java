@@ -2,8 +2,8 @@ package io.openmessaging;
 
 import io.openmessaging.solve.LayneMessageQueueImpl;
 import io.openmessaging.solve.LeoMessageQueueImpl;
+import io.openmessaging.wal.Idx;
 import io.openmessaging.wal.WalInfoBasic;
-import io.openmessaging.wal.WriteAheadLog;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,7 +35,7 @@ public class PerformanceTester {
         log.info("{}, {}, {}", info.topicId == info2.topicId, info.topicId, info2.topicId);
         log.info("{}", info.queueId == info2.queueId);
         log.info("{}", text.equals(new String(info2.value.array())));
-        WriteAheadLog.Idx idx = new WriteAheadLog.Idx();
+        Idx idx = new Idx();
         idx.add(0, 3, 666, 888);
         log.info("{}", idx.getWalPart(0) == 3);
         log.info("{}", idx.getWalValuePos(0) == 666);
