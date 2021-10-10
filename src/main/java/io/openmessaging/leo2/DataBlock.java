@@ -48,11 +48,10 @@ public class DataBlock {
     private final Object WRITE_LOCKER = new Object();
     private final Semaphore semaphore = new Semaphore(barrierCount, true);
     private final CyclicBarrier barrier = new CyclicBarrier(barrierCount, () -> {
-        System.out.println("SNE-F");
+        System.out.println("Full-F");
         synchronized (WRITE_LOCKER) {
             logMappedBuf.force();
         }
-        semaphore.release(barrierCount);
     });
 
     public void writeLog(byte topic, short queueId, int offset, ByteBuffer data, Indexer indexer) {
@@ -80,16 +79,15 @@ public class DataBlock {
                 barrier.await(250, TimeUnit.MILLISECONDS);
             } catch (TimeoutException e) {
                 // 只有一个超时，其他都是 BrokenBarrierException
-                System.out.println("TO-F");
+                System.out.println("Timeout-F");
                 synchronized (WRITE_LOCKER) {
-                    barrier.reset();
                     logMappedBuf.force();
+                    barrier.reset();
                 }
-                semaphore.release();
             } catch (BrokenBarrierException | InterruptedException e) {
                 System.out.println("Broken");
-                semaphore.release();
             }
+            semaphore.release();
         } catch (Exception e) {
             e.printStackTrace();
         }
