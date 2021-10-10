@@ -9,7 +9,6 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.ReentrantLock;
 
 public class Encoder extends Thread {
     public static final Logger log = LoggerFactory.getLogger(Encoder.class);
@@ -27,13 +26,14 @@ public class Encoder extends Thread {
     public void run() {
         try {
             while (true) {
-                WalInfoBasic info = encodeBq.poll(1, TimeUnit.SECONDS);
+                WalInfoBasic info = encodeBq.poll(200, TimeUnit.MILLISECONDS);
                 if (info == null) {
                     if (cur == 0) {
-                        log.debug("Encoder End");
-                        break;
+                        log.info("Encoder GG");
+                    } else {
+                        log.info("Encoder FORCE");
+                        force();
                     }
-                    force();
                 } else {
                     submit(info);
                 }
@@ -74,12 +74,12 @@ public class Encoder extends Thread {
     private void put(byte[] bs) {
         if (bs.length == 0) return;
         try {
-            lock.lock();
             logCount++;
             for (int i = 0; i < bs.length; ++i) {
                 tmp[cur++] = bs[i];
                 pos++;
                 if (cur == Constant.WRITE_SIZE) {
+//                    log.info("ENCODER MERGE");
                     int fullCount = i == bs.length - 1 ? logCount : logCount - 1;
                     writeBq.put(new WritePage(fullCount, part, pos, tmp, cur));
                     cur = 0;
@@ -87,31 +87,16 @@ public class Encoder extends Thread {
             }
         } catch (InterruptedException e) {
             e.printStackTrace();
-        } finally {
-            lock.unlock();
         }
     }
 
-    private void force() {
+    public void force() {
         if (cur <= 0) return;
-        log.debug("force");
         try {
             writeBq.put(new WritePage(logCount, part, pos, tmp, cur));
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
         cur = 0;
-    }
-
-    private ReentrantLock lock = new ReentrantLock();
-
-    public void syncForce() {
-        if (cur <= 0) return;
-        try {
-            lock.lock();
-            force();
-        } finally {
-            lock.unlock();
-        }
     }
 }

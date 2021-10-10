@@ -27,7 +27,7 @@ public class WalInfoBasic {
 
     public int walPos;
 
-    public int logCount;
+    public long logCount;
 
     public ByteBuffer value;
 

@@ -12,6 +12,9 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
 
 /**
  * WalCache
@@ -26,10 +29,15 @@ public class Broker extends Thread {
 
     public final BlockingQueue<WritePage> writeBq = new LinkedBlockingQueue<>(Constant.BQ_SIZE);
 
-    public AtomicInteger logCount = new AtomicInteger();
+    public AtomicLong logCount = new AtomicLong();
 
-    public Broker(int walId) {
+    private final Lock lock;
+    private final Condition condition;
+
+    public Broker(int walId, Lock lock, Condition condition) {
         this.walId = walId;
+        this.lock = lock;
+        this.condition = condition;
     }
 
     @Override
@@ -69,10 +77,21 @@ public class Broker extends Thread {
                 buffer.put(page.value);
                 buffer.force();
                 logCount.set(page.logCount);
-                log.debug("Broker {}, write part: {}, pos: {}, logCnt: {}", walId, page.part, page.pos, page.logCount);
+                signal();
+                if (page.logCount % 10000 == 0)
+                    log.debug("Broker {}, write part: {}, pos: {}, logCnt: {}", walId, page.part, page.pos, page.logCount);
             }
         } catch (InterruptedException | IOException e) {
             e.printStackTrace();
+        }
+    }
+
+    private void signal() {
+        try {
+            lock.lock();
+            condition.signalAll();
+        } finally {
+            lock.unlock();
         }
     }
 }

@@ -14,6 +14,10 @@ import java.nio.file.StandardOpenOption;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class LayneMessageQueueImpl extends MessageQueue {
     private static final Logger log = LoggerFactory.getLogger(LayneMessageQueueImpl.class);
@@ -21,21 +25,23 @@ public class LayneMessageQueueImpl extends MessageQueue {
     private static final WriteAheadLog[] walList = new WriteAheadLog[Constant.WAL_FILE_COUNT];
 
     private static final Broker[] brokers = new Broker[Constant.WAL_FILE_COUNT];
-    //    private static final Helper[] helpers = new Helper[Constant.WAL_FILE_COUNT];
     private static final Encoder[] encoders = new Encoder[Constant.WAL_FILE_COUNT];
-
     private static final Loader[] loader = new Loader[Constant.WAL_FILE_COUNT];
+    private static final Lock[] locks = new ReentrantLock[Constant.WAL_FILE_COUNT];
+    private static final Condition[] conditions = new Condition[Constant.WAL_FILE_COUNT];
 
     public Map<Integer, Idx> IDX = new ConcurrentHashMap<>();
 
     public LayneMessageQueueImpl() {
         for (int i = 0; i < Constant.WAL_FILE_COUNT; ++i) {
-            brokers[i] = new Broker(i);
+            locks[i] = new ReentrantLock();
+            conditions[i] = locks[i].newCondition();
+            brokers[i] = new Broker(i, locks[i], conditions[i]);
             encoders[i] = new Encoder(brokers[i].writeBq, IDX);
-            walList[i] = new WriteAheadLog(encoders[i].encodeBq);
-//            helpers[i] = new Helper(i);
-            encoders[i].start();
+            walList[i] = new WriteAheadLog();
+//            walList[i] = new WriteAheadLog(encoders[i].encodeBq);
             brokers[i].start();
+//            encoders[i].start();
         }
     }
 
@@ -50,7 +56,10 @@ public class LayneMessageQueueImpl extends MessageQueue {
     }
 
     private long start = 0;
-    private int queryCnt = 0;
+
+    private boolean isDown(int walId, long logCount) {
+        return logCount <= brokers[walId].logCount.get();
+    }
 
     @Override
     public long append(String topic, int queueId, ByteBuffer data) {
@@ -59,27 +68,41 @@ public class LayneMessageQueueImpl extends MessageQueue {
         }
         int topicId = IdGenerator.getId(topic);
         int walId = topicId % Constant.WAL_FILE_COUNT;
-        WalInfoBasic submitResult = walList[walId].submit(topicId, queueId, data);
-        int wait = 0;
-        while (submitResult.logCount > brokers[walId].logCount.get()) {
-            wait++;
-            if (wait > 2000) encoders[walId].syncForce();
+        WalInfoBasic result = new WalInfoBasic(topicId, queueId, data);
+        try {
+            locks[walId].lock();
+//            walList[walId].submitEncoder(result);
+            walList[walId].submit(result);
+            encoders[walId].submit(result);
+            while (!isDown(walId, result.logCount)) {
+                conditions[walId].await(200, TimeUnit.MILLISECONDS);
+//                conditions[walId].await();
+                if (!isDown(walId, result.logCount)) {
+//                    log.info("FUCK AWAIT TIME OVER");
+                    encoders[walId].force();
+                }
+            }
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } finally {
+            locks[walId].unlock();
         }
         long cost = System.currentTimeMillis() - start;
         if (cost > 10 * 60 * 1000) {
-            log.info("time over: {}", submitResult.logCount);
+            log.info("time over: {}", result.logCount);
             return 0;
         }
-        return submitResult.pOffset;
+        log.debug("check now: {}, {}, {}", topic, queueId, new String(getRange(topic, queueId, result.pOffset, 1).get(0).array()));
+        return result.pOffset;
     }
 
     @Override
     public Map<Integer, ByteBuffer> getRange(String topic, int queueId, long offset, int fetchNum) {
-        if (start != -1) {
-            log.info("75G cost: " + (System.currentTimeMillis() - start));
-        }
-        queryCnt++;
-        if (queryCnt > 3) return null;
+//        if (start != -1) {
+//            log.info("75G cost: " + (System.currentTimeMillis() - start));
+//        }
+//        queryCnt++;
+//        if (queryCnt > 3) return null;
         int topicId = IdGenerator.getId(topic);
         int walId = topicId % Constant.WAL_FILE_COUNT;
         Idx idx = IDX.get(WalInfoBasic.getKey(topicId, queueId));
