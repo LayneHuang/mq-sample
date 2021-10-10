@@ -79,9 +79,9 @@ public class DataBlock {
                     }
                 }
             } catch (TimeoutException e) {
-                barrier.reset();
                 System.out.println("TO-F");
                 synchronized (LOCKER) {
+                    barrier.reset();
                     logMappedBuf.force();
 //                    if (barrierCount > 5) {
 //                        barrierCount--;
@@ -89,6 +89,7 @@ public class DataBlock {
 //                    }
                 }
             } catch (BrokenBarrierException ignored) {
+                // 只有一个超时，其他都是 Broken
             }
             indexer.writeIndex(id, logNumAdder, position, dataSize);
         } catch (Exception e) {
@@ -97,7 +98,7 @@ public class DataBlock {
     }
 
 //    public static void main(String[] args) throws InterruptedException {
-//        CyclicBarrier barrier = new CyclicBarrier(4);
+//        CyclicBarrier barrier = new CyclicBarrier(3);
 //        Thread thread1 = new Thread(() -> {
 //            try {
 //                System.out.println("thread1 ");
@@ -116,7 +117,7 @@ public class DataBlock {
 //        Thread thread2 = new Thread(() -> {
 //            try {
 //                System.out.println("thread2 ");
-//                int arrive = barrier.await(1000, TimeUnit.MILLISECONDS);
+//                int arrive = barrier.await(5000, TimeUnit.MILLISECONDS);
 //                System.out.println("thread2 " + arrive);
 //            } catch (BrokenBarrierException e) {
 //                e.printStackTrace();
@@ -131,7 +132,7 @@ public class DataBlock {
 //        Thread thread3 = new Thread(() -> {
 //            try {
 //                System.out.println("thread3 ");
-//                int arrive = barrier.await(1000, TimeUnit.MILLISECONDS);
+//                int arrive = barrier.await(10000, TimeUnit.MILLISECONDS);
 //                System.out.println("thread3 " + arrive);
 //            } catch (BrokenBarrierException e) {
 //                e.printStackTrace();
@@ -143,7 +144,7 @@ public class DataBlock {
 //            }
 //        });
 //        thread3.start();
-//        Thread.sleep(5_000);
+//        Thread.sleep(15_000);
 //        thread1 = new Thread(() -> {
 //            try {
 //                System.out.println("thread1 ");
@@ -157,7 +158,7 @@ public class DataBlock {
 //        thread2 = new Thread(() -> {
 //            try {
 //                System.out.println("thread2 ");
-//                int arrive = barrier.await(1000, TimeUnit.MILLISECONDS);
+//                int arrive = barrier.await(5000, TimeUnit.MILLISECONDS);
 //                System.out.println("thread2 " + arrive);
 //            } catch (Exception e) {
 //                e.printStackTrace();
@@ -167,14 +168,14 @@ public class DataBlock {
 //        thread3 = new Thread(() -> {
 //            try {
 //                System.out.println("thread3 ");
-//                int arrive = barrier.await(1000, TimeUnit.MILLISECONDS);
+//                int arrive = barrier.await(10000, TimeUnit.MILLISECONDS);
 //                System.out.println("thread3 " + arrive);
 //            } catch (Exception e) {
 //                e.printStackTrace();
 //            }
 //        });
 //        thread3.start();
-//        Thread.sleep(5_000);
+//        Thread.sleep(15_000);
 //    }
 
 }
