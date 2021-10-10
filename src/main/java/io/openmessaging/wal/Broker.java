@@ -78,8 +78,8 @@ public class Broker extends Thread {
                 buffer.force();
                 logCount.set(page.logCount);
                 signal();
-                if (page.logCount % 10000 == 0)
-                    log.debug("Broker {}, write part: {}, pos: {}, logCnt: {}", walId, page.part, page.pos, page.logCount);
+//                if (page.logCount % 10000 == 0)
+//                    log.debug("Broker {}, write part: {}, pos: {}, logCnt: {}", walId, page.part, page.pos, page.logCount);
             }
         } catch (InterruptedException | IOException e) {
             e.printStackTrace();

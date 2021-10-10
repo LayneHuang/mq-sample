@@ -92,7 +92,7 @@ public class LayneMessageQueueImpl extends MessageQueue {
             log.info("time over: {}", result.logCount);
             return 0;
         }
-        log.debug("check now: {}, {}, {}", topic, queueId, new String(getRange(topic, queueId, result.pOffset, 1).get(0).array()));
+//        log.debug("check now: {}, {}, {}", topic, queueId, new String(getRange(topic, queueId, result.pOffset, 1).get(0).array()));
         return result.pOffset;
     }
 
@@ -133,7 +133,7 @@ public class LayneMessageQueueImpl extends MessageQueue {
                 valueChannel.read(buffer, pos);
                 buffer.flip();
                 result.put(i, buffer);
-                log.debug("key: {}, value: {}, pos: {}, size: {}", key, new String(buffer.array()), pos, size);
+//                log.debug("key: {}, value: {}, pos: {}, size: {}", key, new String(buffer.array()), pos, size);
             }
         } catch (IOException e) {
             e.printStackTrace();
