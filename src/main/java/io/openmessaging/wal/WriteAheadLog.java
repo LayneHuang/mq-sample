@@ -26,7 +26,7 @@ public class WriteAheadLog {
 
     private static final Map<String, AtomicInteger> APPEND_OFFSET_MAP = new ConcurrentHashMap<>();
 
-    public final BlockingQueue<WritePage> readBq = new LinkedBlockingQueue<>(1024);
+    public final BlockingQueue<WritePage> readBq = new LinkedBlockingQueue<>(Constant.BQ_SIZE);
 
     public WalInfoBasic submit(int topicId, int queueId, ByteBuffer buffer) {
         WalInfoBasic result = new WalInfoBasic(topicId, queueId, buffer);
@@ -44,20 +44,18 @@ public class WriteAheadLog {
             result.walPart = part;
             result.walPos = pos;
             result.submitNum = put(bs);
-            // 索引
-            Idx idx = IDX.computeIfAbsent(WalInfoBasic.getKey(topicId, queueId), k -> new Idx());
-            idx.add(result.walPart, result.walPos + WalInfoBasic.BYTES, result.valueSize);
         } catch (Exception e) {
             log.info(e.toString());
         } finally {
             lock.unlock();
         }
+        // 索引
+        Idx idx = IDX.computeIfAbsent(WalInfoBasic.getKey(topicId, queueId), k -> new Idx());
+        idx.add((int) result.pOffset, result.walPart, result.walPos + WalInfoBasic.BYTES, result.valueSize);
         return result;
     }
 
-    private static final int WRITE_SIZE = 64 * 1024;
-
-    private final byte[] tmp = new byte[WRITE_SIZE];
+    private final byte[] tmp = new byte[Constant.WRITE_SIZE];
 
     private int cur = 0;
 
@@ -70,7 +68,7 @@ public class WriteAheadLog {
     private int put(byte[] bs) {
         try {
             for (byte b : bs) {
-                if (cur == WRITE_SIZE) {
+                if (cur == Constant.WRITE_SIZE) {
                     readBq.put(new WritePage(part, pos, tmp, cur));
                     submitNum++;
                     cur = 0;
@@ -110,21 +108,24 @@ public class WriteAheadLog {
         private static final int IDX_SIZE = 4;
         private static final int BASE_DIS = 16;
         private static final int BASE = (1 << BASE_DIS) - 1;
-        private int[] list = new int[1024];
-        private int size = 0;
+        private int[] list = new int[128];
+        private Lock lock = new ReentrantLock();
 
-        public void add(int walPart, int walPos, int valueSize) {
-            if (size + IDX_SIZE > list.length) {
+        public void add(int pos, int walPart, int walPos, int valueSize) {
+            lock.lock();
+            int maxPos = pos << 1 | 1;
+            if (maxPos + IDX_SIZE > list.length) {
                 int[] nList = new int[list.length + (list.length >> 1)];
-                if (size >= 0) System.arraycopy(list, 0, nList, 0, size);
+                System.arraycopy(list, 0, nList, 0, list.length);
                 list = nList;
             }
-            list[size++] = walPos;
-            list[size++] = ((walPart & BASE) << BASE_DIS) | (valueSize & BASE);
+            lock.unlock();
+            list[pos << 1] = walPos;
+            list[pos << 1 | 1] = ((walPart & BASE) << BASE_DIS) | (valueSize & BASE);
         }
 
         public int getSize() {
-            return size;
+            return list.length;
         }
 
         public int getWalPart(int pos) {

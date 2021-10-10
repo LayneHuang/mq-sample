@@ -47,12 +47,11 @@ public class Broker extends Thread {
             );
             int curPart = 0;
             while (true) {
-                WritePage page = writeBq.poll(5, TimeUnit.SECONDS);
+                WritePage page = writeBq.poll(1, TimeUnit.SECONDS);
                 if (page == null) {
                     log.debug("Broker {} End", walId);
                     break;
                 }
-//                log.debug("Broker {} FUCk", walId);
                 if (page.part != curPart) {
                     channel.close();
                     channel = FileChannel.open(

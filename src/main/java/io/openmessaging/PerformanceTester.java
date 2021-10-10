@@ -36,7 +36,7 @@ public class PerformanceTester {
         log.info("{}", info.queueId == info2.queueId);
         log.info("{}", text.equals(new String(info2.value.array())));
         WriteAheadLog.Idx idx = new WriteAheadLog.Idx();
-        idx.add(3, 666, 888);
+        idx.add(0, 3, 666, 888);
         log.info("{}", idx.getWalPart(0) == 3);
         log.info("{}", idx.getWalValuePos(0) == 666);
         log.info("{}", idx.getWalValueSize(0) == 888);

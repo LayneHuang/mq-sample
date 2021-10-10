@@ -46,6 +46,7 @@ public class LayneMessageQueueImpl extends MessageQueue {
     }
 
     private long start = 0;
+    private int queryCnt = 0;
 
     @Override
     public long append(String topic, int queueId, ByteBuffer data) {
@@ -73,6 +74,8 @@ public class LayneMessageQueueImpl extends MessageQueue {
         if (start != -1) {
             log.debug("75G cost: " + (System.currentTimeMillis() - start));
         }
+        queryCnt++;
+        if (queryCnt > 3) return null;
         int topicId = IdGenerator.getId(topic);
         int walId = topicId % Constant.WAL_FILE_COUNT;
         WriteAheadLog.Idx idx = walList[walId].IDX.get(WalInfoBasic.getKey(topicId, queueId));
