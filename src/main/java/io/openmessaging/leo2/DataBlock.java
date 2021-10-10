@@ -44,10 +44,16 @@ public class DataBlock {
         logMappedBuf = logFileChannel.map(FileChannel.MapMode.READ_WRITE, 0, 1024 * 1024 * 1024);// 1G
     }
 
+    public static final int barrierCount = THREAD_MAX / 2;
     private final Object WRITE_LOCKER = new Object();
-    private final Semaphore semaphore = new Semaphore(20);
-    private final int barrierCount = THREAD_MAX / 2;
-    private final CyclicBarrier barrier = new CyclicBarrier(barrierCount);
+    private final Semaphore semaphore = new Semaphore(barrierCount, true);
+    private final CyclicBarrier barrier = new CyclicBarrier(barrierCount, () -> {
+        System.out.println("SNE-F");
+        synchronized (WRITE_LOCKER) {
+            logMappedBuf.force();
+        }
+        semaphore.release(barrierCount);
+    });
 
     public void writeLog(byte topic, short queueId, int offset, ByteBuffer data, Indexer indexer) {
         short msgLen = (short) data.limit();
@@ -68,16 +74,10 @@ public class DataBlock {
                 logMappedBuf.putInt(offset); // 4
                 logMappedBuf.putShort(msgLen); // 2
                 logMappedBuf.put(data);
+                indexer.writeIndex(id, logNumAdder, position, dataSize);
             }
             try {
-                int arrive = barrier.await(250, TimeUnit.MILLISECONDS);
-                if (arrive == 0) {
-                    System.out.println("SNE-F");
-                    synchronized (WRITE_LOCKER) {
-                        logMappedBuf.force();
-                    }
-                    semaphore.release(20);
-                }
+                barrier.await(250, TimeUnit.MILLISECONDS);
             } catch (TimeoutException e) {
                 // 只有一个超时，其他都是 BrokenBarrierException
                 System.out.println("TO-F");
@@ -87,36 +87,44 @@ public class DataBlock {
                 }
                 semaphore.release();
             } catch (BrokenBarrierException | InterruptedException e) {
+                System.out.println("Broken");
                 semaphore.release();
             }
-            indexer.writeIndex(id, logNumAdder, position, dataSize);
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-//    public static class ForceTest extends Thread{
+//    static final CyclicBarrier barrier1 = new CyclicBarrier(barrierCount, () -> {
+//        System.out.println("SNE-F");
+//        try {
+//            Thread.sleep(5000);
+//        } catch (InterruptedException e) {
+//            e.printStackTrace();
+//        }
+//        System.out.println("sleep end");
+//    });
+//
+//    public static class ForceTest extends Thread {
 //        @Override
 //        public void run() {
 //            try {
-//                int arrive = barrier1.await(1000, TimeUnit.MILLISECONDS);
-//                if (arrive == 0) {
-//                    System.out.println(arrive + "SNE-F");
-//                }
+//                 barrier1.await(2000, TimeUnit.MILLISECONDS);
 //            } catch (TimeoutException e) {
 //                barrier1.reset();
-//                System.out.println("TO-F");
+//                System.out.println("TimeoutException");
 //            } catch (BrokenBarrierException e) {
+//                System.out.println("BrokenBarrierException");
 //            } catch (InterruptedException e) {
 //                e.printStackTrace();
 //            }
 //        }
 //    }
-//   static CyclicBarrier barrier1 = new CyclicBarrier(20);
 //
 //    public static void main(String[] args) throws InterruptedException {
-//        ForceTest[] forceTests = new ForceTest[19];
-//        for (int i = 0; i < 19; i++) {
+//        int testCount = 20;
+//        ForceTest[] forceTests = new ForceTest[testCount];
+//        for (int i = 0; i < testCount; i++) {
 //            forceTests[i] = new ForceTest();
 //            forceTests[i].start();
 //        }
@@ -125,11 +133,11 @@ public class DataBlock {
 //        }
 //        System.out.println("all done");
 //        Thread.sleep(10_000);
-//        for (int i = 0; i < 19; i++) {
+//        for (int i = 0; i < 5; i++) {
 //            forceTests[i] = new ForceTest();
 //            forceTests[i].start();
 //        }
-//        for (int i = 0; i < 19; i++) {
+//        for (int i = 0; i < 5; i++) {
 //            forceTests[i].join();
 //        }
 //        System.out.println("all done");
