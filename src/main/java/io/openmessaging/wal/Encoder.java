@@ -45,7 +45,7 @@ public class Encoder extends Thread {
 
     public void submit(WalInfoBasic info) {
         byte[] bs = info.encodeToB();
-        info.pOffset = APPEND_OFFSET_MAP.computeIfAbsent(info.getKey(), k -> 0) + 1;
+        info.pOffset = APPEND_OFFSET_MAP.computeIfAbsent(info.getKey(), k -> -1) + 1;
         APPEND_OFFSET_MAP.put(info.getKey(), (int) info.pOffset);
         // wal 分段
         if (pos + info.getSize() >= Constant.WRITE_BEFORE_QUERY) {
