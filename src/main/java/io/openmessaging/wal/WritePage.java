@@ -11,9 +11,10 @@ public class WritePage {
     public int pos;
     public byte[] value;
 
-    public WritePage(int part, int pos, byte[] value) {
+    public WritePage(int part, int pos, byte[] value, int valueSize) {
         this.part = part;
         this.pos = pos;
-        this.value = value;
+        this.value = new byte[valueSize];
+        System.arraycopy(value, 0, this.value, 0, valueSize);
     }
 }

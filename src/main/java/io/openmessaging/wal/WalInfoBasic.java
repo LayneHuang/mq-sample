@@ -60,15 +60,15 @@ public class WalInfoBasic {
 
     public void decode(ByteBuffer buffer, boolean hasValue) {
         // topicId
-        topicId = buffer.get();
+        topicId = buffer.get() & 0xff;
         // queueId
-        queueId = buffer.get();
+        queueId = buffer.get() & 0xff;
         queueId <<= 8;
-        queueId |= buffer.get();
+        queueId |= buffer.get() & 0xff;
         // valueSize
-        valueSize = buffer.get();
+        valueSize = buffer.get() & 0xff;
         valueSize <<= 8;
-        valueSize |= buffer.get();
+        valueSize |= buffer.get() & 0xff;
         // value
         if (!hasValue) {
             return;

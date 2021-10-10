@@ -48,7 +48,11 @@ public class Broker extends Thread {
             int curPart = 0;
             while (true) {
                 WritePage page = writeBq.poll(5, TimeUnit.SECONDS);
-                if (page == null) break;
+                if (page == null) {
+                    log.debug("Broker {} End", walId);
+                    break;
+                }
+//                log.debug("Broker {} FUCk", walId);
                 if (page.part != curPart) {
                     channel.close();
                     channel = FileChannel.open(
@@ -65,7 +69,8 @@ public class Broker extends Thread {
                 }
                 buffer.put(page.value);
                 buffer.force();
-                finishNum.incrementAndGet();
+                int fn = finishNum.incrementAndGet();
+                log.debug("Broker {}, write part: {}, pos: {}, fn: {}", walId, page.part, page.pos, fn);
             }
         } catch (InterruptedException | IOException e) {
             e.printStackTrace();

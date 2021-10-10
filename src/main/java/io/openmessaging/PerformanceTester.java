@@ -1,7 +1,9 @@
 package io.openmessaging;
 
+import io.openmessaging.solve.LayneMessageQueueImpl;
 import io.openmessaging.solve.LeoMessageQueueImpl;
 import io.openmessaging.wal.WalInfoBasic;
+import io.openmessaging.wal.WriteAheadLog;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,26 +18,32 @@ public class PerformanceTester {
     static int i = 0;
 
     public static void main(String[] args) throws InterruptedException {
+        gao();
 //        gao2();
-        check();
+//        check();
     }
 
     public static void check() {
         String text = "SOMETHING_IS_HAPPEN123";
-        WalInfoBasic info = new WalInfoBasic(2, 2, ByteBuffer.wrap(text.getBytes(StandardCharsets.UTF_8)));
+        WalInfoBasic info = new WalInfoBasic(250, 99, ByteBuffer.wrap(text.getBytes(StandardCharsets.UTF_8)));
         byte[] encodeB = info.encodeToB();
         ByteBuffer buffer = ByteBuffer.allocate(encodeB.length);
         buffer.put(encodeB);
         buffer.flip();
         WalInfoBasic info2 = new WalInfoBasic();
         info2.decode(buffer, true);
-        log.info("{}", info.topicId == info2.topicId);
+        log.info("{}, {}, {}", info.topicId == info2.topicId, info.topicId, info2.topicId);
         log.info("{}", info.queueId == info2.queueId);
         log.info("{}", text.equals(new String(info2.value.array())));
+        WriteAheadLog.Idx idx = new WriteAheadLog.Idx();
+        idx.add(3, 666, 888);
+        log.info("{}", idx.getWalPart(0) == 3);
+        log.info("{}", idx.getWalValuePos(0) == 666);
+        log.info("{}", idx.getWalValueSize(0) == 888);
     }
 
     private static void gao() throws InterruptedException {
-        MessageQueue messageQueue = new LeoMessageQueueImpl();
+        MessageQueue messageQueue = new LayneMessageQueueImpl();
         Map<String, ByteBuffer> targetMap = new ConcurrentHashMap<>();
 
         long start = System.currentTimeMillis();
@@ -43,7 +51,7 @@ public class PerformanceTester {
         int queueId = 1;
         long queryOffset = 0;
         int queryNum = 500;
-        for (; i < 100000; i++) {
+        for (; i < 10000; i++) {
             String text = String.valueOf(i);
             ByteBuffer buf = ByteBuffer.wrap(text.getBytes(StandardCharsets.UTF_8));
             long offset = messageQueue.append(topic, queueId, buf);
@@ -52,7 +60,7 @@ public class PerformanceTester {
         }
 
         Thread threadW1 = new Thread(() -> {
-            for (; i < 200000; i++) {
+            for (; i < 20000; i++) {
                 String text = String.valueOf(i);
                 ByteBuffer buf = ByteBuffer.wrap(text.getBytes(StandardCharsets.UTF_8));
                 long offset = messageQueue.append(topic, queueId, buf);

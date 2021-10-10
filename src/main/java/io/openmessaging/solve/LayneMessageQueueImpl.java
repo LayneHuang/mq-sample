@@ -58,20 +58,20 @@ public class LayneMessageQueueImpl extends MessageQueue {
         int walId = topicId % Constant.WAL_FILE_COUNT;
         WalInfoBasic submitResult = walList[walId].submit(topicId, queueId, data);
         int wait = 0;
-        while (submitResult.submitNum > brokers[walId].finishNum.get()) {
+        while (submitResult.submitNum >= brokers[walId].finishNum.get()) {
             wait++;
             if (wait > 2000) {
                 walList[walId].syncForce();
             }
         }
+        log.debug("check now: {}, {}, {}", topic, queueId, new String(getRange(topic, queueId, submitResult.pOffset, 1).get(0).array()));
         return submitResult.pOffset;
     }
 
     @Override
     public Map<Integer, ByteBuffer> getRange(String topic, int queueId, long offset, int fetchNum) {
         if (start != -1) {
-            System.out.println("75G cost: " + (System.currentTimeMillis() - start));
-            return null;
+            log.debug("75G cost: " + (System.currentTimeMillis() - start));
         }
         int topicId = IdGenerator.getId(topic);
         int walId = topicId % Constant.WAL_FILE_COUNT;
@@ -83,11 +83,11 @@ public class LayneMessageQueueImpl extends MessageQueue {
                                                       WriteAheadLog.Idx idx) {
         Map<Integer, ByteBuffer> result = new HashMap<>(fetchNum);
         FileChannel valueChannel = null;
-        int curPart = 0;
+        int curPart = -1;
         try {
             for (int i = 0; i < fetchNum; ++i) {
                 int key = offset + i;
-                if ((key << 1) >= idx.list.length) continue;
+                if ((key << 1) >= idx.getSize()) continue;
                 int part = idx.getWalPart(key);
                 if (valueChannel == null || part != curPart) {
                     if (valueChannel != null) {
@@ -102,8 +102,9 @@ public class LayneMessageQueueImpl extends MessageQueue {
                 int size = idx.getWalValueSize(key);
                 ByteBuffer buffer = ByteBuffer.allocate(size);
                 valueChannel.read(buffer, pos);
-                result.put(key, buffer);
-//                log.info("key: {}, value:{}, pos: {}, size: {}", key, new String(buffer.array()), idx[key << 1], idx[(key << 1) | 1]);
+                buffer.flip();
+                result.put(i, buffer);
+                log.debug("key: {}, value: {}, pos: {}, size: {}", key, new String(buffer.array()), pos, size);
             }
         } catch (IOException e) {
             e.printStackTrace();

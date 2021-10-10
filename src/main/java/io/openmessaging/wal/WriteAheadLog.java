@@ -26,7 +26,7 @@ public class WriteAheadLog {
 
     private static final Map<String, AtomicInteger> APPEND_OFFSET_MAP = new ConcurrentHashMap<>();
 
-    public final BlockingQueue<WritePage> readBq = new LinkedBlockingQueue<>();
+    public final BlockingQueue<WritePage> readBq = new LinkedBlockingQueue<>(1024);
 
     public WalInfoBasic submit(int topicId, int queueId, ByteBuffer buffer) {
         WalInfoBasic result = new WalInfoBasic(topicId, queueId, buffer);
@@ -71,7 +71,7 @@ public class WriteAheadLog {
         try {
             for (byte b : bs) {
                 if (cur == WRITE_SIZE) {
-                    readBq.put(new WritePage(part, pos, tmp));
+                    readBq.put(new WritePage(part, pos, tmp, cur));
                     submitNum++;
                     cur = 0;
                 }
@@ -88,11 +88,8 @@ public class WriteAheadLog {
         if (cur <= 0) {
             return;
         }
-        byte[] cTmp = new byte[cur];
-        System.arraycopy(tmp, 0, cTmp, 0, cur);
-        readBq.put(new WritePage(part, pos, cTmp));
+        readBq.put(new WritePage(part, pos, tmp, cur));
         submitNum++;
-        pos += cur;
         cur = 0;
     }
 
@@ -110,14 +107,14 @@ public class WriteAheadLog {
     public Map<String, Idx> IDX = new ConcurrentHashMap<>();
 
     public static class Idx {
-        public static final int IDX_SIZE = 4;
+        private static final int IDX_SIZE = 4;
         private static final int BASE_DIS = 16;
         private static final int BASE = (1 << BASE_DIS) - 1;
-        public int[] list = new int[1024];
-        public int size = 0;
+        private int[] list = new int[1024];
+        private int size = 0;
 
         public void add(int walPart, int walPos, int valueSize) {
-            while (size + IDX_SIZE > list.length) {
+            if (size + IDX_SIZE > list.length) {
                 int[] nList = new int[list.length + (list.length >> 1)];
                 if (size >= 0) System.arraycopy(list, 0, nList, 0, size);
                 list = nList;
@@ -126,15 +123,25 @@ public class WriteAheadLog {
             list[size++] = ((walPart & BASE) << BASE_DIS) | (valueSize & BASE);
         }
 
+        public int getSize() {
+            return size;
+        }
+
         public int getWalPart(int pos) {
-            return (list[(pos << 1) | 1] >> BASE_DIS) & BASE;
+            int p = (pos << 1) | 1;
+//            if (p >= size) log.info("FUCK POS");
+            return (list[p] >> BASE_DIS) & BASE;
         }
 
         public int getWalValueSize(int pos) {
-            return list[(pos << 1) | 1] & BASE;
+            int p = (pos << 1) | 1;
+//            if (p >= size) log.info("FUCK POS");
+            return list[p] & BASE;
         }
 
         public int getWalValuePos(int pos) {
+//            int p = pos << 1;
+//            if (p >= size) log.info("FUCK POS");
             return list[pos << 1];
         }
     }
