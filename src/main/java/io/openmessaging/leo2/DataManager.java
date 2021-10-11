@@ -25,7 +25,7 @@ public class DataManager {
 
     public static final String DIR_PMEM = "/pmem";
     public static final Path DIR_ESSD = Paths.get("/essd");
-    //        public static final Path DIR_ESSD = Paths.get(System.getProperty("user.dir")).resolve("target").resolve("work");
+    //            public static final Path DIR_ESSD = Paths.get(System.getProperty("user.dir")).resolve("target").resolve("work");
     public static final ConcurrentHashMap<String, AtomicLong> APPEND_OFFSET_MAP = new ConcurrentHashMap<>();
 
     public static final Path LOGS_PATH = DIR_ESSD.resolve("log");
@@ -56,7 +56,7 @@ public class DataManager {
                                 FileChannel logFileChannel = FileChannel.open(logFile, StandardOpenOption.READ, StandardOpenOption.WRITE);
                                 long fileSize = logFileChannel.size();
                                 MappedByteBuffer logBuf = logFileChannel.map(FileChannel.MapMode.READ_ONLY, 0, fileSize);
-                                while (logBuf.hasRemaining()) {
+                                while (logBuf.remaining() > MSG_META_SIZE) {
                                     ByteBuffer indexBuf = ByteBuffer.allocate(INDEX_BUF_SIZE);
                                     int position = logBuf.position();
                                     byte topic = logBuf.get();

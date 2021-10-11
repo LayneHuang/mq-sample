@@ -41,14 +41,13 @@ public class DataBlock {
         Path logFile = logDir.resolve(String.valueOf(logNumAdder));
         Files.createFile(logFile);
         logFileChannel = FileChannel.open(logFile, StandardOpenOption.READ, StandardOpenOption.WRITE);
-        logMappedBuf = logFileChannel.map(FileChannel.MapMode.READ_WRITE, 0, 1024 * 1024 * 1024);// 1G
+        logMappedBuf = logFileChannel.map(FileChannel.MapMode.READ_WRITE, 0, 1024);// 1G
     }
 
     public static final int barrierCount = THREAD_MAX / 2;
     private final Object WRITE_LOCKER = new Object();
     private final Semaphore semaphore = new Semaphore(barrierCount, true);
     private final CyclicBarrier barrier = new CyclicBarrier(barrierCount);
-    private final ByteBuffer tempBuf = ByteBuffer.allocateDirect(17 * 1024 * barrierCount);
 
     public void writeLog(byte topic, short queueId, int offset, ByteBuffer data, Indexer indexer) {
         short msgLen = (short) data.limit();
@@ -72,7 +71,7 @@ public class DataBlock {
             }
             MappedByteBuffer tempBuf = logMappedBuf;
             try {
-                int arrive = barrier.await(200, TimeUnit.MILLISECONDS);
+                int arrive = barrier.await(2, TimeUnit.MILLISECONDS);
                 if (arrive == 0) {
                     System.out.println("Full-F");
                     synchronized (WRITE_LOCKER) {
