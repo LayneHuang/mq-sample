@@ -5,7 +5,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
@@ -45,10 +44,15 @@ public class Loader extends Thread {
             if (channel != null) channel.close();
             channel = FileChannel.open(Constant.getWALInfoPath(walId, part), StandardOpenOption.READ);
             int walPos = 0;
+            boolean isEnd = false;
             while (channel.read(buffer) > 0) {
                 buffer.flip();
                 while (buffer.hasRemaining()) {
-                    info.decode(buffer, true);
+                    info.decode(channel, buffer, true);
+                    if (info.topicId == 0) {
+                        isEnd = true;
+                        break;
+                    }
                     info.walPart = part;
                     info.walPos = walPos;
                     // 取偏移
@@ -57,10 +61,13 @@ public class Loader extends Thread {
                     // 索引
                     Idx idx = IDX.computeIfAbsent(info.getKey(), k -> new Idx());
                     idx.add((int) info.pOffset, info.walPart, info.walPos + WalInfoBasic.BYTES, info.valueSize);
+//                    log.info("topic: {}, pos: {}, part: {}, pOffset: {}, valueSize: {}, value: {}",
+//                            info.topicId, info.walPos, info.walPart, info.pOffset, info.valueSize, new String(info.value.array()));
                     // 偏移
                     walPos += info.getSize();
                 }
                 buffer.clear();
+                if (isEnd) break;
             }
             part++;
         }

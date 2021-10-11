@@ -28,7 +28,7 @@ public class IdGenerator {
         int result = -1;
         synchronized (lock) {
             if (ID_MAP.containsKey(key)) return ID_MAP.get(key);
-            result = cnt++;
+            result = ++cnt;
             ID_MAP.put(key, result);
             save(key, result);
         }

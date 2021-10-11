@@ -3,8 +3,9 @@ package io.openmessaging.wal;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
+import java.nio.channels.FileChannel;
 
 /**
  * WalInfoBasic
@@ -58,24 +59,36 @@ public class WalInfoBasic {
         return result;
     }
 
-    public void decode(ByteBuffer buffer, boolean hasValue) {
+    private byte checkAndGetByte(FileChannel channel, ByteBuffer buffer) {
+        if (buffer.hasRemaining()) return buffer.get();
+        buffer.clear();
+        try {
+            channel.read(buffer);
+            buffer.flip();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return buffer.get();
+    }
+
+    public void decode(FileChannel channel, ByteBuffer buffer, boolean hasValue) {
         // topicId
-        topicId = buffer.get() & 0xff;
+        topicId = checkAndGetByte(channel, buffer) & 0xff;
         // queueId
-        queueId = buffer.get() & 0xff;
+        queueId = checkAndGetByte(channel, buffer) & 0xff;
         queueId <<= 8;
-        queueId |= buffer.get() & 0xff;
+        queueId |= checkAndGetByte(channel, buffer) & 0xff;
         // valueSize
-        valueSize = buffer.get() & 0xff;
+        valueSize = checkAndGetByte(channel, buffer) & 0xff;
         valueSize <<= 8;
-        valueSize |= buffer.get() & 0xff;
+        valueSize |= checkAndGetByte(channel, buffer) & 0xff;
         // value
         if (!hasValue) {
             return;
         }
         value = ByteBuffer.allocate(valueSize);
         for (int i = 0; i < valueSize; ++i) {
-            value.put(buffer.get());
+            value.put(checkAndGetByte(channel, buffer));
         }
     }
 

@@ -48,7 +48,6 @@ public class LayneMessageQueueImpl extends MessageQueue {
         }
 
         for (int i = 0; i < Constant.WAL_FILE_COUNT; ++i) {
-//            walList[i] = new WriteAheadLog();
             walList[i] = new WriteAheadLog(encoders[i].encodeBq);
         }
     }
@@ -60,6 +59,13 @@ public class LayneMessageQueueImpl extends MessageQueue {
         for (int i = 0; i < Constant.WAL_FILE_COUNT; ++i) {
             loader[i] = new Loader(i, IDX);
             loader[i].start();
+        }
+        for (int i = 0; i < Constant.WAL_FILE_COUNT; ++i) {
+            try {
+                loader[i].join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }
     }
 

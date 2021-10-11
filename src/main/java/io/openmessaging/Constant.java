@@ -26,7 +26,7 @@ public class Constant {
 
     public static final int BQ_SIZE = 1 << 10;
 
-    public static final int WRITE_BEFORE_QUERY = (1 << 30);
+    public static final int WRITE_BEFORE_QUERY = (1 << 28);
 
     public static Path getWALInfoPath(int walId, int part) {
         return DIR_ESSD.resolve("WAL-INFO-" + walId + "-" + part + ".md");
