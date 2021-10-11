@@ -25,8 +25,15 @@ public class Encoder extends Thread {
     @Override
     public void run() {
         try {
+            int emptyCnt = 0;
             while (true) {
-                WalInfoBasic info = encodeBq.poll(20, TimeUnit.MILLISECONDS);
+                WalInfoBasic info = encodeBq.poll(10, TimeUnit.MILLISECONDS);
+                if (info == null && cur == 0) {
+                    emptyCnt++;
+                    if (emptyCnt > 100) break;
+                    else continue;
+                }
+                emptyCnt = 0;
                 if (info == null && cur > 0) {
                     force();
                 }

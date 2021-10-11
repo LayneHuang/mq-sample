@@ -93,7 +93,7 @@ public class LayneMessageQueueImpl extends MessageQueue {
             locks[walId].unlock();
         }
         long cost = System.currentTimeMillis() - start;
-        if (cost > 10 * 60 * 1000) {
+        if (cost > 20 * 60 * 1000) {
             log.info("time over: {}", result.logCount);
             return 0;
         }
