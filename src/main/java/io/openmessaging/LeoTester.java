@@ -10,20 +10,20 @@ public class LeoTester {
     public static void main(String[] args) throws InterruptedException {
         MessageQueue messageQueue = new LeoMessageQueueImpl();
         long start = System.currentTimeMillis();
-        for (int i = 0; i < 100; i++) {
+        for (int i = 0; i < 1000; i++) {
             String text = String.valueOf(i);
             ByteBuffer buf = ByteBuffer.wrap(text.getBytes(StandardCharsets.UTF_8));
             messageQueue.append("topic1", 1, buf);
         }
         Thread threadW1 = new Thread(() -> {
-            for (int i = 100; i < 200; i++) {
+            for (int i = 1000; i < 2000; i++) {
                 String text = String.valueOf(i);
                 ByteBuffer buf = ByteBuffer.wrap(text.getBytes(StandardCharsets.UTF_8));
                 messageQueue.append("topic1", 1, buf);
             }
         });
         Thread threadW2 = new Thread(() -> {
-            for (int i = 200; i < 300; i++) {
+            for (int i = 2000; i < 3000; i++) {
                 String text = String.valueOf(i);
                 ByteBuffer buf = ByteBuffer.wrap(text.getBytes(StandardCharsets.UTF_8));
                 messageQueue.append("topic2", 1, buf);
@@ -34,9 +34,9 @@ public class LeoTester {
         Thread.sleep(8_000);
         Thread threadR1 = new Thread(() -> {
             System.out.println("边写边查 threadR1");
-            messageQueue.getRange("topic1", 1, 150, 10)
+            messageQueue.getRange("topic1", 1, 1500, 100)
                     .forEach((key, value) -> System.out.println("边写边查 topic1: " + key + ": " + new String(value.array())));
-            messageQueue.getRange("topic2", 1, 50, 10)
+            messageQueue.getRange("topic2", 1, 500, 100)
                     .forEach((key, value) -> System.out.println("边写边查 topic2 : " + key + ": " + new String(value.array())));
             System.out.println("FINISH");
         });

@@ -9,7 +9,10 @@ import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.util.concurrent.*;
+import java.util.concurrent.BrokenBarrierException;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import static io.openmessaging.leo2.DataManager.*;
 
@@ -45,7 +48,7 @@ public class DataBlock {
         logMappedBuf = logFileChannel.map(FileChannel.MapMode.READ_WRITE, 0, 1024 * 1024 * 1024);// 1G
     }
 
-    public static final int barrierCount = THREAD_MAX / 4;
+    public static final int barrierCount = THREAD_MAX / 2;
     private final Object WRITE_LOCKER = new Object();
     private final CyclicBarrier barrier = new CyclicBarrier(barrierCount);
 
@@ -85,8 +88,10 @@ public class DataBlock {
                     tempBuf.force();
                     barrier.reset();
                 }
-            } catch (BrokenBarrierException | InterruptedException e) {
+            } catch (BrokenBarrierException e) {
                 System.out.println("Broken");
+            } catch (InterruptedException e) {
+                System.out.println("Interrupted");
             }
         } catch (Exception e) {
             e.printStackTrace();
