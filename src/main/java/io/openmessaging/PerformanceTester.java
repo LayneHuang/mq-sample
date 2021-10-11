@@ -50,8 +50,8 @@ public class PerformanceTester {
         String topic = "topic1";
         int queueId = 1;
         long queryOffset = 0;
-        int queryNum = 500;
-        for (; i < 1000; i++) {
+        int queryNum = 20;
+        for (; i < 100; i++) {
             String text = String.valueOf(i);
             ByteBuffer buf = ByteBuffer.wrap(text.getBytes(StandardCharsets.UTF_8));
             long offset = messageQueue.append(topic, queueId, buf);
@@ -60,25 +60,31 @@ public class PerformanceTester {
         }
 
         Thread threadW1 = new Thread(() -> {
-            for (; i < 2000; i++) {
+            for (; i < 200; i++) {
                 String text = String.valueOf(i);
                 ByteBuffer buf = ByteBuffer.wrap(text.getBytes(StandardCharsets.UTF_8));
                 long offset = messageQueue.append(topic, queueId, buf);
                 targetMap.put(toKey(topic, queueId, offset), buf);
             }
         });
+
+        log.info("WRITE FINISH-1");
+        threadW1.start();
+        threadW1.join();
+
         log.info("query, offset:{}, fetchNum:{}", queryOffset, queryNum);
         Map<Integer, ByteBuffer> ansMap = messageQueue.getRange(topic, queueId, queryOffset, queryNum);
         for (int i = 0; i < queryNum; ++i) {
-            if (!(new String(targetMap.get(toKey(topic, queueId, queryOffset + i)).array())).equals(
-                    new String(ansMap.get(i).array())
-            )) {
-                log.info("FUCK YOU");
-            }
+            log.info("FUCK YOU: {}, {}", i, new String(ansMap.get(i).array()));
         }
-        log.info("FINISH-1");
-        threadW1.start();
-        threadW1.join();
+//        for (int i = 0; i < queryNum; ++i) {
+//            if (!(new String(targetMap.get(toKey(topic, queueId, queryOffset + i)).array())).equals(
+//                    new String(ansMap.get(i).array())
+//            )) {
+//                log.info("FUCK YOU");
+//            }
+//        }
+
         log.info("cost: {}", System.currentTimeMillis() - start);
     }
 
