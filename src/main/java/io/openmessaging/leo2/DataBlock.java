@@ -45,9 +45,8 @@ public class DataBlock {
         logMappedBuf = logFileChannel.map(FileChannel.MapMode.READ_WRITE, 0, 1024 * 1024 * 1024);// 1G
     }
 
-    public static final int barrierCount = THREAD_MAX / 2;
+    public static final int barrierCount = THREAD_MAX / 4;
     private final Object WRITE_LOCKER = new Object();
-//    private final Semaphore semaphore = new Semaphore(barrierCount, true);
     private final CyclicBarrier barrier = new CyclicBarrier(barrierCount);
 
     public void writeLog(byte topic, short queueId, int offset, ByteBuffer data, Indexer indexer) {
