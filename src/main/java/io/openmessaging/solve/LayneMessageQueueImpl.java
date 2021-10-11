@@ -20,15 +20,12 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public class LayneMessageQueueImpl extends MessageQueue {
     private static final Logger log = LoggerFactory.getLogger(LayneMessageQueueImpl.class);
-
     private static final WriteAheadLog[] walList = new WriteAheadLog[Constant.WAL_FILE_COUNT];
-
     private static final Broker[] brokers = new Broker[Constant.WAL_FILE_COUNT];
     private static final Encoder[] encoders = new Encoder[Constant.WAL_FILE_COUNT];
     private static final Loader[] loader = new Loader[Constant.WAL_FILE_COUNT];
     private static final Lock[] locks = new ReentrantLock[Constant.WAL_FILE_COUNT];
     private static final Condition[] conditions = new Condition[Constant.WAL_FILE_COUNT];
-
     public Map<Integer, Idx> IDX = new ConcurrentHashMap<>();
 
     public LayneMessageQueueImpl() {
@@ -86,14 +83,8 @@ public class LayneMessageQueueImpl extends MessageQueue {
         try {
             locks[walId].lock();
             walList[walId].submitEncoder(result);
-//            walList[walId].submit(result);
-//            encoders[walId].submit(result);
             while (!isDown(walId, result.logCount)) {
-//                conditions[walId].await(200, TimeUnit.MILLISECONDS);
                 conditions[walId].await();
-//                if (!isDown(walId, result.logCount)) {
-//                    encoders[walId].force();
-//                }
             }
         } catch (InterruptedException e) {
             e.printStackTrace();
@@ -117,8 +108,6 @@ public class LayneMessageQueueImpl extends MessageQueue {
             log.info("75G cost: " + (System.currentTimeMillis() - start));
             start = -1;
         }
-//        queryCnt++;
-//        if (queryCnt > 3) return null;
         int topicId = IdGenerator.getId(topic);
         int walId = topicId % Constant.WAL_FILE_COUNT;
         Idx idx = IDX.get(WalInfoBasic.getKey(topicId, queueId));

@@ -4,7 +4,6 @@ import io.openmessaging.Constant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
@@ -49,8 +48,12 @@ public class Encoder extends Thread {
 
     public void submit(WalInfoBasic info) {
         byte[] bs = info.encodeToB();
+        // 获取偏移
         info.pOffset = APPEND_OFFSET_MAP.computeIfAbsent(info.getKey(), k -> -1) + 1;
         APPEND_OFFSET_MAP.put(info.getKey(), (int) info.pOffset);
+        // 索引
+        Idx idx = IDX.computeIfAbsent(info.getKey(), k -> new Idx());
+        idx.add((int) info.pOffset, info.walPart, info.walPos + WalInfoBasic.BYTES, info.valueSize);
         // wal 分段
         if (pos + info.getSize() >= Constant.WRITE_BEFORE_QUERY) {
             force();
@@ -60,9 +63,6 @@ public class Encoder extends Thread {
         info.walPart = part;
         info.walPos = pos;
         put(bs);
-        // 索引
-        Idx idx = IDX.computeIfAbsent(info.getKey(), k -> new Idx());
-        idx.add((int) info.pOffset, info.walPart, info.walPos + WalInfoBasic.BYTES, info.valueSize);
     }
 
     private final byte[] tmp = new byte[Constant.WRITE_SIZE];
@@ -101,7 +101,7 @@ public class Encoder extends Thread {
     public void force() {
         if (cur <= 0) return;
         forceCnt++;
-        if (forceCnt % 100 == 0) log.info("ENCODER FORCE: {}, MERGE: {}", forceCnt, mergeCnt);
+//        if (forceCnt % 100 == 0) log.info("ENCODER FORCE: {}, MERGE: {}", forceCnt, mergeCnt);
         try {
             writeBq.put(new WritePage(logCount, part, pos, tmp, cur));
         } catch (InterruptedException e) {
