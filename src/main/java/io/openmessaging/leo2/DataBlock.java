@@ -47,17 +47,12 @@ public class DataBlock {
     public static final int barrierCount = THREAD_MAX / 2;
     private final Object WRITE_LOCKER = new Object();
     private final Semaphore semaphore = new Semaphore(barrierCount, true);
-    private final CyclicBarrier barrier = new CyclicBarrier(barrierCount, () -> {
-        System.out.println("Full-F");
-        synchronized (WRITE_LOCKER) {
-            logMappedBuf.force();
-        }
-    });
+    private final CyclicBarrier barrier = new CyclicBarrier(barrierCount);
+    private final ByteBuffer tempBuf = ByteBuffer.allocateDirect(17 * 1024 * barrierCount);
 
     public void writeLog(byte topic, short queueId, int offset, ByteBuffer data, Indexer indexer) {
         short msgLen = (short) data.limit();
         short dataSize = (short) (MSG_META_SIZE + msgLen);
-        int position;
         try {
             semaphore.acquire();
             synchronized (WRITE_LOCKER) {
@@ -67,7 +62,7 @@ public class DataBlock {
                     logFileChannel.close();
                     openLog();
                 }
-                position = logMappedBuf.position();
+                int position = logMappedBuf.position();
                 logMappedBuf.put(topic); // 1
                 logMappedBuf.putShort(queueId); // 2
                 logMappedBuf.putInt(offset); // 4
@@ -75,13 +70,20 @@ public class DataBlock {
                 logMappedBuf.put(data);
                 indexer.writeIndex(id, logNumAdder, position, dataSize);
             }
+            MappedByteBuffer tempBuf = logMappedBuf;
             try {
-                barrier.await(250, TimeUnit.MILLISECONDS);
+                int arrive = barrier.await(200, TimeUnit.MILLISECONDS);
+                if (arrive == 0) {
+                    System.out.println("Full-F");
+                    synchronized (WRITE_LOCKER) {
+                        tempBuf.force();
+                    }
+                }
             } catch (TimeoutException e) {
                 // 只有一个超时，其他都是 BrokenBarrierException
                 System.out.println("Timeout-F");
                 synchronized (WRITE_LOCKER) {
-                    logMappedBuf.force();
+                    tempBuf.force();
                     barrier.reset();
                 }
             } catch (BrokenBarrierException | InterruptedException e) {
