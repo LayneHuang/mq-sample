@@ -26,7 +26,7 @@ public class Encoder extends Thread {
     public void run() {
         try {
             while (true) {
-                WalInfoBasic info = encodeBq.poll(200, TimeUnit.MILLISECONDS);
+                WalInfoBasic info = encodeBq.poll(20, TimeUnit.MILLISECONDS);
                 if (info == null && cur > 0) {
                     force();
                 }
