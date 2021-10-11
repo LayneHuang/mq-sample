@@ -37,11 +37,17 @@ public class LayneMessageQueueImpl extends MessageQueue {
             locks[i] = new ReentrantLock();
             conditions[i] = locks[i].newCondition();
             brokers[i] = new Broker(i, locks[i], conditions[i]);
-            encoders[i] = new Encoder(brokers[i].writeBq, IDX);
-            walList[i] = new WriteAheadLog();
-//            walList[i] = new WriteAheadLog(encoders[i].encodeBq);
             brokers[i].start();
-//            encoders[i].start();
+        }
+
+        for (int i = 0; i < Constant.WAL_FILE_COUNT; ++i) {
+            encoders[i] = new Encoder(brokers[i].writeBq, IDX);
+            encoders[i].start();
+        }
+
+        for (int i = 0; i < Constant.WAL_FILE_COUNT; ++i) {
+//            walList[i] = new WriteAheadLog();
+            walList[i] = new WriteAheadLog(encoders[i].encodeBq);
         }
     }
 
@@ -71,16 +77,15 @@ public class LayneMessageQueueImpl extends MessageQueue {
         WalInfoBasic result = new WalInfoBasic(topicId, queueId, data);
         try {
             locks[walId].lock();
-//            walList[walId].submitEncoder(result);
-            walList[walId].submit(result);
-            encoders[walId].submit(result);
+            walList[walId].submitEncoder(result);
+//            walList[walId].submit(result);
+//            encoders[walId].submit(result);
             while (!isDown(walId, result.logCount)) {
-                conditions[walId].await(200, TimeUnit.MILLISECONDS);
-//                conditions[walId].await();
-                if (!isDown(walId, result.logCount)) {
-//                    log.info("FUCK AWAIT TIME OVER");
-                    encoders[walId].force();
-                }
+//                conditions[walId].await(200, TimeUnit.MILLISECONDS);
+                conditions[walId].await();
+//                if (!isDown(walId, result.logCount)) {
+//                    encoders[walId].force();
+//                }
             }
         } catch (InterruptedException e) {
             e.printStackTrace();

@@ -27,14 +27,10 @@ public class Encoder extends Thread {
         try {
             while (true) {
                 WalInfoBasic info = encodeBq.poll(200, TimeUnit.MILLISECONDS);
-                if (info == null) {
-                    if (cur == 0) {
-                        log.info("Encoder GG");
-                    } else {
-                        log.info("Encoder FORCE");
-                        force();
-                    }
-                } else {
+                if (info == null && cur > 0) {
+                    force();
+                }
+                if (info != null) {
                     submit(info);
                 }
             }
@@ -71,6 +67,10 @@ public class Encoder extends Thread {
 
     private int logCount = 0;
 
+    private int forceCnt = 0;
+
+    private int mergeCnt = 0;
+
     private void put(byte[] bs) {
         if (bs.length == 0) return;
         try {
@@ -79,7 +79,7 @@ public class Encoder extends Thread {
                 tmp[cur++] = bs[i];
                 pos++;
                 if (cur == Constant.WRITE_SIZE) {
-//                    log.info("ENCODER MERGE");
+                    mergeCnt++;
                     int fullCount = i == bs.length - 1 ? logCount : logCount - 1;
                     writeBq.put(new WritePage(fullCount, part, pos, tmp, cur));
                     cur = 0;
@@ -92,6 +92,8 @@ public class Encoder extends Thread {
 
     public void force() {
         if (cur <= 0) return;
+        forceCnt++;
+        if (forceCnt % 100 == 0) log.info("ENCODER FORCE: {}, MERGE: {}", forceCnt, mergeCnt);
         try {
             writeBq.put(new WritePage(logCount, part, pos, tmp, cur));
         } catch (InterruptedException e) {
