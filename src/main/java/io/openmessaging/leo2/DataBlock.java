@@ -41,19 +41,20 @@ public class DataBlock {
         Path logFile = logDir.resolve(String.valueOf(logNumAdder));
         Files.createFile(logFile);
         logFileChannel = FileChannel.open(logFile, StandardOpenOption.READ, StandardOpenOption.WRITE);
+//        logMappedBuf = logFileChannel.map(FileChannel.MapMode.READ_WRITE, 0, 1024);// 1G
         logMappedBuf = logFileChannel.map(FileChannel.MapMode.READ_WRITE, 0, 1024 * 1024 * 1024);// 1G
     }
 
     public static final int barrierCount = THREAD_MAX / 2;
     private final Object WRITE_LOCKER = new Object();
-    private final Semaphore semaphore = new Semaphore(barrierCount, true);
+//    private final Semaphore semaphore = new Semaphore(barrierCount, true);
     private final CyclicBarrier barrier = new CyclicBarrier(barrierCount);
 
     public void writeLog(byte topic, short queueId, int offset, ByteBuffer data, Indexer indexer) {
         short msgLen = (short) data.limit();
         short dataSize = (short) (MSG_META_SIZE + msgLen);
         try {
-            semaphore.acquire();
+            MappedByteBuffer tempBuf;
             synchronized (WRITE_LOCKER) {
                 if (logMappedBuf.remaining() < dataSize) {
                     logMappedBuf.force();
@@ -68,8 +69,8 @@ public class DataBlock {
                 logMappedBuf.putShort(msgLen); // 2
                 logMappedBuf.put(data);
                 indexer.writeIndex(id, logNumAdder, position, dataSize);
+                tempBuf = logMappedBuf;
             }
-            MappedByteBuffer tempBuf = logMappedBuf;
             try {
                 int arrive = barrier.await(250, TimeUnit.MILLISECONDS);
                 if (arrive == 0) {
@@ -88,7 +89,6 @@ public class DataBlock {
             } catch (BrokenBarrierException | InterruptedException e) {
                 System.out.println("Broken");
             }
-            semaphore.release();
         } catch (Exception e) {
             e.printStackTrace();
         }
