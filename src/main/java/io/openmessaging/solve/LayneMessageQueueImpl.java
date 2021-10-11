@@ -100,11 +100,11 @@ public class LayneMessageQueueImpl extends MessageQueue {
         } finally {
             locks[walId].unlock();
         }
-        long cost = System.currentTimeMillis() - start;
-        if (cost > 20 * 60 * 1000) {
-            log.info("time over: {}", result.logCount);
-            return 0;
-        }
+//        long cost = System.currentTimeMillis() - start;
+//        if (cost > 20 * 60 * 1000) {
+//            log.info("time over: {}", result.logCount);
+//            return 0;
+//        }
 //        log.debug("check now: {}, {}, {}", topic, queueId, new String(getRange(topic, queueId, result.pOffset, 1).get(0).array()));
         return result.pOffset;
     }
@@ -115,9 +115,10 @@ public class LayneMessageQueueImpl extends MessageQueue {
     public Map<Integer, ByteBuffer> getRange(String topic, int queueId, long offset, int fetchNum) {
         if (start != -1) {
             log.info("75G cost: " + (System.currentTimeMillis() - start));
+            start = -1;
         }
-        queryCnt++;
-        if (queryCnt > 3) return null;
+//        queryCnt++;
+//        if (queryCnt > 3) return null;
         int topicId = IdGenerator.getId(topic);
         int walId = topicId % Constant.WAL_FILE_COUNT;
         Idx idx = IDX.get(WalInfoBasic.getKey(topicId, queueId));
