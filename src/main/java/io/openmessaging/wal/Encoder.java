@@ -13,8 +13,8 @@ import java.util.concurrent.TimeUnit;
 public class Encoder extends Thread {
     public static final Logger log = LoggerFactory.getLogger(Encoder.class);
     public final BlockingQueue<WalInfoBasic> encodeBq = new LinkedBlockingQueue<>(Constant.BQ_SIZE);
-    public final BlockingQueue<WritePage> writeBq;
-    public final Map<Integer, Idx> IDX;
+    private final BlockingQueue<WritePage> writeBq;
+    private final Map<Integer, Idx> IDX;
     private static final Map<Integer, Integer> APPEND_OFFSET_MAP = new ConcurrentHashMap<>();
 
     public Encoder(BlockingQueue<WritePage> writeBq, Map<Integer, Idx> IDX) {
@@ -48,12 +48,6 @@ public class Encoder extends Thread {
 
     public void submit(WalInfoBasic info) {
         byte[] bs = info.encodeToB();
-        // 获取偏移
-        info.pOffset = APPEND_OFFSET_MAP.computeIfAbsent(info.getKey(), k -> -1) + 1;
-        APPEND_OFFSET_MAP.put(info.getKey(), (int) info.pOffset);
-        // 索引
-        Idx idx = IDX.computeIfAbsent(info.getKey(), k -> new Idx());
-        idx.add((int) info.pOffset, info.walPart, info.walPos + WalInfoBasic.BYTES, info.valueSize);
         // wal 分段
         if (pos + info.getSize() >= Constant.WRITE_BEFORE_QUERY) {
             force();
@@ -62,6 +56,13 @@ public class Encoder extends Thread {
         }
         info.walPart = part;
         info.walPos = pos;
+        // 获取偏移
+        info.pOffset = APPEND_OFFSET_MAP.computeIfAbsent(info.getKey(), k -> -1) + 1;
+        APPEND_OFFSET_MAP.put(info.getKey(), (int) info.pOffset);
+        // 索引
+        Idx idx = IDX.computeIfAbsent(info.getKey(), k -> new Idx());
+        idx.add((int) info.pOffset, info.walPart, info.walPos + WalInfoBasic.BYTES, info.valueSize);
+        // 落盘
         put(bs);
     }
 
@@ -101,7 +102,7 @@ public class Encoder extends Thread {
     public void force() {
         if (cur <= 0) return;
         forceCnt++;
-//        if (forceCnt % 100 == 0) log.info("ENCODER FORCE: {}, MERGE: {}", forceCnt, mergeCnt);
+        if (forceCnt % 100 == 0) log.info("ENCODER FORCE: {}, MERGE: {}", forceCnt, mergeCnt);
         try {
             writeBq.put(new WritePage(logCount, part, pos, tmp, cur));
         } catch (InterruptedException e) {

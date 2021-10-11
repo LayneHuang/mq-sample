@@ -30,13 +30,12 @@ public class WriteAheadLog {
         return result;
     }
 
-    public WalInfoBasic submitEncoder(WalInfoBasic result) {
+    public void submitEncoder(WalInfoBasic result) {
         try {
             result.logCount = ++logCount;
             writeBq.put(result);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-        return result;
     }
 }

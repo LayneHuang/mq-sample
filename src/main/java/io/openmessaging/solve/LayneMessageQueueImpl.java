@@ -91,16 +91,8 @@ public class LayneMessageQueueImpl extends MessageQueue {
         } finally {
             locks[walId].unlock();
         }
-//        long cost = System.currentTimeMillis() - start;
-//        if (cost > 20 * 60 * 1000) {
-//            log.info("time over: {}", result.logCount);
-//            return 0;
-//        }
-//        log.debug("check now: {}, {}, {}", topic, queueId, new String(getRange(topic, queueId, result.pOffset, 1).get(0).array()));
         return result.pOffset;
     }
-
-    private long queryCnt;
 
     @Override
     public Map<Integer, ByteBuffer> getRange(String topic, int queueId, long offset, int fetchNum) {
@@ -138,7 +130,6 @@ public class LayneMessageQueueImpl extends MessageQueue {
                 valueChannel.read(buffer, pos);
                 buffer.flip();
                 result.put(i, buffer);
-//                log.debug("key: {}, value: {}, pos: {}, size: {}", key, new String(buffer.array()), pos, size);
             }
         } catch (IOException e) {
             e.printStackTrace();

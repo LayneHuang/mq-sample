@@ -24,7 +24,7 @@ public class Constant {
 
     public static final int WRITE_SIZE = 16 * 1024;
 
-    public static final int BQ_SIZE = 1 << 10;
+    public static final int BQ_SIZE = 1 << 14;
 
     public static final int WRITE_BEFORE_QUERY = (1 << 28);
 
