@@ -50,7 +50,7 @@ public class DataBlock {
 
     public static final int barrierCount = THREAD_MAX / 2;
     private final Object WRITE_LOCKER = new Object();
-    private final CyclicBarrier barrier = new CyclicBarrier(barrierCount);
+    private CyclicBarrier barrier = new CyclicBarrier(barrierCount);
 
     public void writeLog(byte topic, short queueId, int offset, ByteBuffer data, Indexer indexer) {
         short msgLen = (short) data.limit();
@@ -86,7 +86,7 @@ public class DataBlock {
                 System.out.println("Timeout-F");
                 synchronized (WRITE_LOCKER) {
                     tempBuf.force();
-                    barrier.reset();
+                    barrier = new CyclicBarrier(barrierCount);
                 }
             } catch (BrokenBarrierException e) {
                 System.out.println("Broken");
@@ -97,54 +97,5 @@ public class DataBlock {
             e.printStackTrace();
         }
     }
-
-//    static final CyclicBarrier barrier1 = new CyclicBarrier(barrierCount, () -> {
-//        System.out.println("SNE-F");
-//        try {
-//            Thread.sleep(5000);
-//        } catch (InterruptedException e) {
-//            e.printStackTrace();
-//        }
-//        System.out.println("sleep end");
-//    });
-//
-//    public static class ForceTest extends Thread {
-//        @Override
-//        public void run() {
-//            try {
-//                 barrier1.await(2000, TimeUnit.MILLISECONDS);
-//            } catch (TimeoutException e) {
-//                barrier1.reset();
-//                System.out.println("TimeoutException");
-//            } catch (BrokenBarrierException e) {
-//                System.out.println("BrokenBarrierException");
-//            } catch (InterruptedException e) {
-//                e.printStackTrace();
-//            }
-//        }
-//    }
-//
-//    public static void main(String[] args) throws InterruptedException {
-//        int testCount = 20;
-//        ForceTest[] forceTests = new ForceTest[testCount];
-//        for (int i = 0; i < testCount; i++) {
-//            forceTests[i] = new ForceTest();
-//            forceTests[i].start();
-//        }
-//        for (int i = 0; i < 19; i++) {
-//            forceTests[i].join();
-//        }
-//        System.out.println("all done");
-//        Thread.sleep(10_000);
-//        for (int i = 0; i < 5; i++) {
-//            forceTests[i] = new ForceTest();
-//            forceTests[i].start();
-//        }
-//        for (int i = 0; i < 5; i++) {
-//            forceTests[i].join();
-//        }
-//        System.out.println("all done");
-//        Thread.sleep(10_000);
-//    }
 
 }
