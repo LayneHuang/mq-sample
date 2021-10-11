@@ -51,7 +51,7 @@ public class PerformanceTester {
         int queueId = 1;
         long queryOffset = 0;
         int queryNum = 500;
-        for (; i < 10000; i++) {
+        for (; i < 1000; i++) {
             String text = String.valueOf(i);
             ByteBuffer buf = ByteBuffer.wrap(text.getBytes(StandardCharsets.UTF_8));
             long offset = messageQueue.append(topic, queueId, buf);
@@ -60,7 +60,7 @@ public class PerformanceTester {
         }
 
         Thread threadW1 = new Thread(() -> {
-            for (; i < 20000; i++) {
+            for (; i < 2000; i++) {
                 String text = String.valueOf(i);
                 ByteBuffer buf = ByteBuffer.wrap(text.getBytes(StandardCharsets.UTF_8));
                 long offset = messageQueue.append(topic, queueId, buf);

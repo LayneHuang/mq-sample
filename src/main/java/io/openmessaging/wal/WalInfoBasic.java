@@ -84,10 +84,10 @@ public class WalInfoBasic {
     }
 
     public static int getKey(int topicId, int queueId) {
-        return (queueId << 10) | topicId;
+        return queueId * 100 + (topicId - 1);
     }
 
     public int getKey() {
-        return (queueId << 10) | topicId;
+        return queueId * 100 + (topicId - 1);
     }
 }

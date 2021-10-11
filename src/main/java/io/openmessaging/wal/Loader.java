@@ -1,32 +1,71 @@
 package io.openmessaging.wal;
 
 import io.openmessaging.Constant;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.Buffer;
+import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
+import java.util.HashMap;
+import java.util.Map;
 
 public class Loader extends Thread {
+    public static final Logger log = LoggerFactory.getLogger(Loader.class);
 
     private final int walId;
 
-    private final WriteAheadLog log;
+    private final Map<Integer, Idx> IDX;
 
-    public Loader(int walId, WriteAheadLog log) {
+    public Loader(int walId, Map<Integer, Idx> IDX) {
         this.walId = walId;
-        this.log = log;
+        this.IDX = IDX;
     }
 
+    @Override
     public void run() {
-        try (FileChannel fileChannel = FileChannel.open(
-                Constant.getWALInfoPath(walId),
-                StandardOpenOption.READ,
-                StandardOpenOption.WRITE,
-                StandardOpenOption.CREATE
-        )) {
-
+        try {
+            read();
         } catch (IOException e) {
             e.printStackTrace();
+        }
+    }
+
+    private static final Map<Integer, Integer> APPEND_OFFSET_MAP = new HashMap<>();
+
+    private void read() throws IOException {
+        int part = 0;
+        FileChannel channel = null;
+        ByteBuffer buffer = ByteBuffer.allocate(Constant.WRITE_SIZE);
+        WalInfoBasic info = new WalInfoBasic();
+        while (Constant.getWALInfoPath(walId, part).toFile().exists()) {
+            log.info("Read File: {}, {}", walId, part);
+            if (channel != null) channel.close();
+            channel = FileChannel.open(Constant.getWALInfoPath(walId, part), StandardOpenOption.READ);
+            int walPos = 0;
+            while (channel.read(buffer) > 0) {
+                buffer.flip();
+                while (buffer.hasRemaining()) {
+                    info.decode(buffer, true);
+                    info.walPart = part;
+                    info.walPos = walPos;
+                    // 取偏移
+                    info.pOffset = APPEND_OFFSET_MAP.computeIfAbsent(info.getKey(), k -> -1) + 1;
+                    APPEND_OFFSET_MAP.put(info.getKey(), (int) info.pOffset);
+                    // 索引
+                    Idx idx = IDX.computeIfAbsent(info.getKey(), k -> new Idx());
+                    idx.add((int) info.pOffset, info.walPart, info.walPos + WalInfoBasic.BYTES, info.valueSize);
+                    // 偏移
+                    walPos += info.getSize();
+                }
+                buffer.clear();
+            }
+            part++;
+        }
+        if (channel != null) {
+            channel.close();
         }
     }
 

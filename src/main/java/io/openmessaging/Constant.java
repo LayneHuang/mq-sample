@@ -28,10 +28,6 @@ public class Constant {
 
     public static final int WRITE_BEFORE_QUERY = (1 << 30);
 
-    public static Path getWALInfoPath(int walId) {
-        return DIR_ESSD.resolve("WAL-INFO-" + walId + ".md");
-    }
-
     public static Path getWALInfoPath(int walId, int part) {
         return DIR_ESSD.resolve("WAL-INFO-" + walId + "-" + part + ".md");
     }

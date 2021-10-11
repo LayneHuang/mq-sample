@@ -8,7 +8,7 @@ public class Idx {
     private static final int BASE_DIS = 16;
     private static final int BASE = (1 << BASE_DIS) - 1;
     private int[] list = new int[128];
-    private Lock lock = new ReentrantLock();
+    private final Lock lock = new ReentrantLock();
 
     public void add(int pos, int walPart, int walPos, int valueSize) {
         lock.lock();

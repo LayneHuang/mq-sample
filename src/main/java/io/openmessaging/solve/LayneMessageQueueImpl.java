@@ -14,7 +14,6 @@ import java.nio.file.StandardOpenOption;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -33,6 +32,9 @@ public class LayneMessageQueueImpl extends MessageQueue {
     public Map<Integer, Idx> IDX = new ConcurrentHashMap<>();
 
     public LayneMessageQueueImpl() {
+
+        reload();
+
         for (int i = 0; i < Constant.WAL_FILE_COUNT; ++i) {
             locks[i] = new ReentrantLock();
             conditions[i] = locks[i].newCondition();
@@ -56,7 +58,7 @@ public class LayneMessageQueueImpl extends MessageQueue {
             return;
         }
         for (int i = 0; i < Constant.WAL_FILE_COUNT; ++i) {
-            loader[i] = new Loader(i, walList[i]);
+            loader[i] = new Loader(i, IDX);
             loader[i].start();
         }
     }

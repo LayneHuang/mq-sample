@@ -3,6 +3,8 @@ package io.openmessaging.wal;
 import io.openmessaging.Constant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import sun.misc.Cleaner;
+import sun.nio.ch.DirectBuffer;
 
 import java.io.IOException;
 import java.nio.MappedByteBuffer;
@@ -43,16 +45,8 @@ public class Broker extends Thread {
     @Override
     public void run() {
         try {
-            FileChannel channel = FileChannel.open(
-                    Constant.getWALInfoPath(walId, 0),
-                    StandardOpenOption.READ,
-                    StandardOpenOption.WRITE,
-                    StandardOpenOption.CREATE);
-            MappedByteBuffer buffer = channel.map(
-                    FileChannel.MapMode.READ_WRITE,
-                    0,
-                    Constant.WRITE_BEFORE_QUERY
-            );
+            FileChannel channel = null;
+            MappedByteBuffer buffer = null;
             int curPart = 0;
             while (true) {
                 WritePage page = writeBq.poll(2, TimeUnit.SECONDS);
@@ -60,8 +54,14 @@ public class Broker extends Thread {
                     log.debug("Broker {} End", walId);
                     break;
                 }
-                if (page.part != curPart) {
-                    channel.close();
+                if (channel == null || page.part != curPart) {
+                    if (channel != null) {
+                        Cleaner cleaner = ((DirectBuffer) buffer).cleaner();
+                        if (cleaner != null) {
+                            cleaner.clean();
+                        }
+                        channel.close();
+                    }
                     channel = FileChannel.open(
                             Constant.getWALInfoPath(walId, page.part),
                             StandardOpenOption.READ,
