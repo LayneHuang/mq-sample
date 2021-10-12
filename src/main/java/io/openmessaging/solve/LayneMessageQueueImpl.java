@@ -72,10 +72,17 @@ public class LayneMessageQueueImpl extends MessageQueue {
         return logCount <= brokers[walId].logCount.get();
     }
 
+    private long appendCnt = 0;
+
     @Override
     public long append(String topic, int queueId, ByteBuffer data) {
         if (start == 0) {
             start = System.currentTimeMillis();
+        }
+        appendCnt++;
+        long cost = System.currentTimeMillis() - start;
+        if (cost > 10 * 60 * 1000) {
+            log.info("APPEND TIME OVER: {}", appendCnt);
         }
         int topicId = IdGenerator.getId(topic);
         int walId = topicId % Constant.WAL_FILE_COUNT;

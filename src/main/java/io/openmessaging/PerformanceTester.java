@@ -75,15 +75,12 @@ public class PerformanceTester {
         log.info("query, offset:{}, fetchNum:{}", queryOffset, queryNum);
         Map<Integer, ByteBuffer> ansMap = messageQueue.getRange(topic, queueId, queryOffset, queryNum);
         for (int i = 0; i < queryNum; ++i) {
-            log.info("FUCK YOU: {}, {}", i, new String(ansMap.get(i).array()));
+            if (!(new String(targetMap.get(toKey(topic, queueId, queryOffset + i)).array())).equals(
+                    new String(ansMap.get(i).array())
+            )) {
+                log.info("FUCK YOU");
+            }
         }
-//        for (int i = 0; i < queryNum; ++i) {
-//            if (!(new String(targetMap.get(toKey(topic, queueId, queryOffset + i)).array())).equals(
-//                    new String(ansMap.get(i).array())
-//            )) {
-//                log.info("FUCK YOU");
-//            }
-//        }
 
         log.info("cost: {}", System.currentTimeMillis() - start);
     }
