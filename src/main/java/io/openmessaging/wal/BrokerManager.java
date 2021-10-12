@@ -24,6 +24,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * @author 86188
  * @since 2021/10/12
  */
+@Deprecated
 public class BrokerManager extends Thread {
     public static final Logger log = LoggerFactory.getLogger(BrokerManager.class);
     private final List<BlockingQueue<WritePage>> producer;

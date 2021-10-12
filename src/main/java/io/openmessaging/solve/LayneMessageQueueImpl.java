@@ -11,11 +11,8 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
@@ -88,7 +85,7 @@ public class LayneMessageQueueImpl extends MessageQueue {
         }
         appendCnt++;
         long cost = System.currentTimeMillis() - start;
-        if (cost > 10 * 60 * 1000) {
+        if (cost > 15 * 60 * 1000) {
             log.info("APPEND TIME OVER: {}", appendCnt);
             return 0;
         }
@@ -113,7 +110,7 @@ public class LayneMessageQueueImpl extends MessageQueue {
     @Override
     public Map<Integer, ByteBuffer> getRange(String topic, int queueId, long offset, int fetchNum) {
         if (start != -1) {
-            log.info("75G cost: " + (System.currentTimeMillis() - start));
+            log.info("75G cost: {}", (System.currentTimeMillis() - start));
             start = -1;
         }
         int topicId = IdGenerator.getId(topic);
