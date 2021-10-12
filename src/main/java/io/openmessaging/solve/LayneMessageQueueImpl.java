@@ -24,7 +24,7 @@ import java.util.concurrent.locks.ReentrantLock;
 public class LayneMessageQueueImpl extends MessageQueue {
     private static final Logger log = LoggerFactory.getLogger(LayneMessageQueueImpl.class);
     private static final WriteAheadLog[] walList = new WriteAheadLog[Constant.WAL_FILE_COUNT];
-//    private static final Broker[] brokers = new Broker[Constant.WAL_FILE_COUNT];
+    //    private static final Broker[] brokers = new Broker[Constant.WAL_FILE_COUNT];
     private static final Encoder[] encoders = new Encoder[Constant.WAL_FILE_COUNT];
     private static final Loader[] loader = new Loader[Constant.WAL_FILE_COUNT];
     private static final Lock[] locks = new ReentrantLock[Constant.WAL_FILE_COUNT];
@@ -40,7 +40,7 @@ public class LayneMessageQueueImpl extends MessageQueue {
         }
         // 分块
         for (int i = 0; i < Constant.WAL_FILE_COUNT; ++i) {
-            encoders[i] = new Encoder(walList[i].logsBq, IDX);
+            encoders[i] = new Encoder(i, walList[i].logsBq, IDX);
             encoders[i].start();
         }
         // 落盘
@@ -88,6 +88,7 @@ public class LayneMessageQueueImpl extends MessageQueue {
         long cost = System.currentTimeMillis() - start;
         if (cost > 10 * 60 * 1000) {
             log.info("APPEND TIME OVER: {}", appendCnt);
+            return 0;
         }
         int topicId = IdGenerator.getId(topic);
         int walId = topicId % Constant.WAL_FILE_COUNT;

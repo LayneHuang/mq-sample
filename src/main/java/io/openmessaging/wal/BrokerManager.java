@@ -137,12 +137,12 @@ public class BrokerManager extends Thread {
                 curPart = page.part;
             }
             buffer.put(page.value);
-            lock.unlock();
 //            if (page.logCount > 50 && page.logCount < 100 && walId == 4) {
 //                log.info("WRITE LOG WAL: {}, PART: {}, CNT: {}", walId, page.part, page.logCount);
 //            }
             buffer.force();
             logCount.set(page.logCount);
+            lock.unlock();
         }
     }
 }

@@ -16,8 +16,10 @@ public class Encoder extends Thread {
     private static final Map<Integer, Integer> APPEND_OFFSET_MAP = new ConcurrentHashMap<>();
     private final BlockingQueue<WalInfoBasic> logsBq;
     private final Map<Integer, Idx> IDX;
+    private final int walId;
 
-    public Encoder(BlockingQueue<WalInfoBasic> logsBq, Map<Integer, Idx> IDX) {
+    public Encoder(int walId, BlockingQueue<WalInfoBasic> logsBq, Map<Integer, Idx> IDX) {
+        this.walId = walId;
         this.logsBq = logsBq;
         this.IDX = IDX;
     }
@@ -34,8 +36,7 @@ public class Encoder extends Thread {
                     if (emptyCnt > 100) {
 
                         break;
-                    }
-                    else continue;
+                    } else continue;
                 }
                 emptyCnt = 0;
                 if (info == null && cur > 0) {
@@ -95,7 +96,7 @@ public class Encoder extends Thread {
                 if (cur == Constant.WRITE_SIZE) {
                     mergeCnt++;
                     int fullCount = i == bs.length - 1 ? logCount : logCount - 1;
-                    writeBq.put(new WritePage(fullCount, part, pos, tmp, cur));
+                    writeBq.put(new WritePage(fullCount, walId, part, pos, tmp, cur));
                     cur = 0;
                 }
             }
@@ -109,7 +110,7 @@ public class Encoder extends Thread {
         forceCnt++;
         if (forceCnt % 1000 == 0) log.info("ENCODER FORCE: {}, MERGE: {}", forceCnt, mergeCnt);
         try {
-            writeBq.put(new WritePage(logCount, part, pos, tmp, cur));
+            writeBq.put(new WritePage(logCount, walId, part, pos, tmp, cur));
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
