@@ -11,8 +11,11 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
@@ -21,32 +24,34 @@ import java.util.concurrent.locks.ReentrantLock;
 public class LayneMessageQueueImpl extends MessageQueue {
     private static final Logger log = LoggerFactory.getLogger(LayneMessageQueueImpl.class);
     private static final WriteAheadLog[] walList = new WriteAheadLog[Constant.WAL_FILE_COUNT];
-    private static final Broker[] brokers = new Broker[Constant.WAL_FILE_COUNT];
+//    private static final Broker[] brokers = new Broker[Constant.WAL_FILE_COUNT];
     private static final Encoder[] encoders = new Encoder[Constant.WAL_FILE_COUNT];
     private static final Loader[] loader = new Loader[Constant.WAL_FILE_COUNT];
     private static final Lock[] locks = new ReentrantLock[Constant.WAL_FILE_COUNT];
     private static final Condition[] conditions = new Condition[Constant.WAL_FILE_COUNT];
     public Map<Integer, Idx> IDX = new ConcurrentHashMap<>();
+    private final BrokerManager brokerManager;
 
     public LayneMessageQueueImpl() {
-
         reload();
-
+        // wal
+        for (int i = 0; i < Constant.WAL_FILE_COUNT; ++i) {
+            walList[i] = new WriteAheadLog();
+        }
+        // 分块
+        for (int i = 0; i < Constant.WAL_FILE_COUNT; ++i) {
+            encoders[i] = new Encoder(walList[i].logsBq, IDX);
+            encoders[i].start();
+        }
+        // 落盘
         for (int i = 0; i < Constant.WAL_FILE_COUNT; ++i) {
             locks[i] = new ReentrantLock();
             conditions[i] = locks[i].newCondition();
-            brokers[i] = new Broker(i, locks[i], conditions[i]);
-            brokers[i].start();
         }
-
-        for (int i = 0; i < Constant.WAL_FILE_COUNT; ++i) {
-            encoders[i] = new Encoder(brokers[i].writeBq, IDX);
-            encoders[i].start();
-        }
-
-        for (int i = 0; i < Constant.WAL_FILE_COUNT; ++i) {
-            walList[i] = new WriteAheadLog(encoders[i].encodeBq);
-        }
+        List<BlockingQueue<WritePage>> producer = new ArrayList<>();
+        for (int i = 0; i < Constant.WAL_FILE_COUNT; ++i) producer.add(encoders[i].writeBq);
+        brokerManager = new BrokerManager(producer, locks, conditions);
+        brokerManager.start();
     }
 
     private void reload() {
@@ -68,9 +73,9 @@ public class LayneMessageQueueImpl extends MessageQueue {
 
     private long start = 0;
 
-    private boolean isDown(int walId, long logCount) {
-        return logCount <= brokers[walId].logCount.get();
-    }
+//    private boolean isDown(int walId, long logCount) {
+//        return logCount <= brokers[walId].logCount.get();
+//    }
 
     private long appendCnt = 0;
 
@@ -89,8 +94,8 @@ public class LayneMessageQueueImpl extends MessageQueue {
         WalInfoBasic result = new WalInfoBasic(topicId, queueId, data);
         try {
             locks[walId].lock();
-            walList[walId].submitEncoder(result);
-            while (!isDown(walId, result.logCount)) {
+            walList[walId].submit(result);
+            while (!brokerManager.isDown(walId, result.logCount)) {
                 conditions[walId].await();
             }
         } catch (InterruptedException e) {

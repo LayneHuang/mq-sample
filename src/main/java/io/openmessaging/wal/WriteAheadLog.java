@@ -1,9 +1,11 @@
 package io.openmessaging.wal;
 
+import io.openmessaging.Constant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 /**
  * WriteAheadLog
@@ -14,26 +16,17 @@ import java.util.concurrent.BlockingQueue;
 public class WriteAheadLog {
     private static final Logger log = LoggerFactory.getLogger(WriteAheadLog.class);
 
-    private BlockingQueue<WalInfoBasic> writeBq;
+    public BlockingQueue<WalInfoBasic> logsBq = new LinkedBlockingQueue<>(Constant.BQ_SIZE);
 
     private long logCount;
 
     public WriteAheadLog() {
     }
 
-    public WriteAheadLog(BlockingQueue<WalInfoBasic> writeBq) {
-        this.writeBq = writeBq;
-    }
-
-    public WalInfoBasic submit(WalInfoBasic result) {
-        result.logCount = ++logCount;
-        return result;
-    }
-
-    public void submitEncoder(WalInfoBasic result) {
+    public void submit(WalInfoBasic result) {
         try {
             result.logCount = ++logCount;
-            writeBq.put(result);
+            logsBq.put(result);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }

@@ -50,6 +50,7 @@ public class Broker extends Thread {
             int curPart = 0;
             while (true) {
                 WritePage page = writeBq.poll(2, TimeUnit.SECONDS);
+//                long b = System.nanoTime();
                 if (page == null) {
                     log.debug("Broker {} End", walId);
                     break;
@@ -78,6 +79,7 @@ public class Broker extends Thread {
                 buffer.force();
                 logCount.set(page.logCount);
                 signal();
+//                log.info("BROKER COST: {}", System.nanoTime() - b);
 //                if (page.logCount % 10000 == 0)
 //                    log.debug("Broker {}, write part: {}, pos: {}, logCnt: {}", walId, page.part, page.pos, page.logCount);
             }

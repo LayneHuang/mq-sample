@@ -12,13 +12,13 @@ import java.util.concurrent.TimeUnit;
 
 public class Encoder extends Thread {
     public static final Logger log = LoggerFactory.getLogger(Encoder.class);
-    public final BlockingQueue<WalInfoBasic> encodeBq = new LinkedBlockingQueue<>(Constant.BQ_SIZE);
-    private final BlockingQueue<WritePage> writeBq;
-    private final Map<Integer, Idx> IDX;
+    public final BlockingQueue<WritePage> writeBq = new LinkedBlockingQueue<>(Constant.BQ_SIZE);
     private static final Map<Integer, Integer> APPEND_OFFSET_MAP = new ConcurrentHashMap<>();
+    private final BlockingQueue<WalInfoBasic> logsBq;
+    private final Map<Integer, Idx> IDX;
 
-    public Encoder(BlockingQueue<WritePage> writeBq, Map<Integer, Idx> IDX) {
-        this.writeBq = writeBq;
+    public Encoder(BlockingQueue<WalInfoBasic> logsBq, Map<Integer, Idx> IDX) {
+        this.logsBq = logsBq;
         this.IDX = IDX;
     }
 
@@ -27,10 +27,14 @@ public class Encoder extends Thread {
         try {
             int emptyCnt = 0;
             while (true) {
-                WalInfoBasic info = encodeBq.poll(10, TimeUnit.MILLISECONDS);
+                WalInfoBasic info = logsBq.poll(20, TimeUnit.MILLISECONDS);
+//                long b = System.nanoTime();
                 if (info == null && cur == 0) {
                     emptyCnt++;
-                    if (emptyCnt > 100) break;
+                    if (emptyCnt > 100) {
+
+                        break;
+                    }
                     else continue;
                 }
                 emptyCnt = 0;
@@ -39,6 +43,7 @@ public class Encoder extends Thread {
                 }
                 if (info != null) {
                     submit(info);
+//                    if (info.valueSize > Constant.WRITE_SIZE) log.info("ENCODER COST: {}", System.nanoTime() - b);
                 }
             }
         } catch (InterruptedException e) {
@@ -102,7 +107,7 @@ public class Encoder extends Thread {
     public void force() {
         if (cur <= 0) return;
         forceCnt++;
-        if (forceCnt % 100 == 0) log.info("ENCODER FORCE: {}, MERGE: {}", forceCnt, mergeCnt);
+        if (forceCnt % 1000 == 0) log.info("ENCODER FORCE: {}, MERGE: {}", forceCnt, mergeCnt);
         try {
             writeBq.put(new WritePage(logCount, part, pos, tmp, cur));
         } catch (InterruptedException e) {
