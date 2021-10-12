@@ -55,19 +55,19 @@ public class DataBlock {
     private CyclicBarrier barrier = new CyclicBarrier(barrierCount);
     private static final LongAdder appendAdder = new LongAdder();
     private static final LongAdder forceAdder = new LongAdder();
-    private static final AtomicInteger addSize = new AtomicInteger();
+    private volatile int addSize = 0;
 
     public void writeLog(byte topic, short queueId, int offset, ByteBuffer data, Indexer indexer) {
         short msgLen = (short) data.limit();
         appendAdder.add(msgLen);
         short dataSize = (short) (MSG_META_SIZE + msgLen);
         try {
-            boolean forced;
             MappedByteBuffer tempBuf;
             synchronized (WRITE_LOCKER) {
                 if (logMappedBuf.remaining() < dataSize) {
                     logMappedBuf.force();
-                    forceAdder.add(addSize.getAndSet(0));
+                    forceAdder.add(addSize);
+                    addSize = 0;
                     unmap(logMappedBuf);
                     logFileChannel.close();
                     openLog();
@@ -78,15 +78,9 @@ public class DataBlock {
                 logMappedBuf.putInt(offset); // 4
                 logMappedBuf.putShort(msgLen); // 2
                 logMappedBuf.put(data);
-                addSize.getAndAdd(msgLen);
+                addSize += msgLen;
                 indexer.writeIndex(id, logNumAdder, position, dataSize);
                 tempBuf = logMappedBuf;
-                forced = addSize.get() >= 1024 * 64;
-                if (forced) {
-                    logMappedBuf.force();
-                    forceAdder.add(addSize.getAndSet(0));
-                    barrier.reset();
-                }
             }
             try {
                 int arrive = barrier.await(250, TimeUnit.MILLISECONDS);
@@ -95,7 +89,8 @@ public class DataBlock {
                     synchronized (WRITE_LOCKER) {
                         try {
                             logMappedBuf.force();
-                            forceAdder.add(addSize.getAndSet(0));
+                            forceAdder.add(addSize);
+                            addSize = 0;
                         } catch (Exception ignored) {
                         }
                     }
@@ -107,7 +102,8 @@ public class DataBlock {
                 synchronized (WRITE_LOCKER) {
                     try {
                         tempBuf.force();
-                        forceAdder.add(addSize.getAndSet(0));
+                        forceAdder.add(addSize);
+                        addSize = 0;
                     } catch (Exception ignored) {
                     }
                 }
