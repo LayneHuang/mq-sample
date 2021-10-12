@@ -111,7 +111,7 @@ public class DataBlock {
             } catch (InterruptedException e) {
                 System.out.println("Interrupted");
             }
-            if (G125 >= appendAdder.sum()) {
+            if (G125 < appendAdder.sum()) {
                 System.out.println("append " + appendAdder.sum() + "force" + forceAdder.sum());
             }
         } catch (Exception e) {
