@@ -13,6 +13,7 @@ import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.LongAdder;
 
 import static io.openmessaging.leo2.DataManager.*;
@@ -54,8 +55,7 @@ public class DataBlock {
     private CyclicBarrier barrier = new CyclicBarrier(barrierCount);
     private static final LongAdder appendAdder = new LongAdder();
     private static final LongAdder forceAdder = new LongAdder();
-    private volatile int addSize = 0;
-    private int tempSize = 0;
+    private static final AtomicInteger addSize = new AtomicInteger();
 
     public void writeLog(byte topic, short queueId, int offset, ByteBuffer data, Indexer indexer) {
         short msgLen = (short) data.limit();
@@ -66,12 +66,8 @@ public class DataBlock {
             MappedByteBuffer tempBuf;
             synchronized (WRITE_LOCKER) {
                 if (logMappedBuf.remaining() < dataSize) {
-                    if (tempSize > 0) {
-                        logMappedBuf.force();
-                        tempSize = 0;
-                    }
-                    forceAdder.add(addSize);
-                    addSize = 0;
+                    logMappedBuf.force();
+                    forceAdder.add(addSize.getAndSet(0));
                     unmap(logMappedBuf);
                     logFileChannel.close();
                     openLog();
@@ -82,14 +78,13 @@ public class DataBlock {
                 logMappedBuf.putInt(offset); // 4
                 logMappedBuf.putShort(msgLen); // 2
                 logMappedBuf.put(data);
-                addSize += msgLen;
-                tempSize += dataSize;
+                addSize.getAndAdd(msgLen);
                 indexer.writeIndex(id, logNumAdder, position, dataSize);
                 tempBuf = logMappedBuf;
-                forced = tempSize >= 1024 * 64;
+                forced = addSize.get() >= 1024 * 64;
                 if (forced) {
                     logMappedBuf.force();
-                    tempSize = 0;
+                    forceAdder.add(addSize.getAndSet(0));
                     barrier.reset();
                 }
             }
@@ -99,12 +94,8 @@ public class DataBlock {
                     System.out.println("Full-F");
                     synchronized (WRITE_LOCKER) {
                         try {
-                            if (tempSize > 0) {
-                                logMappedBuf.force();
-                                tempSize = 0;
-                            }
-                            forceAdder.add(addSize);
-                            addSize = 0;
+                            logMappedBuf.force();
+                            forceAdder.add(addSize.getAndSet(0));
                         } catch (Exception ignored) {
                         }
                     }
@@ -116,9 +107,7 @@ public class DataBlock {
                 synchronized (WRITE_LOCKER) {
                     try {
                         tempBuf.force();
-                        forceAdder.add(addSize);
-                        addSize = 0;
-                        tempSize = 0;
+                        forceAdder.add(addSize.getAndSet(0));
                     } catch (Exception ignored) {
                     }
                 }
