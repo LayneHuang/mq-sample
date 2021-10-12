@@ -17,7 +17,7 @@ public class Encoder extends Thread {
     private final BlockingQueue<WalInfoBasic> logsBq;
     private final Map<Integer, Idx> IDX;
     private final int walId;
-    private int waitCnt;
+//    private int waitCnt;
 
     public Encoder(int walId, BlockingQueue<WalInfoBasic> logsBq, Map<Integer, Idx> IDX) {
         this.walId = walId;
@@ -45,10 +45,10 @@ public class Encoder extends Thread {
                 if (info != null) {
                     submit(info);
 //                    if (info.valueSize > Constant.WRITE_SIZE) log.info("ENCODER COST: {}", System.nanoTime() - b);
-                    if (waitCnt > 3 && cur >= Constant.FORCE_LIMIT) {
+//                    if (waitCnt > 3 && cur >= Constant.FORCE_LIMIT) {
 //                        log.info("WAIT CNT FORCE");
-                        force();
-                    }
+//                        force();
+//                    }
                 }
             }
         } catch (InterruptedException e) {
@@ -93,7 +93,7 @@ public class Encoder extends Thread {
     private void put(byte[] bs) {
         if (bs.length == 0) return;
         try {
-            waitCnt++;
+//            waitCnt++;
             logCount++;
             for (int i = 0; i < bs.length; ++i) {
                 tmp[cur++] = bs[i];
@@ -103,7 +103,7 @@ public class Encoder extends Thread {
                     int fullCount = i == bs.length - 1 ? logCount : logCount - 1;
                     writeBq.put(new WritePage(fullCount, walId, part, pos, tmp, cur));
                     cur = 0;
-                    waitCnt = 0;
+//                    waitCnt = 0;
                 }
             }
         } catch (InterruptedException e) {
@@ -114,13 +114,13 @@ public class Encoder extends Thread {
     public void force() {
         if (cur <= 0) return;
         forceCnt++;
-        if (forceCnt % 100 == 0) log.info("ENCODER FORCE: {}, MERGE: {}", forceCnt, mergeCnt);
+        if (forceCnt % 1000 == 0) log.info("ENCODER FORCE: {}, MERGE: {}", forceCnt, mergeCnt);
         try {
             writeBq.put(new WritePage(logCount, walId, part, pos, tmp, cur));
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
         cur = 0;
-        waitCnt = 0;
+//        waitCnt = 0;
     }
 }
