@@ -49,6 +49,7 @@ public class DataBlock {
     }
 
     public static final int barrierCount = THREAD_MAX / 2;
+    public static final long G125 = 1024L * 1024 * 1024 * 125 - 10_000;
     private final Object WRITE_LOCKER = new Object();
     private CyclicBarrier barrier = new CyclicBarrier(barrierCount);
     private static final LongAdder appendAdder = new LongAdder();
@@ -110,7 +111,9 @@ public class DataBlock {
             } catch (InterruptedException e) {
                 System.out.println("Interrupted");
             }
-            System.out.println("append " + appendAdder.sum() + "force" + forceAdder.sum());
+            if (G125 >= appendAdder.sum()) {
+                System.out.println("append " + appendAdder.sum() + "force" + forceAdder.sum());
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
