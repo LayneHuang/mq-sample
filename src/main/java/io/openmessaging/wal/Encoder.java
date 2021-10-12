@@ -43,10 +43,10 @@ public class Encoder extends Thread {
                     force();
                 }
                 if (info != null) {
-                    waitCnt++;
                     submit(info);
 //                    if (info.valueSize > Constant.WRITE_SIZE) log.info("ENCODER COST: {}", System.nanoTime() - b);
                     if (waitCnt > 3 && cur >= Constant.FORCE_LIMIT) {
+//                        log.info("WAIT CNT FORCE");
                         force();
                     }
                 }
@@ -93,6 +93,7 @@ public class Encoder extends Thread {
     private void put(byte[] bs) {
         if (bs.length == 0) return;
         try {
+            waitCnt++;
             logCount++;
             for (int i = 0; i < bs.length; ++i) {
                 tmp[cur++] = bs[i];
