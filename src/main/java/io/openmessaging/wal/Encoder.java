@@ -108,7 +108,7 @@ public class Encoder extends Thread {
     public void force() {
         if (cur <= 0) return;
         forceCnt++;
-        if (forceCnt % 1000 == 0) log.info("ENCODER FORCE: {}, MERGE: {}", forceCnt, mergeCnt);
+        if (forceCnt % 100 == 0) log.info("ENCODER FORCE: {}, MERGE: {}", forceCnt, mergeCnt);
         try {
             writeBq.put(new WritePage(logCount, walId, part, pos, tmp, cur));
         } catch (InterruptedException e) {

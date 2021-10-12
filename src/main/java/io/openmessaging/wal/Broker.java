@@ -29,16 +29,17 @@ public class Broker extends Thread {
 
     private final int walId;
 
-    public final BlockingQueue<WritePage> writeBq = new LinkedBlockingQueue<>(Constant.BQ_SIZE);
+    public final BlockingQueue<WritePage> writeBq;
 
     public AtomicLong logCount = new AtomicLong();
 
     private final Lock lock;
     private final Condition condition;
 
-    public Broker(int walId, Lock lock, Condition condition) {
+    public Broker(int walId, BlockingQueue<WritePage> writeBq, Lock lock, Condition condition) {
         this.walId = walId;
         this.lock = lock;
+        this.writeBq = writeBq;
         this.condition = condition;
     }
 
