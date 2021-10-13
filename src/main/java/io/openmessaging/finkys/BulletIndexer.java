@@ -10,7 +10,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static io.openmessaging.leo.DataManager.LOGS_PATH;
+import static io.openmessaging.leo2.DataManager.LOGS_PATH;
 
 public class BulletIndexer {
 
