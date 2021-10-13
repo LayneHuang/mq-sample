@@ -18,4 +18,11 @@ public class Utils {
         }
     }
 
+    public static void printMemory() {
+        Runtime runtime = Runtime.getRuntime();
+        long total = runtime.totalMemory() / (1024 * 1024);
+        long free = runtime.freeMemory() / (1024 * 1024);
+        System.out.println("Mem total " + total + " free " + free);
+    }
+
 }

@@ -13,7 +13,6 @@ import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.LongAdder;
 
 import static io.openmessaging.leo2.DataManager.*;
@@ -111,6 +110,7 @@ public class DataBlock {
             }
             if (G125 < appendAdder.sum()) {
                 System.out.println("append " + appendAdder.sum() + "force" + forceAdder.sum());
+                Utils.printMemory();
             }
         } catch (Exception e) {
             e.printStackTrace();

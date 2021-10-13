@@ -5,8 +5,6 @@ import io.openmessaging.MessageQueue;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Semaphore;
 
 import static io.openmessaging.leo2.DataManager.*;
 
@@ -40,24 +38,11 @@ public class LeoMessageQueueImpl extends MessageQueue {
         return topicId;
     }
 
-    Semaphore semaphore = new Semaphore(1);
-
     @Override
     public Map<Integer, ByteBuffer> getRange(String topic, int queueId, long offset, int fetchNum) {
         if (start != -1) {
             System.out.println("75G cost: " + (System.currentTimeMillis() - start));
-//            start = -1;
-            try {
-                Thread.sleep(5_000);
-                semaphore.acquire();
-                INDEXERS = new ConcurrentHashMap<>();
-                System.out.println("restartLogic");
-                restartLogic();
-                System.out.println("restartLogic end");
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-            return null;
+            start = -1;
         }
         byte topicId = getTopicId(topic);
         Map<Integer, ByteBuffer> dataMap = readLog(topicId, (short) queueId, (int) offset, fetchNum);

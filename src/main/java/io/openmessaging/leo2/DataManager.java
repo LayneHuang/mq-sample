@@ -13,10 +13,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.PriorityQueue;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -56,11 +53,9 @@ public class DataManager {
         Map<Byte, Map<Short, PriorityQueue<OffsetBuf>>> topicQueueBufMap = new HashMap<>(100);
         Files.list(LOGS_PATH).forEach(partitionDir -> {
             byte partitionId = Byte.parseByte(String.valueOf(partitionDir.getFileName()));
-            System.out.println("partitionId " + partitionId);
             try {
                 Files.list(partitionDir).forEach(logFile -> {
                     byte logNumAdder = Byte.parseByte(String.valueOf(logFile.getFileName()));
-                    System.out.println("logNumAdder " + logNumAdder);
                     try {
                         FileChannel logFileChannel = FileChannel.open(logFile, StandardOpenOption.READ, StandardOpenOption.WRITE);
                         long fileSize = logFileChannel.size();
@@ -103,16 +98,38 @@ public class DataManager {
         });
         System.out.println("读完了");
         // 根据 offset 排序后统一插入
-        topicQueueBufMap.forEach((topic, queueMap) -> {
-            queueMap.forEach((queueId, bufList) -> {
+        Iterator<Map.Entry<Byte, Map<Short, PriorityQueue<OffsetBuf>>>> iterator = topicQueueBufMap.entrySet().iterator();
+        Map.Entry<Byte, Map<Short, PriorityQueue<OffsetBuf>>> topicMapEntry;
+        while (iterator.hasNext()) {
+            topicMapEntry = iterator.next();
+            iterator.remove();
+            byte topic = topicMapEntry.getKey();
+            Map<Short, PriorityQueue<OffsetBuf>> queueMap = topicMapEntry.getValue();
+            Iterator<Map.Entry<Short, PriorityQueue<OffsetBuf>>> iterator1 = queueMap.entrySet().iterator();
+            Map.Entry<Short, PriorityQueue<OffsetBuf>> queueMapEntry;
+            while (iterator1.hasNext()) {
+                queueMapEntry = iterator1.next();
+                iterator1.remove();
+                short queueId = queueMapEntry.getKey();
+                PriorityQueue<OffsetBuf> bufList = queueMapEntry.getValue();
                 Indexer indexer = getIndexer(topic, queueId);
                 ByteBuffer buf;
                 while (!bufList.isEmpty()) {
                     buf = bufList.poll().buf;
                     indexer.writeIndex(buf.get(), buf.get(), buf.getInt(), buf.getShort());
                 }
-            });
-        });
+            }
+        }
+//        topicQueueBufMap.forEach((topic, queueMap) -> {
+//            queueMap.forEach((queueId, bufList) -> {
+//                Indexer indexer = getIndexer(topic, queueId);
+//                ByteBuffer buf;
+//                while (!bufList.isEmpty()) {
+//                    buf = bufList.poll().buf;
+//                    indexer.writeIndex(buf.get(), buf.get(), buf.getInt(), buf.getShort());
+//                }
+//            });
+//        });
     }
 
     // block 2 64k 75G cost: 330965
