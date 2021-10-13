@@ -85,7 +85,6 @@ public class DataBlock {
             try {
                 int arrive = barrier.await(250, TimeUnit.MILLISECONDS);
                 if (arrive == 0) {
-                    System.out.println("Full-F");
                     synchronized (WRITE_LOCKER) {
                         try {
                             logMappedBuf.force();
@@ -97,7 +96,6 @@ public class DataBlock {
                 }
             } catch (TimeoutException e) {
                 // 只有一个超时，其他都是 BrokenBarrierException
-                System.out.println("Timeout-F");
                 barrier = new CyclicBarrier(barrierCount);
                 synchronized (WRITE_LOCKER) {
                     try {
@@ -108,7 +106,6 @@ public class DataBlock {
                     }
                 }
             } catch (BrokenBarrierException e) {
-                System.out.println("Broken");
             } catch (InterruptedException e) {
                 System.out.println("Interrupted");
             }
