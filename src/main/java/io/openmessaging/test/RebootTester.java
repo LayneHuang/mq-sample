@@ -11,7 +11,7 @@ public class RebootTester {
         messageQueue.getRange("topic0", 1, 995, 10)
                 .forEach((key, value) -> System.out.println("边写边查 topic1: " + key + ": " + new String(value.array())));
         messageQueue.getRange("topic29", 1, 995, 10)
-                .forEach((key, value) -> System.out.println("边写边查 topic29 : " + key + ": " + new String(value.array())));
+                .forEach((key, value) -> System.out.println("边写边查 topic29: " + key + ": " + new String(value.array())));
         System.out.println("FINISH");
         System.out.println(System.currentTimeMillis() - start);
     }

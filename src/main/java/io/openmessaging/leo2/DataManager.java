@@ -58,14 +58,15 @@ public class DataManager {
             byte partitionId = Byte.parseByte(String.valueOf(partitionDir.getFileName()));
             new Thread(() -> {
                 try {
-                    Files.list(partitionDir).forEach(logFile -> {
-                        byte logNumAdder = Byte.parseByte(String.valueOf(logFile.getFileName()));
+                    Files.list(partitionDir).map(logFile ->
+                            Byte.parseByte(String.valueOf(logFile.getFileName()))
+                    ).sorted().forEach(logNumAdder -> {
                         try {
+                            Path logFile = partitionDir.resolve(String.valueOf(logNumAdder));
                             FileChannel logFileChannel = FileChannel.open(logFile, StandardOpenOption.READ, StandardOpenOption.WRITE);
                             long fileSize = logFileChannel.size();
                             MappedByteBuffer logBuf = logFileChannel.map(FileChannel.MapMode.READ_ONLY, 0, fileSize);
                             while (logBuf.remaining() > MSG_META_SIZE) {
-                                ByteBuffer indexBuf = ByteBuffer.allocate(INDEX_BUF_SIZE);
                                 int position = logBuf.position();
                                 byte topic = logBuf.get();
                                 short queueId = logBuf.getShort();
@@ -77,6 +78,7 @@ public class DataManager {
                                 }
                                 short dataSize = (short) (MSG_META_SIZE + msgLen);
                                 // index
+                                ByteBuffer indexBuf = ByteBuffer.allocate(INDEX_BUF_SIZE);
                                 indexBuf.put(partitionId);
                                 indexBuf.put(logNumAdder);
                                 indexBuf.putInt(position);
