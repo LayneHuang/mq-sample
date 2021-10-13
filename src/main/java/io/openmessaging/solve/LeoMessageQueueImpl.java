@@ -1,18 +1,19 @@
 package io.openmessaging.solve;
 
 import io.openmessaging.MessageQueue;
+import io.openmessaging.leo2.DataManager;
 
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.Map;
-
-import static io.openmessaging.leo2.DataManager.*;
 
 /**
  * 这是一个简单的基于内存的实现，以方便选手理解题意；
  * 实际提交时，请维持包名和类名不变，把方法实现修改为自己的内容；
  */
 public class LeoMessageQueueImpl extends MessageQueue {
+
+    DataManager manager = new DataManager();
 
     long start = 0;
 
@@ -22,10 +23,10 @@ public class LeoMessageQueueImpl extends MessageQueue {
             start = System.currentTimeMillis();
         }
         byte topicId = getTopicId(topic);
-        long offset = getOffset(topicId, (short) queueId);
+        long offset = manager.getOffset(topicId, (short) queueId);
         // 更新最大位点
         // 保存 data 中的数据
-        writeLog(topicId, (short) queueId, (int) offset, data);
+        manager.writeLog(topicId, (short) queueId, (int) offset, data);
         return offset;
     }
 
@@ -45,7 +46,7 @@ public class LeoMessageQueueImpl extends MessageQueue {
             start = -1;
         }
         byte topicId = getTopicId(topic);
-        Map<Integer, ByteBuffer> dataMap = readLog(topicId, (short) queueId, (int) offset, fetchNum);
+        Map<Integer, ByteBuffer> dataMap = manager.readLog(topicId, (short) queueId, (int) offset, fetchNum);
         if (dataMap != null) {
             return dataMap;
         } else {

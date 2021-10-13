@@ -28,7 +28,7 @@ public class Indexer {
         fullBufs.add(new OffsetBuf(0, tempBuf));
     }
 
-    public void writeIndex(OffsetBuf buf) {
+    public synchronized void writeIndex(OffsetBuf buf) {
         fullBufs.add(buf);
     }
 

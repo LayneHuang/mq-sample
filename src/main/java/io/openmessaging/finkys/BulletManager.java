@@ -20,8 +20,6 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import io.openmessaging.leo.OffsetBuf;
 
-import static io.openmessaging.leo2.DataManager.unmap;
-
 public class BulletManager {
 
     public static final int GUN_AMOUNT = 2;

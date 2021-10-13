@@ -1,8 +1,11 @@
 package io.openmessaging.leo2;
 
+import sun.misc.Cleaner;
 import sun.misc.Unsafe;
+import sun.nio.ch.DirectBuffer;
 
 import java.lang.reflect.Field;
+import java.nio.MappedByteBuffer;
 
 public class Utils {
 
@@ -15,6 +18,13 @@ public class Utils {
             UNSAFE = (Unsafe) field.get(null);
         } catch (Exception e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    public static void unmap(MappedByteBuffer indexMapBuf) {
+        Cleaner cleaner = ((DirectBuffer) indexMapBuf).cleaner();
+        if (cleaner != null) {
+            cleaner.clean();
         }
     }
 

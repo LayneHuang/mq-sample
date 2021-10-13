@@ -16,6 +16,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.LongAdder;
 
 import static io.openmessaging.leo2.DataManager.*;
+import static io.openmessaging.leo2.Utils.unmap;
 
 public class DataBlock {
 
