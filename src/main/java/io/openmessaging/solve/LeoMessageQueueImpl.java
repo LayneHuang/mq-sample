@@ -5,6 +5,7 @@ import io.openmessaging.MessageQueue;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static io.openmessaging.leo2.DataManager.*;
 
@@ -43,7 +44,16 @@ public class LeoMessageQueueImpl extends MessageQueue {
         if (start != -1) {
             System.out.println("75G cost: " + (System.currentTimeMillis() - start));
             start = -1;
-//            return null;
+            try {
+                synchronized (this) {
+                    Thread.sleep(5_000);
+                    INDEXERS = new ConcurrentHashMap<>();
+                    restartLogic();
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            return null;
         }
         byte topicId = getTopicId(topic);
         Map<Integer, ByteBuffer> dataMap = readLog(topicId, (short) queueId, (int) offset, fetchNum);

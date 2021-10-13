@@ -72,6 +72,7 @@ public class DataBlock {
                     logFileChannel.close();
                     openLog();
                 }
+                tempBuf = logMappedBuf;
                 int position = logMappedBuf.position();
                 logMappedBuf.put(topic); // 1
                 logMappedBuf.putShort(queueId); // 2
@@ -80,7 +81,6 @@ public class DataBlock {
                 logMappedBuf.put(data);
                 addSize += msgLen;
                 indexer.writeIndex(id, logNumAdder, position, dataSize);
-                tempBuf = logMappedBuf;
             }
             try {
                 int arrive = barrier.await(250, TimeUnit.MILLISECONDS);
