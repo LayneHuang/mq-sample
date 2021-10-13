@@ -11,14 +11,14 @@ public class Idx {
     private final Lock lock = new ReentrantLock();
 
     public void add(int pos, int walPart, int walPos, int valueSize) {
-        lock.lock();
         int maxPos = pos << 1 | 1;
         if (maxPos + IDX_SIZE > list.length) {
+            lock.lock();
             int[] nList = new int[list.length + (list.length >> 1)];
             System.arraycopy(list, 0, nList, 0, list.length);
             list = nList;
+            lock.unlock();
         }
-        lock.unlock();
         list[pos << 1] = walPos;
         list[pos << 1 | 1] = ((walPart & BASE) << BASE_DIS) | (valueSize & BASE);
     }

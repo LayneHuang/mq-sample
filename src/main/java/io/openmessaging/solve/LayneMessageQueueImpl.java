@@ -95,7 +95,6 @@ public class LayneMessageQueueImpl extends MessageQueue {
         try {
             locks[walId].lock();
             walList[walId].submit(result);
-//            while (!brokerManager.isDown(walId, result.logCount)) {
             while (!isDown(walId, result.logCount)) {
                 conditions[walId].await();
             }

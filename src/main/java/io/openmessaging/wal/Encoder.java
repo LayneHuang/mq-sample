@@ -17,7 +17,7 @@ public class Encoder extends Thread {
     private final BlockingQueue<WalInfoBasic> logsBq;
     private final Map<Integer, Idx> IDX;
     private final int walId;
-//    private int waitCnt;
+    private int waitCnt;
 
     public Encoder(int walId, BlockingQueue<WalInfoBasic> logsBq, Map<Integer, Idx> IDX) {
         this.walId = walId;
@@ -44,11 +44,9 @@ public class Encoder extends Thread {
                 }
                 if (info != null) {
                     submit(info);
-//                    if (info.valueSize > Constant.WRITE_SIZE) log.info("ENCODER COST: {}", System.nanoTime() - b);
-//                    if (waitCnt > 3 && cur >= Constant.FORCE_LIMIT) {
-//                        log.info("WAIT CNT FORCE");
-//                        force();
-//                    }
+                    if (waitCnt > 2 && cur >= Constant.FORCE_LIMIT) {
+                        force();
+                    }
                 }
             }
         } catch (InterruptedException e) {
@@ -93,7 +91,7 @@ public class Encoder extends Thread {
     private void put(byte[] bs) {
         if (bs.length == 0) return;
         try {
-//            waitCnt++;
+            waitCnt++;
             logCount++;
             for (int i = 0; i < bs.length; ++i) {
                 tmp[cur++] = bs[i];
@@ -103,7 +101,7 @@ public class Encoder extends Thread {
                     int fullCount = i == bs.length - 1 ? logCount : logCount - 1;
                     writeBq.put(new WritePage(fullCount, walId, part, pos, tmp, cur));
                     cur = 0;
-//                    waitCnt = 0;
+                    waitCnt = 0;
                 }
             }
         } catch (InterruptedException e) {
@@ -121,6 +119,6 @@ public class Encoder extends Thread {
             e.printStackTrace();
         }
         cur = 0;
-//        waitCnt = 0;
+        waitCnt = 0;
     }
 }
