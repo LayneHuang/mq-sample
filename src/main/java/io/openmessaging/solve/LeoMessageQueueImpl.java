@@ -44,14 +44,16 @@ public class LeoMessageQueueImpl extends MessageQueue {
         if (start != -1) {
             System.out.println("75G cost: " + (System.currentTimeMillis() - start));
             start = -1;
-            try {
-                synchronized (this) {
+            synchronized (this) {
+                try {
                     Thread.sleep(5_000);
                     INDEXERS = new ConcurrentHashMap<>();
+                    System.out.println("restartLogic");
                     restartLogic();
+                    System.out.println("restartLogic end");
+                } catch (Exception e) {
+                    e.printStackTrace();
                 }
-            } catch (Exception e) {
-                e.printStackTrace();
             }
             return null;
         }

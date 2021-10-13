@@ -56,9 +56,11 @@ public class DataManager {
         Map<Byte, Map<Short, PriorityQueue<OffsetBuf>>> topicQueueBufMap = new HashMap<>(100);
         Files.list(LOGS_PATH).forEach(partitionDir -> {
             byte partitionId = Byte.parseByte(String.valueOf(partitionDir.getFileName()));
+            System.out.println("partitionId " + partitionId);
             try {
                 Files.list(partitionDir).forEach(logFile -> {
                     byte logNumAdder = Byte.parseByte(String.valueOf(logFile.getFileName()));
+                    System.out.println("logNumAdder " + logNumAdder);
                     try {
                         FileChannel logFileChannel = FileChannel.open(logFile, StandardOpenOption.READ, StandardOpenOption.WRITE);
                         long fileSize = logFileChannel.size();
