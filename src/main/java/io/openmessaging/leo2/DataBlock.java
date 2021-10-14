@@ -49,13 +49,14 @@ public class DataBlock {
         logMappedBuf = logFileChannel.map(FileChannel.MapMode.READ_WRITE, 0, G1);// 1G
     }
 
-    public static int barrierCount = THREAD_MAX / 2;
-    public static final long G125 = G1 * 125L - 5_000;
+    private static int barrierCount = THREAD_MAX / 2;
+    private static final long G125 = G1 * 125L - 5_000;
     private final Object WRITE_LOCKER = new Object();
-    private CyclicBarrier barrier = new CyclicBarrier(barrierCount);
+    private volatile CyclicBarrier barrier = new CyclicBarrier(barrierCount);
     private static final LongAdder appendAdder = new LongAdder();
     private static final LongAdder forceAdder = new LongAdder();
     private volatile int addSize = 0;
+    private int timeoutTimes = 0;
 
     public void writeLog(byte topic, short queueId, int offset, ByteBuffer data, Indexer indexer) {
         short msgLen = (short) data.limit();
@@ -86,10 +87,6 @@ public class DataBlock {
                 int arrive = barrier.await(15L * barrierCount, TimeUnit.MILLISECONDS);
                 if (arrive == 0) {
                     synchronized (WRITE_LOCKER) {
-                        if (barrierCount < 15) {
-                            barrierCount++;
-                            barrier = new CyclicBarrier(barrierCount);
-                        }
                         try {
                             tempBuf.force();
                             forceAdder.add(addSize);
@@ -101,10 +98,14 @@ public class DataBlock {
             } catch (TimeoutException e) {
                 // 只有一个超时，其他都是 BrokenBarrierException
                 System.out.println("Timeout-F");
+                timeoutTimes++;
                 synchronized (WRITE_LOCKER) {
-                    if (barrierCount >= 5) {
+                    if (timeoutTimes >= 5 && barrierCount >= 5) {
                         barrierCount--;
+                        timeoutTimes = 0;
                         barrier = new CyclicBarrier(barrierCount);
+                    } else {
+                        barrier.reset();
                     }
                     try {
                         tempBuf.force();
