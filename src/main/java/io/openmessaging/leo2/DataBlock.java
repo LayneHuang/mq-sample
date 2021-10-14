@@ -46,7 +46,7 @@ public class DataBlock {
         Path logFile = logDir.resolve(String.valueOf(logNumAdder));
         Files.createFile(logFile);
         logFileChannel = FileChannel.open(logFile, StandardOpenOption.READ, StandardOpenOption.WRITE);
-        logMappedBuf = logFileChannel.map(FileChannel.MapMode.READ_WRITE, 0, 1024 * 1024 * 1024);// 1G
+        logMappedBuf = logFileChannel.map(FileChannel.MapMode.READ_WRITE, 0, G1);// 1G
     }
 
     public static final int barrierCount = THREAD_MAX / 2;

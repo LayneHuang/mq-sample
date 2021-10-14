@@ -13,11 +13,12 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
 import static io.openmessaging.leo2.Utils.unmap;
 
@@ -25,10 +26,11 @@ public class DataManager {
 
     public static final Path DIR_ESSD = Paths.get("/essd");
     //    public static final Path DIR_ESSD = Paths.get(System.getProperty("user.dir")).resolve("target").resolve("work");
-    public static final ConcurrentHashMap<String, AtomicLong> APPEND_OFFSET_MAP = new ConcurrentHashMap<>();
+    public static final ConcurrentHashMap<String, AtomicInteger> APPEND_OFFSET_MAP = new ConcurrentHashMap<>();
 
     public static final Path LOGS_PATH = DIR_ESSD.resolve("log");
 
+    public static final int G1 = 1024 * 1024 * 1024;
     public static final short THREAD_MAX = 40;
     public static final short MSG_META_SIZE = 9;
     public static final short INDEX_BUF_SIZE = 8;
@@ -53,56 +55,67 @@ public class DataManager {
     }
 
     public void restartLogic() throws Exception {
-        CountDownLatch latch = new CountDownLatch(2);
-        Files.list(LOGS_PATH).forEach(partitionDir -> {
-            byte partitionId = Byte.parseByte(String.valueOf(partitionDir.getFileName()));
-            new Thread(() -> {
-                try {
-                    Files.list(partitionDir).map(logFile ->
-                            Byte.parseByte(String.valueOf(logFile.getFileName()))
-                    ).sorted().forEach(logNumAdder -> {
-                        try {
-                            Path logFile = partitionDir.resolve(String.valueOf(logNumAdder));
-                            FileChannel logFileChannel = FileChannel.open(logFile, StandardOpenOption.READ, StandardOpenOption.WRITE);
-                            long fileSize = logFileChannel.size();
-                            MappedByteBuffer logBuf = logFileChannel.map(FileChannel.MapMode.READ_ONLY, 0, fileSize);
-                            while (logBuf.remaining() > MSG_META_SIZE) {
-                                int position = logBuf.position();
-                                byte topic = logBuf.get();
-                                short queueId = logBuf.getShort();
-                                int offset = logBuf.getInt();
-                                short msgLen = logBuf.getShort();
-                                if (msgLen == 0) break;
-                                for (int i = 0; i < msgLen; i++) {
-                                    logBuf.get();
-                                }
-                                short dataSize = (short) (MSG_META_SIZE + msgLen);
-                                // index
-                                ByteBuffer indexBuf = ByteBuffer.allocate(INDEX_BUF_SIZE);
-                                indexBuf.put(partitionId);
-                                indexBuf.put(logNumAdder);
-                                indexBuf.putInt(position);
-                                indexBuf.putShort(dataSize);
-                                indexBuf.flip();
-                                Indexer indexer = getIndexer(topic, queueId);
-                                indexer.writeIndex(new OffsetBuf(offset, indexBuf));
-                            }
-                            unmap(logBuf);
-                            logFileChannel.close();
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
-                    });
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-                latch.countDown();
-            }).start();
-        });
+        CountDownLatch latch = new CountDownLatch(4);
+        blockTask(latch, (byte) 0);
+        blockTask(latch, (byte) 1);
         latch.await();
         System.out.println("读完了");
         // 根据 offset 排序
         INDEXERS.values().forEach(indexer -> indexer.fullBufs.sort(Comparator.comparingInt(o -> o.offset)));
+    }
+
+    private void blockTask(CountDownLatch latch, byte partitionId) throws IOException {
+        Path partitionDir = LOGS_PATH.resolve(String.valueOf(partitionId));
+        List<Byte> logNums = Files.list(partitionDir).map(logFile ->
+                Byte.parseByte(String.valueOf(logFile.getFileName()))
+        ).sorted().collect(Collectors.toList());
+        int midIndex = logNums.size() / 2;
+        List<Byte> left = logNums.subList(0, midIndex);
+        List<Byte> right = logNums.subList(midIndex, logNums.size());
+        new Thread(() -> {
+            subTask(partitionDir, partitionId, left);
+            latch.countDown();
+        }).start();
+        new Thread(() -> {
+            subTask(partitionDir, partitionId, right);
+            latch.countDown();
+        }).start();
+    }
+
+    private void subTask(Path partitionDir, byte partitionId, List<Byte> left) {
+        try {
+            for (Byte logNum : left) {
+                Path logFile = partitionDir.resolve(String.valueOf(logNum));
+                FileChannel logFileChannel = FileChannel.open(logFile, StandardOpenOption.READ, StandardOpenOption.WRITE);
+                long fileSize = logFileChannel.size();
+                MappedByteBuffer logBuf = logFileChannel.map(FileChannel.MapMode.READ_ONLY, 0, fileSize);
+                while (logBuf.remaining() > MSG_META_SIZE) {
+                    int position = logBuf.position();
+                    byte topic = logBuf.get();
+                    short queueId = logBuf.getShort();
+                    int offset = logBuf.getInt();
+                    short msgLen = logBuf.getShort();
+                    if (msgLen == 0) break;
+                    for (int i = 0; i < msgLen; i++) {
+                        logBuf.get();
+                    }
+                    short dataSize = (short) (MSG_META_SIZE + msgLen);
+                    // index
+                    ByteBuffer indexBuf = ByteBuffer.allocate(INDEX_BUF_SIZE);
+                    indexBuf.put(partitionId);
+                    indexBuf.put(logNum);
+                    indexBuf.putInt(position);
+                    indexBuf.putShort(dataSize);
+                    indexBuf.flip();
+                    Indexer indexer = getIndexer(topic, queueId);
+                    indexer.writeIndex(new OffsetBuf(offset, indexBuf));
+                }
+                unmap(logBuf);
+                logFileChannel.close();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     // block 2 64k 75G cost: 330965
@@ -159,9 +172,9 @@ public class DataManager {
         }
     }
 
-    public long getOffset(byte topicId, short queueId) {
+    public static int getOffset(byte topicId, short queueId) {
         String key = (topicId + "+" + queueId).intern();
-        AtomicLong offsetAdder = APPEND_OFFSET_MAP.computeIfAbsent(key, k -> new AtomicLong());
+        AtomicInteger offsetAdder = APPEND_OFFSET_MAP.computeIfAbsent(key, k -> new AtomicInteger());
         return offsetAdder.getAndIncrement();
     }
 

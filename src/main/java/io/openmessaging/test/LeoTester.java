@@ -28,7 +28,7 @@ public class LeoTester {
     private void start() throws InterruptedException {
         int partySize = 40;
         CyclicBarrier startBarrier = new CyclicBarrier(partySize);
-        AtomicInteger atomicInteger = new AtomicInteger();
+        CountDownLatch latch = new CountDownLatch(partySize);
         for (int t = 0; t < partySize; t++) {
             String tStr = String.valueOf(t);
             executor.execute(() -> {
@@ -42,12 +42,12 @@ public class LeoTester {
                     ByteBuffer buf = ByteBuffer.wrap(text.getBytes(StandardCharsets.UTF_8));
                     long offset = messageQueue.append("topic" + tStr, 1, buf);
                 }
-                atomicInteger.getAndIncrement();
+                latch.countDown();
             });
         }
-        while (atomicInteger.get() != partySize) {
-            Thread.sleep(1);
-        }
+        latch.await();
+        messageQueue.getRange("topic29", 1, 995, 10)
+                .forEach((key, value) -> System.out.println("边写边查 topic29: " + key + ": " + new String(value.array())));
     }
 
     Random random = new Random();

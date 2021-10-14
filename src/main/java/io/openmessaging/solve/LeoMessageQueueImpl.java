@@ -7,6 +7,8 @@ import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.Map;
 
+import static io.openmessaging.leo2.DataManager.getOffset;
+
 /**
  * 这是一个简单的基于内存的实现，以方便选手理解题意；
  * 实际提交时，请维持包名和类名不变，把方法实现修改为自己的内容；
@@ -23,10 +25,10 @@ public class LeoMessageQueueImpl extends MessageQueue {
             start = System.currentTimeMillis();
         }
         byte topicId = getTopicId(topic);
-        long offset = manager.getOffset(topicId, (short) queueId);
+        int offset = getOffset(topicId, (short) queueId);
         // 更新最大位点
         // 保存 data 中的数据
-        manager.writeLog(topicId, (short) queueId, (int) offset, data);
+        manager.writeLog(topicId, (short) queueId, offset, data);
         return offset;
     }
 
