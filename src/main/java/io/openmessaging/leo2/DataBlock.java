@@ -87,6 +87,10 @@ public class DataBlock {
                 int arrive = barrier.await(10L * barrierCount, TimeUnit.MILLISECONDS);
                 if (arrive == 0) {
                     synchronized (WRITE_LOCKER) {
+                        if (barrierCount < 15) {
+                            barrierCount++;
+                            barrier = new CyclicBarrier(barrierCount);
+                        }
                         try {
                             tempBuf.force();
                             forceAdder.add(addSize);
