@@ -88,8 +88,8 @@ public class DataBlock {
                     synchronized (WRITE_LOCKER) {
                         if (barrierCount < 15) {
                             barrierCount++;
+                            barrier = new CyclicBarrier(barrierCount);
                         }
-                        barrier = new CyclicBarrier(barrierCount);
                         try {
                             tempBuf.force();
                             forceAdder.add(addSize);
@@ -100,12 +100,12 @@ public class DataBlock {
                 }
             } catch (TimeoutException e) {
                 // 只有一个超时，其他都是 BrokenBarrierException
+                System.out.println("Timeout-F");
                 synchronized (WRITE_LOCKER) {
-                    System.out.println("Timeout-F");
                     if (barrierCount >= 5) {
                         barrierCount--;
+                        barrier = new CyclicBarrier(barrierCount);
                     }
-                    barrier = new CyclicBarrier(barrierCount);
                     try {
                         tempBuf.force();
                         forceAdder.add(addSize);
