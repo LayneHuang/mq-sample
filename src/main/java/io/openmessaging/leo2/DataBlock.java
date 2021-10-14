@@ -83,7 +83,7 @@ public class DataBlock {
                 indexer.writeIndex(id, logNumAdder, position, dataSize);
             }
             try {
-                int arrive = barrier.await(250, TimeUnit.MILLISECONDS);
+                int arrive = barrier.await(10L * barrierCount, TimeUnit.MILLISECONDS);
                 if (arrive == 0) {
                     synchronized (WRITE_LOCKER) {
                         try {
@@ -97,6 +97,7 @@ public class DataBlock {
             } catch (TimeoutException e) {
                 // 只有一个超时，其他都是 BrokenBarrierException
                 synchronized (WRITE_LOCKER) {
+                    System.out.println("Timeout-F");
                     if (barrierCount >= 5){
                         barrierCount--;
                     }
