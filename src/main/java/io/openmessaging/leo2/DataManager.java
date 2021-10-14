@@ -96,9 +96,7 @@ public class DataManager {
                     int offset = logBuf.getInt();
                     short msgLen = logBuf.getShort();
                     if (msgLen == 0) break;
-                    for (int i = 0; i < msgLen; i++) {
-                        logBuf.get();
-                    }
+                    logBuf.position(logBuf.position() + msgLen);
                     short dataSize = (short) (MSG_META_SIZE + msgLen);
                     // index
                     ByteBuffer indexBuf = ByteBuffer.allocate(INDEX_BUF_SIZE);
