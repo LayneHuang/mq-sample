@@ -50,7 +50,7 @@ public class DataBlock {
     }
 
     public static int barrierCount = THREAD_MAX / 2;
-    public static final long G125 = G1 * 125L - 10_000;
+    public static final long G125 = G1 * 125L - 5_000;
     private final Object WRITE_LOCKER = new Object();
     private CyclicBarrier barrier = new CyclicBarrier(barrierCount);
     private static final LongAdder appendAdder = new LongAdder();
@@ -74,20 +74,24 @@ public class DataBlock {
                 }
                 tempBuf = logMappedBuf;
                 int position = logMappedBuf.position();
-                logMappedBuf.put(topic); // 1
-                logMappedBuf.putShort(queueId); // 2
-                logMappedBuf.putInt(offset); // 4
-                logMappedBuf.putShort(msgLen); // 2
-                logMappedBuf.put(data);
+                tempBuf.put(topic); // 1
+                tempBuf.putShort(queueId); // 2
+                tempBuf.putInt(offset); // 4
+                tempBuf.putShort(msgLen); // 2
+                tempBuf.put(data);
                 addSize += msgLen;
                 indexer.writeIndex(id, logNumAdder, position, dataSize);
             }
             try {
-                int arrive = barrier.await(10L * barrierCount, TimeUnit.MILLISECONDS);
+                int arrive = barrier.await(15L * barrierCount, TimeUnit.MILLISECONDS);
                 if (arrive == 0) {
                     synchronized (WRITE_LOCKER) {
+                        if (barrierCount < 15) {
+                            barrierCount++;
+                        }
+                        barrier = new CyclicBarrier(barrierCount);
                         try {
-                            logMappedBuf.force();
+                            tempBuf.force();
                             forceAdder.add(addSize);
                             addSize = 0;
                         } catch (Exception ignored) {
@@ -98,7 +102,7 @@ public class DataBlock {
                 // 只有一个超时，其他都是 BrokenBarrierException
                 synchronized (WRITE_LOCKER) {
                     System.out.println("Timeout-F");
-                    if (barrierCount >= 5){
+                    if (barrierCount >= 5) {
                         barrierCount--;
                     }
                     barrier = new CyclicBarrier(barrierCount);
@@ -115,7 +119,6 @@ public class DataBlock {
             }
             if (G125 < appendAdder.sum()) {
                 System.out.println("append " + appendAdder.sum() + "force" + forceAdder.sum());
-                Utils.printMemory();
             }
         } catch (Exception e) {
             e.printStackTrace();
