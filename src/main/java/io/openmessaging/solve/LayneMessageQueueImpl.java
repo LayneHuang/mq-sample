@@ -132,6 +132,7 @@ public class LayneMessageQueueImpl extends MessageQueue {
 
     private Map<Integer, ByteBuffer> readValueFromWAL(int offset, int fetchNum, Idx idx) {
         Map<Integer, ByteBuffer> result = new HashMap<>(fetchNum);
+        if (idx == null) return result;
         FileChannel valueChannel = null;
         List<WalInfoBasic> idxList = new ArrayList<>(fetchNum);
         for (int i = 0; i < fetchNum; ++i) {
