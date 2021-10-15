@@ -36,9 +36,10 @@ public class PerformanceTester {
         log.info("{}", info.queueId == info2.queueId);
         log.info("{}", text.equals(new String(info2.value.array())));
         Idx idx = new Idx();
-        idx.add(0, 3, 666, 888);
+        idx.add(0, 4, 3, 66556, 888);
         log.info("{}", idx.getWalPart(0) == 3);
-        log.info("{}", idx.getWalValuePos(0) == 666);
+        log.info("{}", idx.getWalId(0) == 4);
+        log.info("{}", idx.getWalValuePos(0) == 66556);
         log.info("{}", idx.getWalValueSize(0) == 888);
     }
 
@@ -75,10 +76,10 @@ public class PerformanceTester {
         log.info("query, offset:{}, fetchNum:{}", queryOffset, queryNum);
         Map<Integer, ByteBuffer> ansMap = messageQueue.getRange(topic, queueId, queryOffset, queryNum);
         for (int i = 0; i < queryNum; ++i) {
-            if (!(new String(targetMap.get(toKey(topic, queueId, queryOffset + i)).array())).equals(
-                    new String(ansMap.get(i).array())
-            )) {
-                log.info("FUCK YOU");
+            String s1 = new String(targetMap.get(toKey(topic, queueId, queryOffset + i)).array());
+            String s2 = new String(ansMap.get(i).array());
+            if (!s1.equals(s2)) {
+                log.info("FUCK YOU {}, {}", s1, s2);
             }
         }
 
