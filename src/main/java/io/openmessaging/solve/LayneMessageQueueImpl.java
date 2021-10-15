@@ -80,6 +80,7 @@ public class LayneMessageQueueImpl extends MessageQueue {
 
     private final Map<Integer, Integer> WAL_ID_MAP = new ConcurrentHashMap<>();
     private final Map<Integer, AtomicInteger> WAL_ID_CNT_MAP = new ConcurrentHashMap<>();
+    private final Map<Integer, AtomicInteger> APPEND_OFFSET_MAP = new ConcurrentHashMap<>();
 
     private int curWalId = 0;
 
@@ -105,6 +106,9 @@ public class LayneMessageQueueImpl extends MessageQueue {
         curWalId++;
         try {
             locks[walId].lock();
+            // 获取偏移
+            AtomicInteger pOffset = APPEND_OFFSET_MAP.computeIfAbsent(result.getKey(), k -> new AtomicInteger());
+            result.pOffset = pOffset.getAndIncrement();
             walList[walId].submit(result);
             while (!isDown(walId, result.logCount)) {
                 conditions[walId].await();
@@ -127,12 +131,14 @@ public class LayneMessageQueueImpl extends MessageQueue {
         }
         int topicId = IdGenerator.getId(topic);
         Idx idx = IDX.get(WalInfoBasic.getKey(topicId, queueId));
+        AtomicInteger pOffset = APPEND_OFFSET_MAP.computeIfAbsent(WalInfoBasic.getKey(topicId, queueId), k -> new AtomicInteger());
+        fetchNum = Math.min(fetchNum, (int) (pOffset.get() - offset));
         return readValueFromWAL((int) offset, fetchNum, idx);
     }
 
     private Map<Integer, ByteBuffer> readValueFromWAL(int offset, int fetchNum, Idx idx) {
         Map<Integer, ByteBuffer> result = new HashMap<>(fetchNum);
-        if (idx == null) return result;
+        if (idx == null || fetchNum <= 0) return result;
         FileChannel valueChannel = null;
         List<WalInfoBasic> idxList = new ArrayList<>(fetchNum);
         for (int i = 0; i < fetchNum; ++i) {
