@@ -50,7 +50,7 @@ public class DataBlock {
     }
 
     private static int barrierCount = THREAD_MAX / 2;
-    private static final long G125 = G1 * 125L - 5_000;
+    private static final long G125 = G1 * 125L;
     private final Object WRITE_LOCKER = new Object();
     private volatile CyclicBarrier barrier = new CyclicBarrier(barrierCount);
     private static final LongAdder appendAdder = new LongAdder();
@@ -87,10 +87,6 @@ public class DataBlock {
                 int arrive = barrier.await(10L * barrierCount, TimeUnit.MILLISECONDS);
                 if (arrive == 0) {
                     synchronized (WRITE_LOCKER) {
-                        if (barrierCount < 15) {
-                            barrierCount++;
-                            barrier = new CyclicBarrier(barrierCount);
-                        }
                         try {
                             tempBuf.force();
                             forceAdder.add(addSize);
@@ -101,7 +97,7 @@ public class DataBlock {
                 }
             } catch (TimeoutException e) {
                 // 只有一个超时，其他都是 BrokenBarrierException
-                System.out.println("Timeout-F");
+                System.out.println("Timeout-F " + barrierCount);
                 timeoutTimes++;
                 synchronized (WRITE_LOCKER) {
                     if (timeoutTimes >= 15 && barrierCount > 1) {
