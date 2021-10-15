@@ -69,7 +69,8 @@ public class Encoder extends Thread {
         APPEND_OFFSET_MAP.put(info.getKey(), (int) info.pOffset);
         // 索引
         Idx idx = IDX.computeIfAbsent(info.getKey(), k -> new Idx());
-        idx.add((int) info.pOffset, info.walPart, info.walPos + WalInfoBasic.BYTES, info.valueSize);
+        idx.add((int) info.pOffset, info.walId, info.walPart, info.walPos + WalInfoBasic.BYTES, info.valueSize);
+
         // 落盘
         put(bs);
     }

@@ -11,8 +11,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
@@ -127,35 +126,44 @@ public class LayneMessageQueueImpl extends MessageQueue {
             start = -1;
         }
         int topicId = IdGenerator.getId(topic);
-        int walId = topicId % Constant.WAL_FILE_COUNT;
         Idx idx = IDX.get(WalInfoBasic.getKey(topicId, queueId));
-        return readValueFromWAL(walId, (int) offset, fetchNum, idx);
+        return readValueFromWAL((int) offset, fetchNum, idx);
     }
 
-    private Map<Integer, ByteBuffer> readValueFromWAL(int walId, int offset, int fetchNum, Idx idx) {
+    private Map<Integer, ByteBuffer> readValueFromWAL(int offset, int fetchNum, Idx idx) {
         Map<Integer, ByteBuffer> result = new HashMap<>(fetchNum);
         FileChannel valueChannel = null;
+        List<WalInfoBasic> idxList = new ArrayList<>(fetchNum);
+        for (int i = 0; i < fetchNum; ++i) {
+            int key = offset + i;
+            if ((key << 1) >= idx.getSize()) break;
+            int walId = idx.getWalId(key);
+            int part = idx.getWalPart(key);
+            int pos = idx.getWalValuePos(key);
+            int size = idx.getWalValueSize(key);
+            idxList.add(new WalInfoBasic(i, walId, part, pos, size));
+        }
+
+        idxList.sort(Comparator.comparingInt((WalInfoBasic o) -> o.walId).thenComparingInt(o -> o.walPart));
+
+        int curWalId = -1;
         int curPart = -1;
         try {
-            for (int i = 0; i < fetchNum; ++i) {
-                int key = offset + i;
-                if ((key << 1) >= idx.getSize()) continue;
-                int part = idx.getWalPart(key);
-                if (valueChannel == null || part != curPart) {
+            for (WalInfoBasic info : idxList) {
+                if (valueChannel == null || info.walId != curWalId || info.walPart != curPart) {
                     if (valueChannel != null) {
                         valueChannel.close();
                     }
                     valueChannel = FileChannel.open(
-                            Constant.getWALInfoPath(walId, part),
+                            Constant.getWALInfoPath(info.walId, info.walPart),
                             StandardOpenOption.READ);
-                    curPart = part;
+                    curWalId = info.walId;
+                    curPart = info.walPart;
                 }
-                int pos = idx.getWalValuePos(key);
-                int size = idx.getWalValueSize(key);
-                ByteBuffer buffer = ByteBuffer.allocate(size);
-                valueChannel.read(buffer, pos);
+                ByteBuffer buffer = ByteBuffer.allocate(info.valueSize);
+                valueChannel.read(buffer, info.walPos);
                 buffer.flip();
-                result.put(i, buffer);
+                result.put((int) info.pOffset, buffer);
             }
         } catch (IOException e) {
             e.printStackTrace();

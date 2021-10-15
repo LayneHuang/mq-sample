@@ -37,6 +37,14 @@ public class WalInfoBasic {
     public WalInfoBasic() {
     }
 
+    public WalInfoBasic(int pOffset, int walId, int walPart, int walPos, int valueSize) {
+        this.pOffset = pOffset;
+        this.walId = walId;
+        this.walPart = walPart;
+        this.walPos = walPos;
+        this.valueSize = valueSize;
+    }
+
     public WalInfoBasic(int topicId, int queueId, ByteBuffer value) {
         this.topicId = topicId;
         this.queueId = queueId;
