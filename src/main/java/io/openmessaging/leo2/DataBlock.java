@@ -9,11 +9,10 @@ import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.util.concurrent.BrokenBarrierException;
-import java.util.concurrent.CyclicBarrier;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.LongAdder;
+import java.util.concurrent.locks.ReentrantLock;
 
 import static io.openmessaging.leo2.DataManager.*;
 import static io.openmessaging.leo2.Utils.unmap;
@@ -57,13 +56,19 @@ public class DataBlock {
     private static final LongAdder forceAdder = new LongAdder();
     private volatile int addSize = 0;
     private volatile int timeoutTimes = 0;
+    private final AtomicInteger count = new AtomicInteger();
 
     public void writeLog(byte topic, short queueId, int offset, ByteBuffer data, Indexer indexer) {
         short msgLen = (short) data.limit();
         appendAdder.add(msgLen);
         short dataSize = (short) (MSG_META_SIZE + msgLen);
+        // 上一批没完成不能进
+        while (true){
+            if (count.get() == 0) break;
+        }
         try {
             MappedByteBuffer tempBuf;
+            CyclicBarrier tempBarrier = barrier;
             synchronized (WRITE_LOCKER) {
                 if (logMappedBuf.remaining() < dataSize) {
                     logMappedBuf.force();
@@ -82,9 +87,10 @@ public class DataBlock {
                 tempBuf.put(data);
                 addSize += msgLen;
                 indexer.writeIndex(id, logNumAdder, position, dataSize);
+                count.getAndIncrement();
             }
             try {
-                int arrive = barrier.await(10L * barrierCount, TimeUnit.MILLISECONDS);
+                int arrive = tempBarrier.await(10L * barrierCount, TimeUnit.MILLISECONDS);
                 if (arrive == 0) {
                     synchronized (WRITE_LOCKER) {
                         try {
@@ -120,6 +126,7 @@ public class DataBlock {
             if (G125 < appendAdder.sum()) {
                 System.out.println("append " + appendAdder.sum() + "force" + forceAdder.sum());
             }
+            count.getAndDecrement();
         } catch (Exception e) {
             e.printStackTrace();
         }
