@@ -14,6 +14,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -78,6 +79,11 @@ public class LayneMessageQueueImpl extends MessageQueue {
 
     private long appendCnt = 0;
 
+    private final Map<Integer, Integer> WAL_ID_MAP = new ConcurrentHashMap<>();
+    private final Map<Integer, AtomicInteger> WAL_ID_CNT_MAP = new ConcurrentHashMap<>();
+
+    private int curWalId = 0;
+
     @Override
     public long append(String topic, int queueId, ByteBuffer data) {
         if (start == 0) {
@@ -90,8 +96,14 @@ public class LayneMessageQueueImpl extends MessageQueue {
             return 0;
         }
         int topicId = IdGenerator.getId(topic);
-        int walId = topicId % Constant.WAL_FILE_COUNT;
         WalInfoBasic result = new WalInfoBasic(topicId, queueId, data);
+        //        int walId = topicId % Constant.WAL_FILE_COUNT;
+        int key = result.getKey();
+        AtomicInteger partitionCnt = WAL_ID_CNT_MAP.computeIfAbsent(key, k -> new AtomicInteger());
+        partitionCnt.incrementAndGet();
+        int walId = WAL_ID_MAP.computeIfAbsent(key, k -> curWalId % Constant.WAL_FILE_COUNT);
+        result.walId = walId;
+        curWalId++;
         try {
             locks[walId].lock();
             walList[walId].submit(result);
@@ -102,6 +114,8 @@ public class LayneMessageQueueImpl extends MessageQueue {
             e.printStackTrace();
         } finally {
             locks[walId].unlock();
+            int restCnt = partitionCnt.decrementAndGet();
+            if (restCnt == 0) WAL_ID_MAP.remove(key);
         }
         return result.pOffset;
     }

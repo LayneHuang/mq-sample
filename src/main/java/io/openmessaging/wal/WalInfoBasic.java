@@ -24,6 +24,8 @@ public class WalInfoBasic {
 
     public int valueSize;
 
+    public int walId;
+
     public int walPart;
 
     public int walPos;
