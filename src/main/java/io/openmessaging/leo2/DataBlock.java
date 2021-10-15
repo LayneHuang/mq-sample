@@ -56,7 +56,7 @@ public class DataBlock {
     private static final LongAdder appendAdder = new LongAdder();
     private static final LongAdder forceAdder = new LongAdder();
     private volatile int addSize = 0;
-    private int timeoutTimes = 0;
+    private volatile int timeoutTimes = 0;
 
     public void writeLog(byte topic, short queueId, int offset, ByteBuffer data, Indexer indexer) {
         short msgLen = (short) data.limit();
@@ -98,14 +98,13 @@ public class DataBlock {
             } catch (TimeoutException e) {
                 // 只有一个超时，其他都是 BrokenBarrierException
                 System.out.println("Timeout-F " + barrierCount);
-                timeoutTimes++;
+                barrier.reset();
                 synchronized (WRITE_LOCKER) {
-                    if (timeoutTimes >= 15 && barrierCount > 1) {
+                    timeoutTimes++;
+                    if (timeoutTimes >= 20 && barrierCount > 5) {
                         barrierCount--;
                         timeoutTimes = 0;
                         barrier = new CyclicBarrier(barrierCount);
-                    } else {
-                        barrier.reset();
                     }
                     try {
                         tempBuf.force();
