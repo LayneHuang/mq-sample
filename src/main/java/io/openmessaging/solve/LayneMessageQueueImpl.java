@@ -131,8 +131,10 @@ public class LayneMessageQueueImpl extends MessageQueue {
         }
         int topicId = IdGenerator.getId(topic);
         Idx idx = IDX.get(WalInfoBasic.getKey(topicId, queueId));
-        AtomicInteger pOffset = APPEND_OFFSET_MAP.computeIfAbsent(WalInfoBasic.getKey(topicId, queueId), k -> new AtomicInteger());
-        fetchNum = Math.min(fetchNum, (int) (pOffset.get() - offset));
+        int key = WalInfoBasic.getKey(topicId, queueId);
+        int pOffset = APPEND_OFFSET_MAP.getOrDefault(key, new AtomicInteger()).get()
+                - WAL_ID_CNT_MAP.getOrDefault(key, new AtomicInteger()).get();
+        fetchNum = Math.min(fetchNum, (int) (pOffset - offset));
         return readValueFromWAL((int) offset, fetchNum, idx);
     }
 
@@ -174,6 +176,14 @@ public class LayneMessageQueueImpl extends MessageQueue {
             }
         } catch (IOException e) {
             e.printStackTrace();
+        } finally {
+            if (valueChannel != null) {
+                try {
+                    valueChannel.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
         }
         return result;
     }
