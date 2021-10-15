@@ -104,7 +104,7 @@ public class DataBlock {
                 System.out.println("Timeout-F");
                 timeoutTimes++;
                 synchronized (WRITE_LOCKER) {
-                    if (timeoutTimes >= 15 && barrierCount >= 5) {
+                    if (timeoutTimes >= 15 && barrierCount > 1) {
                         barrierCount--;
                         timeoutTimes = 0;
                         barrier = new CyclicBarrier(barrierCount);
