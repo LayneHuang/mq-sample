@@ -26,6 +26,7 @@ public class PerformanceTester {
     public static void check() {
         String text = "SOMETHING_IS_HAPPEN123";
         WalInfoBasic info = new WalInfoBasic(250, 99, ByteBuffer.wrap(text.getBytes(StandardCharsets.UTF_8)));
+        info.pOffset = 6676;
         byte[] encodeB = info.encodeToB();
         ByteBuffer buffer = ByteBuffer.allocate(encodeB.length);
         buffer.put(encodeB);
@@ -34,6 +35,7 @@ public class PerformanceTester {
         info2.decode(null, buffer, true);
         log.info("{}, {}, {}", info.topicId == info2.topicId, info.topicId, info2.topicId);
         log.info("{}", info.queueId == info2.queueId);
+        log.info("{}", info.pOffset == info2.pOffset);
         log.info("{}", text.equals(new String(info2.value.array())));
         Idx idx = new Idx();
         idx.add(0, 4, 3, 66556, 888);

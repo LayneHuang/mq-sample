@@ -6,7 +6,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
@@ -29,8 +28,7 @@ public class Encoder extends Thread {
         try {
             int emptyCnt = 0;
             while (true) {
-                WalInfoBasic info = logsBq.poll(20, TimeUnit.MILLISECONDS);
-//                long b = System.nanoTime();
+                WalInfoBasic info = logsBq.poll(5, TimeUnit.MILLISECONDS);
                 if (info == null && cur == 0) {
                     emptyCnt++;
                     if (emptyCnt > 100) {
@@ -108,7 +106,7 @@ public class Encoder extends Thread {
     public void force() {
         if (cur <= 0) return;
         forceCnt++;
-        if (forceCnt % 1000 == 0) log.info("ENCODER FORCE: {}, MERGE: {}", forceCnt, mergeCnt);
+        if (forceCnt % 100 == 0) log.info("ENCODER FORCE: {}, MERGE: {}", forceCnt, mergeCnt);
         try {
             writeBq.put(new WritePage(logCount, walId, part, pos, tmp, cur));
         } catch (InterruptedException e) {

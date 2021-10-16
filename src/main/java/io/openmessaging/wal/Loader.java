@@ -8,7 +8,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
-import java.util.HashMap;
 import java.util.Map;
 
 public class Loader extends Thread {
@@ -32,7 +31,6 @@ public class Loader extends Thread {
         }
     }
 
-    private static final Map<Integer, Integer> APPEND_OFFSET_MAP = new HashMap<>();
 
     private void read() throws IOException {
         int part = 0;
@@ -53,16 +51,12 @@ public class Loader extends Thread {
                         isEnd = true;
                         break;
                     }
+                    info.walId = walId;
                     info.walPart = part;
                     info.walPos = walPos;
-                    // 取偏移
-                    info.pOffset = APPEND_OFFSET_MAP.computeIfAbsent(info.getKey(), k -> -1) + 1;
-                    APPEND_OFFSET_MAP.put(info.getKey(), (int) info.pOffset);
                     // 索引
                     Idx idx = IDX.computeIfAbsent(info.getKey(), k -> new Idx());
                     idx.add((int) info.pOffset, info.walId, info.walPart, info.walPos + WalInfoBasic.BYTES, info.valueSize);
-//                    log.info("topic: {}, pos: {}, part: {}, pOffset: {}, valueSize: {}, value: {}",
-//                            info.topicId, info.walPos, info.walPart, info.pOffset, info.valueSize, new String(info.value.array()));
                     // 偏移
                     walPos += info.getSize();
                 }

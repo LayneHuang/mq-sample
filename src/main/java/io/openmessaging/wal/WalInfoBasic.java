@@ -52,7 +52,7 @@ public class WalInfoBasic {
         this.value = value;
     }
 
-    public static final int BYTES = 1 + 2 * 2;
+    public static final int BYTES = 1 + 2 * 3;
 
     public byte[] encodeToB() {
         byte[] result = new byte[BYTES + this.valueSize];
@@ -61,9 +61,12 @@ public class WalInfoBasic {
         // queueId
         result[1] = (byte) ((queueId >> 8) & 0xff);
         result[2] = (byte) (queueId & 0xff);
+        // pOffset
+        result[3] = (byte) ((pOffset >> 8) & 0xff);
+        result[4] = (byte) (pOffset & 0xff);
         // value size
-        result[3] = (byte) ((valueSize >> 8) & 0xff);
-        result[4] = (byte) (valueSize & 0xff);
+        result[5] = (byte) ((valueSize >> 8) & 0xff);
+        result[6] = (byte) (valueSize & 0xff);
         // value
         System.arraycopy(value.array(), 0, result, BYTES, result.length - BYTES);
         return result;
@@ -88,6 +91,10 @@ public class WalInfoBasic {
         queueId = checkAndGetByte(channel, buffer) & 0xff;
         queueId <<= 8;
         queueId |= checkAndGetByte(channel, buffer) & 0xff;
+        // pOffset
+        pOffset = checkAndGetByte(channel, buffer) & 0xff;
+        pOffset <<= 8;
+        pOffset |= checkAndGetByte(channel, buffer) & 0xff;
         // valueSize
         valueSize = checkAndGetByte(channel, buffer) & 0xff;
         valueSize <<= 8;

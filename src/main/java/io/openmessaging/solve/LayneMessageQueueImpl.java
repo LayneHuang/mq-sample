@@ -27,7 +27,6 @@ public class LayneMessageQueueImpl extends MessageQueue {
     private static final Lock[] locks = new ReentrantLock[Constant.WAL_FILE_COUNT];
     private static final Condition[] conditions = new Condition[Constant.WAL_FILE_COUNT];
     public Map<Integer, Idx> IDX = new ConcurrentHashMap<>();
-//    private final BrokerManager brokerManager;
 
     public LayneMessageQueueImpl() {
         reload();
@@ -47,10 +46,6 @@ public class LayneMessageQueueImpl extends MessageQueue {
             brokers[i] = new Broker(i, encoders[i].writeBq, locks[i], conditions[i]);
             brokers[i].start();
         }
-//        List<BlockingQueue<WritePage>> producer = new ArrayList<>();
-//        for (int i = 0; i < Constant.WAL_FILE_COUNT; ++i) producer.add(encoders[i].writeBq);
-//        brokerManager = new BrokerManager(producer, locks, conditions);
-//        brokerManager.start();
     }
 
     private void reload() {
@@ -89,7 +84,6 @@ public class LayneMessageQueueImpl extends MessageQueue {
         }
         int topicId = IdGenerator.getId(topic);
         WalInfoBasic result = new WalInfoBasic(topicId, queueId, data);
-        //        int walId = topicId % Constant.WAL_FILE_COUNT;
         int key = result.getKey();
         AtomicInteger partitionCnt = WAL_ID_CNT_MAP.computeIfAbsent(key, k -> new AtomicInteger());
         partitionCnt.incrementAndGet();
