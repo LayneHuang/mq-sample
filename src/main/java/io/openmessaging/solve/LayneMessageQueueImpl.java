@@ -63,6 +63,7 @@ public class LayneMessageQueueImpl extends MessageQueue {
                 e.printStackTrace();
             }
         }
+        log.info("reload finished.");
     }
 
     private long start = 0;

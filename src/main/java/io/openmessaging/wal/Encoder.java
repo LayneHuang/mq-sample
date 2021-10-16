@@ -38,11 +38,14 @@ public class Encoder extends Thread {
                 }
                 emptyCnt = 0;
                 if (info == null && cur > 0) {
+                    timeOverForce++;
                     force();
+                    if (timeOverForce % 500 == 0) log.info("TIME OVER FORCE: {}, CNT FORCE: {}, MERGE: {}", timeOverForce,cntForce, mergeCnt);
                 }
                 if (info != null) {
                     submit(info);
                     if (waitCnt > 2 && cur >= Constant.FORCE_LIMIT) {
+                        cntForce++;
                         force();
                     }
                 }
@@ -79,7 +82,9 @@ public class Encoder extends Thread {
 
     private int logCount = 0;
 
-    private int forceCnt = 0;
+    private int timeOverForce = 0;
+
+    private int cntForce = 0;
 
     private int mergeCnt = 0;
 
@@ -106,8 +111,6 @@ public class Encoder extends Thread {
 
     public void force() {
         if (cur <= 0) return;
-        forceCnt++;
-        if (forceCnt % 200 == 0) log.info("ENCODER FORCE: {}, MERGE: {}", forceCnt, mergeCnt);
         try {
             writeBq.put(new WritePage(logCount, walId, part, pos, tmp, cur));
         } catch (InterruptedException e) {
