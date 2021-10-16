@@ -76,8 +76,6 @@ public class LayneMessageQueueImpl extends MessageQueue {
         return logCount <= brokers[walId].logCount.get();
     }
 
-//    private long appendCnt = 0;
-
     private final Map<Integer, Integer> WAL_ID_MAP = new ConcurrentHashMap<>();
     private final Map<Integer, AtomicInteger> WAL_ID_CNT_MAP = new ConcurrentHashMap<>();
     private final Map<Integer, AtomicInteger> APPEND_OFFSET_MAP = new ConcurrentHashMap<>();
@@ -89,12 +87,6 @@ public class LayneMessageQueueImpl extends MessageQueue {
         if (start == 0) {
             start = System.currentTimeMillis();
         }
-//        appendCnt++;
-//        long cost = System.currentTimeMillis() - start;
-//        if (cost > 15 * 60 * 1000) {
-//            log.info("APPEND TIME OVER: {}", appendCnt);
-//            return 0;
-//        }
         int topicId = IdGenerator.getId(topic);
         WalInfoBasic result = new WalInfoBasic(topicId, queueId, data);
         //        int walId = topicId % Constant.WAL_FILE_COUNT;
@@ -107,8 +99,10 @@ public class LayneMessageQueueImpl extends MessageQueue {
         try {
             locks[walId].lock();
             // 获取偏移
-            AtomicInteger pOffset = APPEND_OFFSET_MAP.computeIfAbsent(result.getKey(), k -> new AtomicInteger());
-            result.pOffset = pOffset.getAndIncrement();
+            result.pOffset = APPEND_OFFSET_MAP.computeIfAbsent(
+                    result.getKey(),
+                    k -> new AtomicInteger()
+            ).getAndIncrement();
             walList[walId].submit(result);
             while (!isDown(walId, result.logCount)) {
                 conditions[walId].await();
@@ -153,7 +147,8 @@ public class LayneMessageQueueImpl extends MessageQueue {
             idxList.add(new WalInfoBasic(i, walId, part, pos, size));
         }
 
-        idxList.sort(Comparator.comparingInt((WalInfoBasic o) -> o.walId).thenComparingInt(o -> o.walPart));
+        idxList.sort(Comparator.comparingInt((WalInfoBasic o) -> o.walId)
+                .thenComparingInt(o -> o.walPart));
 
         int curWalId = -1;
         int curPart = -1;
