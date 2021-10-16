@@ -33,7 +33,7 @@ public class Encoder extends Thread {
                     if (cur > 0) {
                         timeOverForce++;
                         force();
-                        if (timeOverForce % 10 == 0) {
+                        if (timeOverForce % 100 == 0) {
                             log.info("TIME OVER FORCE: {}, CNT FORCE: {}, MERGE: {}, MAX WAIT CNT:{} ",
                                     timeOverForce, cntForce, mergeCnt, maxWaitCnt);
                         }
