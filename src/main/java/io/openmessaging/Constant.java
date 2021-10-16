@@ -20,13 +20,11 @@ public class Constant {
 
     public static final String DIR_PMEM = "/pmem";
 
-    public static final int WAL_FILE_COUNT = 15;
+    public static final int WAL_FILE_COUNT = 10;
 
     public static final int DEFAULT_MAX_THREAD_PER_WAL = 30 / WAL_FILE_COUNT;
 
     public static final int WRITE_SIZE = 16 * 1024;
-
-    public static final int FORCE_LIMIT = WRITE_SIZE >> 1;
 
     public static final int BQ_SIZE = 1 << 14;
 
