@@ -24,7 +24,7 @@ public class Constant {
 
     public static final int DEFAULT_MAX_THREAD_PER_WAL = 5;
 
-    public static final int WRITE_SIZE = 16 * 1024;
+    public static final int WRITE_SIZE = 32 * 1024;
 
     public static final int BQ_SIZE = 1 << 14;
 
@@ -38,18 +38,5 @@ public class Constant {
 
     public static Path getMetaPath() {
         return DIR_ESSD.resolve("META.md");
-    }
-
-    public static int hash(String topic) {
-        int hash = 0;
-        int x;
-        for (int i = 0; i < topic.length(); ++i) {
-            hash = (hash << 4) + topic.charAt(i);
-            if ((x = (int) (hash & 0xF0000000L)) != 0) {
-                hash ^= (x >> 24);
-                hash &= ~x;
-            }
-        }
-        return (hash & 0x7FFFFFFF);
     }
 }
