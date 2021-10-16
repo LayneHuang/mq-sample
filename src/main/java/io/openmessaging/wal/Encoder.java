@@ -40,7 +40,10 @@ public class Encoder extends Thread {
                 if (info == null && cur > 0) {
                     timeOverForce++;
                     force();
-                    if (timeOverForce % 500 == 0) log.info("TIME OVER FORCE: {}, CNT FORCE: {}, MERGE: {}", timeOverForce,cntForce, mergeCnt);
+                    if (timeOverForce % 500 == 0) {
+                        log.info("TIME OVER FORCE: {}, CNT FORCE: {}, MERGE: {}",
+                                timeOverForce, cntForce, mergeCnt);
+                    }
                 }
                 if (info != null) {
                     submit(info);
