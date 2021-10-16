@@ -28,10 +28,11 @@ public class Encoder extends Thread {
         try {
             int emptyCnt = 0;
             while (true) {
-                WalInfoBasic info = logsBq.poll(5, TimeUnit.MILLISECONDS);
+                WalInfoBasic info = logsBq.poll(10, TimeUnit.MILLISECONDS);
                 if (info == null && cur == 0) {
                     emptyCnt++;
                     if (emptyCnt > 100) {
+                        log.info("Encoder {}, End", walId);
                         break;
                     } else continue;
                 }
@@ -106,7 +107,7 @@ public class Encoder extends Thread {
     public void force() {
         if (cur <= 0) return;
         forceCnt++;
-        if (forceCnt % 2000 == 0) log.info("ENCODER FORCE: {}, MERGE: {}", forceCnt, mergeCnt);
+        if (forceCnt % 200 == 0) log.info("ENCODER FORCE: {}, MERGE: {}", forceCnt, mergeCnt);
         try {
             writeBq.put(new WritePage(logCount, walId, part, pos, tmp, cur));
         } catch (InterruptedException e) {
