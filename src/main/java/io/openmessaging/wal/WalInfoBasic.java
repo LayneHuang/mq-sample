@@ -84,7 +84,7 @@ public class WalInfoBasic {
         return buffer.get();
     }
 
-    public void decode(FileChannel channel, ByteBuffer buffer, boolean hasValue) {
+    public void decodeSafety(FileChannel channel, ByteBuffer buffer, boolean hasValue) {
         // topicId
         topicId = checkAndGetByte(channel, buffer) & 0xff;
         // queueId
@@ -107,6 +107,49 @@ public class WalInfoBasic {
         for (int i = 0; i < valueSize; ++i) {
             value.put(checkAndGetByte(channel, buffer));
         }
+    }
+
+    public void decode(ByteBuffer buffer, boolean hasValue) {
+        // topicId
+        topicId = buffer.get() & 0xff;
+        // queueId
+        queueId = buffer.get() & 0xff;
+        queueId <<= 8;
+        queueId |= buffer.get() & 0xff;
+        // pOffset
+        pOffset = buffer.get() & 0xff;
+        pOffset <<= 8;
+        pOffset |= buffer.get() & 0xff;
+        // valueSize
+        valueSize = buffer.get() & 0xff;
+        valueSize <<= 8;
+        valueSize |= buffer.get() & 0xff;
+        // value
+        if (!hasValue) {
+            return;
+        }
+        value = ByteBuffer.allocate(valueSize);
+        for (int i = 0; i < valueSize; ++i) {
+            value.put(buffer.get());
+        }
+    }
+
+    public int decode(ByteBuffer buffer, int pos) {
+        // topicId
+        topicId = buffer.get(pos) & 0xff;
+        // queueId
+        queueId = buffer.get(pos + 1) & 0xff;
+        queueId <<= 8;
+        queueId |= buffer.get(pos + 2) & 0xff;
+        // pOffset
+        pOffset = buffer.get(pos + 3) & 0xff;
+        pOffset <<= 8;
+        pOffset |= buffer.get(pos + 4) & 0xff;
+        // valueSize
+        valueSize = buffer.get(pos + 5) & 0xff;
+        valueSize <<= 8;
+        valueSize |= buffer.get(pos + 6) & 0xff;
+        return pos + valueSize;
     }
 
     public int getSize() {

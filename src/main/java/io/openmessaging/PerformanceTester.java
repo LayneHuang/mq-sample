@@ -32,7 +32,7 @@ public class PerformanceTester {
         buffer.put(encodeB);
         buffer.flip();
         WalInfoBasic info2 = new WalInfoBasic();
-        info2.decode(null, buffer, true);
+        info2.decode(buffer, true);
         log.info("{}, {}, {}", info.topicId == info2.topicId, info.topicId, info2.topicId);
         log.info("{}", info.queueId == info2.queueId);
         log.info("{}", info.pOffset == info2.pOffset);
