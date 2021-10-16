@@ -71,9 +71,20 @@ public class PerformanceTester {
             }
         });
 
+        Thread threadW2 = new Thread(() -> {
+            for (; i < 300; i++) {
+                String text = String.valueOf(i);
+                ByteBuffer buf = ByteBuffer.wrap(text.getBytes(StandardCharsets.UTF_8));
+                long offset = messageQueue.append(topic, queueId, buf);
+                targetMap.put(toKey(topic, queueId, offset), buf);
+            }
+        });
+
         log.info("WRITE FINISH-1");
         threadW1.start();
+        threadW2.start();
         threadW1.join();
+        threadW2.join();
 
         log.info("query, offset:{}, fetchNum:{}", queryOffset, queryNum);
         Map<Integer, ByteBuffer> ansMap = messageQueue.getRange(topic, queueId, queryOffset, queryNum);
