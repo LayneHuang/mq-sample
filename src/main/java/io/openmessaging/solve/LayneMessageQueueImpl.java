@@ -53,7 +53,7 @@ public class LayneMessageQueueImpl extends MessageQueue {
             return;
         }
         for (int i = 0; i < Constant.WAL_FILE_COUNT; ++i) {
-            loader[i] = new Loader(i, IDX);
+            loader[i] = new Loader(i, IDX, APPEND_OFFSET_MAP);
             loader[i].start();
         }
         for (int i = 0; i < Constant.WAL_FILE_COUNT; ++i) {

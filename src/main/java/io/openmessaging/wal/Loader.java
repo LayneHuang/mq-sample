@@ -11,6 +11,7 @@ import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class Loader extends Thread {
     public static final Logger log = LoggerFactory.getLogger(Loader.class);
@@ -19,9 +20,12 @@ public class Loader extends Thread {
 
     private final Map<Integer, Idx> IDX;
 
-    public Loader(int walId, Map<Integer, Idx> IDX) {
+    private final Map<Integer, AtomicInteger> APPEND_OFFSET_MAP;
+
+    public Loader(int walId, Map<Integer, Idx> IDX, Map<Integer, AtomicInteger> APPEND_OFFSET_MAP) {
         this.walId = walId;
         this.IDX = IDX;
+        this.APPEND_OFFSET_MAP = APPEND_OFFSET_MAP;
     }
 
     @Override
@@ -49,9 +53,12 @@ public class Loader extends Thread {
                 info.walId = walId;
                 info.walPart = part;
                 info.walPos = walPos;
+                int key = info.getKey();
                 // 索引
-                Idx idx = IDX.computeIfAbsent(info.getKey(), k -> new Idx());
+                Idx idx = IDX.computeIfAbsent(key, k -> new Idx());
                 idx.add((int) info.pOffset, info.walId, info.walPart, info.walPos + WalInfoBasic.BYTES, info.valueSize);
+                // 块偏移
+                APPEND_OFFSET_MAP.computeIfAbsent(key, k -> new AtomicInteger()).getAndIncrement();
                 // 偏移
                 walPos += info.getSize();
             }
