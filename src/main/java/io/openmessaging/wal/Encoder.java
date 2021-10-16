@@ -16,6 +16,7 @@ public class Encoder extends Thread {
     private final Map<Integer, Idx> IDX;
     private final int walId;
     private int waitCnt;
+    private int maxWaitCnt = Constant.DEFAULT_MAX_THREAD_PER_WAL;
 
     public Encoder(int walId, BlockingQueue<WalInfoBasic> logsBq, Map<Integer, Idx> IDX) {
         this.walId = walId;
@@ -26,28 +27,21 @@ public class Encoder extends Thread {
     @Override
     public void run() {
         try {
-            int emptyCnt = 0;
             while (true) {
                 WalInfoBasic info = logsBq.poll(10, TimeUnit.MILLISECONDS);
-                if (info == null && cur == 0) {
-                    emptyCnt++;
-                    if (emptyCnt > 100) {
-                        log.info("Encoder {}, End", walId);
-                        break;
-                    } else continue;
-                }
-                emptyCnt = 0;
-                if (info == null && cur > 0) {
-                    timeOverForce++;
-                    force();
-                    if (timeOverForce % 500 == 0) {
-                        log.info("TIME OVER FORCE: {}, CNT FORCE: {}, MERGE: {}",
-                                timeOverForce, cntForce, mergeCnt);
+                if (info == null) {
+                    if (cur > 0) {
+                        timeOverForce++;
+                        force();
+                        if (timeOverForce % 10 == 0) {
+                            log.info("TIME OVER FORCE: {}, CNT FORCE: {}, MERGE: {}, MAX WAIT CNT:{} ",
+                                    timeOverForce, cntForce, mergeCnt, maxWaitCnt);
+                        }
                     }
-                }
-                if (info != null) {
+                    maxWaitCnt--;
+                } else {
                     submit(info);
-                    if (waitCnt > 2 && cur >= Constant.FORCE_LIMIT) {
+                    if (waitCnt >= maxWaitCnt) {
                         cntForce++;
                         force();
                     }
@@ -101,6 +95,7 @@ public class Encoder extends Thread {
                 pos++;
                 if (cur == Constant.WRITE_SIZE) {
                     mergeCnt++;
+                    if (maxWaitCnt <= Constant.DEFAULT_MAX_THREAD_PER_WAL) maxWaitCnt++;
                     int fullCount = i == bs.length - 1 ? logCount : logCount - 1;
                     writeBq.put(new WritePage(fullCount, walId, part, pos, tmp, cur));
                     cur = 0;

@@ -93,6 +93,7 @@ public class LayneMessageQueueImpl extends MessageQueue {
         curWalId++;
         try {
             locks[walId].lock();
+//            log.info("walId: {}, topic: {}, queue: {}", walId, topicId, queueId);
             // 获取偏移
             result.pOffset = APPEND_OFFSET_MAP.computeIfAbsent(
                     result.getKey(),
