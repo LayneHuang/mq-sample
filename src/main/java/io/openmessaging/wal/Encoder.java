@@ -28,7 +28,7 @@ public class Encoder extends Thread {
     public void run() {
         try {
             while (true) {
-                WalInfoBasic info = logsBq.poll(10, TimeUnit.MILLISECONDS);
+                WalInfoBasic info = logsBq.poll(5, TimeUnit.MILLISECONDS);
                 if (info == null) {
                     if (cur > 0) {
                         timeOverForce++;

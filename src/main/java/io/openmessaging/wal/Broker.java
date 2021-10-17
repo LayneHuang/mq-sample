@@ -24,13 +24,9 @@ import java.util.concurrent.locks.Lock;
  */
 public class Broker extends Thread {
     public static final Logger log = LoggerFactory.getLogger(Broker.class);
-
     private final int walId;
-
     public final BlockingQueue<WritePage> writeBq;
-
     public AtomicLong logCount = new AtomicLong();
-
     private final Lock lock;
     private final Condition condition;
 
@@ -48,11 +44,7 @@ public class Broker extends Thread {
             MappedByteBuffer buffer = null;
             int curPart = 0;
             while (true) {
-                WritePage page = writeBq.poll(2, TimeUnit.SECONDS);
-                if (page == null) {
-                    log.debug("Broker {} End", walId);
-                    break;
-                }
+                WritePage page = writeBq.take();
                 if (channel == null || page.part != curPart) {
                     if (channel != null) {
                         Cleaner cleaner = ((DirectBuffer) buffer).cleaner();

@@ -29,7 +29,7 @@ public class LayneMessageQueueImpl extends MessageQueue {
     public Map<Integer, Idx> IDX = new ConcurrentHashMap<>();
 
     public LayneMessageQueueImpl() {
-        reload();
+//        reload();
         // wal
         for (int i = 0; i < Constant.WAL_FILE_COUNT; ++i) {
             walList[i] = new WriteAheadLog();
