@@ -29,7 +29,7 @@ public class LayneMessageQueueImpl extends MessageQueue {
     public Map<Integer, Idx> IDX = new ConcurrentHashMap<>();
 
     public LayneMessageQueueImpl() {
-        reload();
+//        reload();
         // wal
         for (int i = 0; i < Constant.WAL_FILE_COUNT; ++i) {
             walList[i] = new WriteAheadLog();
@@ -85,9 +85,11 @@ public class LayneMessageQueueImpl extends MessageQueue {
         }
         int topicId = IdGenerator.getId(topic);
         WalInfoBasic result = new WalInfoBasic(topicId, queueId, data);
+        // 某块计算处理中的 msg 数目
         int key = result.getKey();
         AtomicInteger partitionCnt = WAL_ID_CNT_MAP.computeIfAbsent(key, k -> new AtomicInteger());
         partitionCnt.incrementAndGet();
+        // 映射到对应的 wal
         int walId = WAL_ID_MAP.computeIfAbsent(key, k -> curWalId % Constant.WAL_FILE_COUNT);
         result.walId = walId;
         curWalId++;
@@ -108,7 +110,7 @@ public class LayneMessageQueueImpl extends MessageQueue {
         } finally {
             locks[walId].unlock();
             int restCnt = partitionCnt.decrementAndGet();
-            if (restCnt == 0) WAL_ID_MAP.remove(key);
+//            if (restCnt == 0) WAL_ID_MAP.remove(key);
         }
         return result.pOffset;
     }
@@ -118,7 +120,6 @@ public class LayneMessageQueueImpl extends MessageQueue {
         if (start != -1) {
             log.info("75G cost: {}", (System.currentTimeMillis() - start));
             start = -1;
-            return null;
         }
         int topicId = IdGenerator.getId(topic);
         Idx idx = IDX.get(WalInfoBasic.getKey(topicId, queueId));
