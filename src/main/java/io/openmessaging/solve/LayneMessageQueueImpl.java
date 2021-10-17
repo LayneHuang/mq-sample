@@ -29,7 +29,7 @@ public class LayneMessageQueueImpl extends MessageQueue {
     public Map<Integer, Idx> IDX = new ConcurrentHashMap<>();
 
     public LayneMessageQueueImpl() {
-//        reload();
+        reload();
         // wal
         for (int i = 0; i < Constant.WAL_FILE_COUNT; ++i) {
             walList[i] = new WriteAheadLog();
@@ -93,12 +93,12 @@ public class LayneMessageQueueImpl extends MessageQueue {
         curWalId++;
         try {
             locks[walId].lock();
-//            log.info("walId: {}, topic: {}, queue: {}", walId, topicId, queueId);
             // 获取偏移
             result.pOffset = APPEND_OFFSET_MAP.computeIfAbsent(
                     result.getKey(),
                     k -> new AtomicInteger()
             ).getAndIncrement();
+            // 提交 log 号
             walList[walId].submit(result);
             while (!isDown(walId, result.logCount)) {
                 conditions[walId].await();
@@ -118,6 +118,7 @@ public class LayneMessageQueueImpl extends MessageQueue {
         if (start != -1) {
             log.info("75G cost: {}", (System.currentTimeMillis() - start));
             start = -1;
+            return null;
         }
         int topicId = IdGenerator.getId(topic);
         Idx idx = IDX.get(WalInfoBasic.getKey(topicId, queueId));
