@@ -89,10 +89,9 @@ public class LayneMessageQueueImpl extends MessageQueue {
         int key = result.getKey();
         AtomicInteger partitionCnt = WAL_ID_CNT_MAP.computeIfAbsent(key, k -> new AtomicInteger());
         partitionCnt.incrementAndGet();
-        // 映射到对应的 wal
-        int walId = WAL_ID_MAP.computeIfAbsent(key, k -> curWalId % Constant.WAL_FILE_COUNT);
+        // 映射到对应的 wal, 循环分配
+        int walId = WAL_ID_MAP.computeIfAbsent(key, k -> (curWalId++) % Constant.WAL_FILE_COUNT);
         result.walId = walId;
-        curWalId++;
         try {
             locks[walId].lock();
             // 获取偏移
