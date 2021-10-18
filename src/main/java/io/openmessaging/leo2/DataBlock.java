@@ -91,7 +91,7 @@ public class DataBlock {
                 if (arrive == 0) {
                     synchronized (WRITE_LOCKER) {
                         fullTimes++;
-                        if (fullTimes > 10 && barrierCount <= 15) {
+                        if (fullTimes > 1 && barrierCount <= 15) {
                             barrierCount++;
                             fullTimes = 0;
                             barrier = new CyclicBarrier(barrierCount);
