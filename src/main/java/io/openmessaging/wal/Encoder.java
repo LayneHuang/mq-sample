@@ -38,7 +38,11 @@ public class Encoder extends Thread {
                                     timeOverForce, cntForce, mergeCnt, maxWaitCnt);
                         }
                     }
-                    maxWaitCnt--;
+                    if (maxWaitCnt > 2) {
+                        maxWaitCnt >>= 1;
+                    } else {
+                        maxWaitCnt--;
+                    }
                 } else {
                     submit(info);
                     if (waitCnt >= maxWaitCnt) {
@@ -95,7 +99,9 @@ public class Encoder extends Thread {
                 pos++;
                 if (cur == Constant.WRITE_SIZE) {
                     mergeCnt++;
-                    if (maxWaitCnt < Constant.DEFAULT_MAX_THREAD_PER_WAL) maxWaitCnt++;
+                    if (waitCnt > 1 && maxWaitCnt < Constant.DEFAULT_MAX_THREAD_PER_WAL) {
+                        maxWaitCnt++;
+                    }
                     int fullCount = i == bs.length - 1 ? logCount : logCount - 1;
                     writeBq.put(new WritePage(fullCount, walId, part, pos, tmp, cur));
                     cur = 0;
