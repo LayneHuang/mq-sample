@@ -23,8 +23,7 @@ public class BufferEncoder {
     private CyclicBarrier barrier = new CyclicBarrier(Constant.DEFAULT_MAX_THREAD_PER_WAL);
     private FileChannel channel = null;
     private MappedByteBuffer buffer = null;
-    private final Lock lock = new ReentrantLock();
-
+    private final Object LOCK = new Object();
     private int pos = 0;
 
     private int part = 0;
@@ -33,25 +32,25 @@ public class BufferEncoder {
     }
 
     public void submit(WalInfoBasic info) throws InterruptedException {
-        lock.lock();
-        // wal 分段
-        fetchBuffer(info);
-        info.walPart = part;
-        info.walPos = pos;
-        // topicId
-        buffer.put((byte) info.topicId);
-        // queueId
-        buffer.put((byte) ((info.queueId >> 8) & 0xff));
-        buffer.put((byte) (info.queueId & 0xff));
-        // pOffset
-        buffer.put((byte) ((info.pOffset >> 8) & 0xff));
-        buffer.put((byte) (info.pOffset & 0xff));
-        // value
-        buffer.put((byte) ((info.valueSize >> 8) & 0xff));
-        buffer.put((byte) (info.valueSize & 0xff));
-        // value
-        buffer.put(info.value);
-        lock.unlock();
+        synchronized (LOCK) {
+            // wal 分段
+            fetchBuffer(info);
+            info.walPart = part;
+            info.walPos = pos;
+            // topicId
+            buffer.put((byte) info.topicId);
+            // queueId
+            buffer.put((byte) ((info.queueId >> 8) & 0xff));
+            buffer.put((byte) (info.queueId & 0xff));
+            // pOffset
+            buffer.put((byte) ((info.pOffset >> 8) & 0xff));
+            buffer.put((byte) (info.pOffset & 0xff));
+            // value
+            buffer.put((byte) ((info.valueSize >> 8) & 0xff));
+            buffer.put((byte) (info.valueSize & 0xff));
+            // value
+            buffer.put(info.value);
+        }
     }
 
     private volatile int noFuck = 0;
@@ -83,8 +82,7 @@ public class BufferEncoder {
     }
 
     private void okWrite() {
-        try {
-            lock.lock();
+        synchronized (LOCK) {
             if (noFuck > 2 && waitCnt < 20) {
                 noFuck = 0;
                 fuck = 0;
@@ -92,16 +90,12 @@ public class BufferEncoder {
                 barrier = new CyclicBarrier(waitCnt);
             }
             buffer.force();
-        } catch (Exception ignored) {
-        } finally {
-            lock.unlock();
         }
     }
 
     private void timeoutWrite() {
         barrier.reset();
-        try {
-            lock.lock();
+        synchronized (LOCK) {
             if (fuck > 2 && waitCnt >= 2) {
                 waitCnt--;
                 fuck = 0;
@@ -111,8 +105,6 @@ public class BufferEncoder {
                 }
             }
             buffer.force();
-        } catch (Exception ignored) {
-            lock.unlock();
         }
     }
 
