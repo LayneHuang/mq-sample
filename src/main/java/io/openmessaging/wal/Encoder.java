@@ -52,7 +52,7 @@ public class Encoder extends Thread {
                 maxWaitCnt--;
             }
         } else {
-            submit(info);
+            submit(info, info.encodeToB());
             if (waitCnt >= maxWaitCnt) {
                 cntForce++;
                 force();
@@ -60,8 +60,7 @@ public class Encoder extends Thread {
         }
     }
 
-    private void submit(WalInfoBasic info) {
-        byte[] bs = info.encodeToB();
+    private void submit(WalInfoBasic info, byte[] bs) {
         // wal 分段
         if (pos + info.getSize() >= Constant.WRITE_BEFORE_QUERY) {
             force();

@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 
 /**
@@ -53,6 +54,22 @@ public class WalInfoBasic {
     }
 
     public static final int BYTES = 1 + 2 * 3;
+
+    public void encode(MappedByteBuffer buffer) {
+        // topicId
+        buffer.put((byte) topicId);
+        // queueId
+        buffer.put((byte) ((queueId >> 8) & 0xff));
+        buffer.put((byte) (queueId & 0xff));
+        // pOffset
+        buffer.put((byte) ((pOffset >> 8) & 0xff));
+        buffer.put((byte) (pOffset & 0xff));
+        // value
+        buffer.put((byte) ((valueSize >> 8) & 0xff));
+        buffer.put((byte) (valueSize & 0xff));
+        // value
+        buffer.put(value);
+    }
 
     public byte[] encodeToB() {
         byte[] result = new byte[BYTES + this.valueSize];
