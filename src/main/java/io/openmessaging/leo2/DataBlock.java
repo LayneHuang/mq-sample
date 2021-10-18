@@ -49,15 +49,16 @@ public class DataBlock {
         logMappedBuf = logFileChannel.map(FileChannel.MapMode.READ_WRITE, 0, G1);// 1G
     }
 
-    private static int barrierCount = THREAD_MAX / 2;
     private static final long G125 = G1 * 125L;
-    private final Object WRITE_LOCKER = new Object();
-    private volatile CyclicBarrier barrier = new CyclicBarrier(barrierCount);
     private static final LongAdder appendAdder = new LongAdder();
     private static final LongAdder forceAdder = new LongAdder();
+
+    private final Object WRITE_LOCKER = new Object();
+    private volatile int barrierCount = THREAD_MAX / 2;
+    private volatile CyclicBarrier barrier = new CyclicBarrier(barrierCount);
     private volatile int addSize = 0;
     private volatile int timeoutTimes = 0;
-    private volatile boolean forced = false;
+    private volatile int fullTimes = 0;
 
     public void writeLog(byte topic, short queueId, int offset, ByteBuffer data, Indexer indexer) {
         short msgLen = (short) data.limit();
@@ -85,14 +86,16 @@ public class DataBlock {
                 addSize += msgLen;
                 indexer.writeIndex(id, logNumAdder, position, dataSize);
             }
-            if (forced) {
-                tempBuf.force();
-                return;
-            }
             try {
                 int arrive = tempBarrier.await(10L * barrierCount, TimeUnit.MILLISECONDS);
                 if (arrive == 0) {
                     synchronized (WRITE_LOCKER) {
+                        fullTimes++;
+                        if (fullTimes > 10) {
+                            barrierCount++;
+                            fullTimes = 0;
+                            barrier = new CyclicBarrier(barrierCount);
+                        }
                         try {
                             tempBuf.force();
                             forceAdder.add(addSize);
@@ -123,8 +126,7 @@ public class DataBlock {
             } catch (InterruptedException e) {
                 System.out.println("Interrupted");
             }
-            if (!forced && G125 < appendAdder.sum()) {
-                forced = true;
+            if (G125 < appendAdder.sum()) {
                 System.out.println("append " + appendAdder.sum() + "force" + forceAdder.sum());
             }
         } catch (Exception e) {
