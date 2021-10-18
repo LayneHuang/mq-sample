@@ -29,34 +29,38 @@ public class Encoder extends Thread {
         try {
             while (true) {
                 WalInfoBasic info = logsBq.poll(5, TimeUnit.MILLISECONDS);
-                if (info == null) {
-                    if (cur > 0) {
-                        timeOverForce++;
-                        force();
-                        if (timeOverForce % 100 == 0) {
-                            log.info("TIME OVER FORCE: {}, CNT FORCE: {}, MERGE: {}, MAX WAIT CNT:{} ",
-                                    timeOverForce, cntForce, mergeCnt, maxWaitCnt);
-                        }
-                    }
-                    if (maxWaitCnt > 2) {
-                        maxWaitCnt >>= 1;
-                    } else {
-                        maxWaitCnt--;
-                    }
-                } else {
-                    submit(info);
-                    if (waitCnt >= maxWaitCnt) {
-                        cntForce++;
-                        force();
-                    }
-                }
+                encode(info);
             }
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
     }
 
-    public void submit(WalInfoBasic info) {
+    private void encode(WalInfoBasic info) {
+        if (info == null) {
+            if (cur > 0) {
+                timeOverForce++;
+                force();
+                if (timeOverForce % 100 == 0) {
+                    log.info("TIME OVER FORCE: {}, CNT FORCE: {}, MERGE: {}, MAX WAIT CNT:{} ",
+                            timeOverForce, cntForce, mergeCnt, maxWaitCnt);
+                }
+            }
+            if (maxWaitCnt > 2) {
+                maxWaitCnt >>= 1;
+            } else {
+                maxWaitCnt--;
+            }
+        } else {
+            submit(info);
+            if (waitCnt >= maxWaitCnt) {
+                cntForce++;
+                force();
+            }
+        }
+    }
+
+    private void submit(WalInfoBasic info) {
         byte[] bs = info.encodeToB();
         // wal 分段
         if (pos + info.getSize() >= Constant.WRITE_BEFORE_QUERY) {

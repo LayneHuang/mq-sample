@@ -46,7 +46,7 @@ public class LeoMessageQueueImpl extends MessageQueue {
         if (start != -1) {
             System.out.println("75G cost: " + (System.currentTimeMillis() - start));
             start = -1;
-//            return null;
+            return null;
         }
         byte topicId = getTopicId(topic);
         Map<Integer, ByteBuffer> dataMap = manager.readLog(topicId, (short) queueId, (int) offset, fetchNum);

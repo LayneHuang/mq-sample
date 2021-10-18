@@ -38,9 +38,9 @@ public class DataManager {
 //    public static final short INDEX_TEMP_BUF_SIZE = INDEX_BUF_SIZE * INDEX_TEMP_BUF_NUM;
     public static ConcurrentHashMap<String, Indexer> INDEXERS = new ConcurrentHashMap<>(1000_000);
 
-    public static ThreadLocal<DataBlock> BLOCK_TL = new ThreadLocal<>();
+    public static ThreadLocal<DataBlock2> BLOCK_TL = new ThreadLocal<>();
     public static AtomicInteger BLOCK_ID_ADDER = new AtomicInteger();
-    public static ConcurrentHashMap<Integer, DataBlock> BLOCKS = new ConcurrentHashMap<>(THREAD_MAX);
+    public static ConcurrentHashMap<Integer, DataBlock2> BLOCKS = new ConcurrentHashMap<>(THREAD_MAX);
 
     public DataManager() {
         try {
@@ -119,10 +119,10 @@ public class DataManager {
     // block 2 64k 75G cost: 330965
 
     public void writeLog(byte topic, short queueId, int offset, ByteBuffer data) {
-        DataBlock dataBlock = BLOCK_TL.get();
+        DataBlock2 dataBlock = BLOCK_TL.get();
         if (dataBlock == null) {
             int id = BLOCK_ID_ADDER.getAndIncrement() % 2;
-            dataBlock = BLOCKS.computeIfAbsent(id, key -> new DataBlock(key.byteValue()));
+            dataBlock = BLOCKS.computeIfAbsent(id, key -> new DataBlock2(key.byteValue()));
             BLOCK_TL.set(dataBlock);
         }
         Indexer indexer = getIndexer(topic, queueId);
