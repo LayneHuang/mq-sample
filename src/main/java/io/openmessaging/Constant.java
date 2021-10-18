@@ -28,7 +28,7 @@ public class Constant {
 
     public static final int BQ_SIZE = 1 << 10;
 
-    public static final int VALUE_POS_DIS = 30;
+    public static final int VALUE_POS_DIS = 29;
 
     public static final int WRITE_BEFORE_QUERY = (1 << VALUE_POS_DIS);
 
