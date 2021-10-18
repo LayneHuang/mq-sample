@@ -60,8 +60,6 @@ public class DataBlock2 {
         short msgLen = (short) data.limit();
         short dataSize = (short) (MSG_META_SIZE + msgLen);
         try {
-            MappedByteBuffer tempBuf;
-            CyclicBarrier tempBarrier = barrier;
             synchronized (WRITE_LOCKER) {
                 if (logMappedBuf.remaining() < dataSize) {
                     logMappedBuf.force();
@@ -69,24 +67,23 @@ public class DataBlock2 {
                     logFileChannel.close();
                     openLog();
                 }
-                tempBuf = logMappedBuf;
                 int position = logMappedBuf.position();
-                tempBuf.put(topic); // 1
-                tempBuf.putShort(queueId); // 2
-                tempBuf.putInt(offset); // 4
-                tempBuf.putShort(msgLen); // 2
-                tempBuf.put(data);
+                logMappedBuf.put(topic); // 1
+                logMappedBuf.putShort(queueId); // 2
+                logMappedBuf.putInt(offset); // 4
+                logMappedBuf.putShort(msgLen); // 2
+                logMappedBuf.put(data);
                 indexer.writeIndex(id, logNumAdder, position, dataSize);
             }
             try {
                 int arrive = 0;
                 if (barrierCount > 1) {
-                    arrive = tempBarrier.await(10L * barrierCount, TimeUnit.MILLISECONDS);
+                    arrive = barrier.await(10L * barrierCount, TimeUnit.MILLISECONDS);
                 }
                 if (arrive == 0) {
                     fullTimes++;
                     noFuck++;
-                    okWrite(tempBuf);
+                    okWrite();
                 }
             } catch (TimeoutException e) {
                 // 只有一个超时，其他都是 BrokenBarrierException
@@ -95,7 +92,7 @@ public class DataBlock2 {
                 if (timeoutTimes % 50 == 0) {
                     System.out.println("TIMEOVER:" + timeoutTimes + ", FULL:" + fullTimes + ", BC:" + barrierCount);
                 }
-                timeoutWrite(tempBuf);
+                timeoutWrite();
             } catch (BrokenBarrierException | InterruptedException ignored) {
             }
         } catch (Exception e) {
@@ -103,7 +100,7 @@ public class DataBlock2 {
         }
     }
 
-    private void okWrite(MappedByteBuffer tempBuf) {
+    private void okWrite() {
         synchronized (WRITE_LOCKER) {
             if (noFuck > 2 && barrierCount < 20) {
                 noFuck = 0;
@@ -112,13 +109,13 @@ public class DataBlock2 {
                 barrier = new CyclicBarrier(barrierCount);
             }
             try {
-                tempBuf.force();
+                logMappedBuf.force();
             } catch (Exception ignored) {
             }
         }
     }
 
-    private void timeoutWrite(MappedByteBuffer tempBuf) {
+    private void timeoutWrite() {
         synchronized (WRITE_LOCKER) {
             barrier.reset();
             if (fuck > 2 && barrierCount >= 2) {
@@ -130,7 +127,7 @@ public class DataBlock2 {
                 }
             }
             try {
-                tempBuf.force();
+                logMappedBuf.force();
             } catch (Exception ignored) {
             }
         }
