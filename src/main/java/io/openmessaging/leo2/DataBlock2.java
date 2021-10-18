@@ -108,7 +108,7 @@ public class DataBlock2 {
 
     private void okWrite(MappedByteBuffer tempBuf) {
         synchronized (WRITE_LOCKER) {
-            if (noFuck > 2 && barrierCount <= 15) {
+            if (noFuck > 2 && barrierCount < 20) {
                 noFuck = 0;
                 fuck = 0;
                 barrierCount++;
