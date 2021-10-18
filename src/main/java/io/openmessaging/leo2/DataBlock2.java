@@ -92,7 +92,6 @@ public class DataBlock2 {
                 // 只有一个超时，其他都是 BrokenBarrierException
                 timeoutTimes++;
                 fuck++;
-                noFuck = 0;
                 if (timeoutTimes % 1000 == 0) {
                     System.out.println("TIMEOVER:" + timeoutTimes + ", FULL:" + fullTimes + ", BC:" + barrierCount);
                 }
