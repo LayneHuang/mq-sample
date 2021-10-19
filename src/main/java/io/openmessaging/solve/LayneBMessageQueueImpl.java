@@ -32,7 +32,7 @@ public class LayneBMessageQueueImpl extends MessageQueue {
     }
 
     private void reload() {
-        if (!IdGenerator.load()) {
+        if (!IdGenerator.getIns().load()) {
             return;
         }
         for (int i = 0; i < Constant.WAL_FILE_COUNT; ++i) {
@@ -64,7 +64,7 @@ public class LayneBMessageQueueImpl extends MessageQueue {
     public static ConcurrentHashMap<Integer, BufferEncoder> BLOCKS = new ConcurrentHashMap<>(40);
 
     private long allIn(String topic, int queueId, ByteBuffer data) {
-        int topicId = IdGenerator.getId(topic);
+        int topicId = IdGenerator.getIns().getId(topic);
         int walId = topicId % Constant.WAL_FILE_COUNT;
         WalInfoBasic info = new WalInfoBasic(topicId, queueId, data);
         info.walId = walId;
@@ -99,7 +99,7 @@ public class LayneBMessageQueueImpl extends MessageQueue {
             start = -1;
 //            return null;
         }
-        int topicId = IdGenerator.getId(topic);
+        int topicId = IdGenerator.getIns().getId(topic);
         int key = WalInfoBasic.getKey(topicId, queueId);
         Idx idx = IDX.get(key);
         int pOffset = APPEND_OFFSET_MAP.getOrDefault(key, new AtomicInteger()).get();

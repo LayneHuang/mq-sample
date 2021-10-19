@@ -8,6 +8,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
 import java.util.HashMap;
+import java.util.Map;
 
 /**
  * IdGenerator
@@ -17,13 +18,23 @@ import java.util.HashMap;
  */
 public class IdGenerator {
     private static final Logger log = LoggerFactory.getLogger(IdGenerator.class);
-    private static final HashMap<String, Integer> ID_MAP = new HashMap(128);
+    private final Map<String, Integer> ID_MAP = new HashMap<>(128);
 
-    private static int cnt = 0;
+    private int cnt = 0;
 
-    private static final Object lock = new Object();
+    private final Object lock = new Object();
 
-    public static int getId(String key) {
+    private static IdGenerator ins = new IdGenerator();
+
+    public static IdGenerator getIns() {
+        return ins;
+    }
+
+    private IdGenerator() {
+
+    }
+
+    public int getId(String key) {
         if (ID_MAP.containsKey(key)) return ID_MAP.get(key);
         int result = -1;
         synchronized (lock) {
@@ -35,7 +46,7 @@ public class IdGenerator {
         return result;
     }
 
-    public static boolean load() {
+    public boolean load() {
         if (!Constant.getMetaPath().toFile().exists()) {
             log.info("no meta");
             return false;
@@ -66,7 +77,7 @@ public class IdGenerator {
         return true;
     }
 
-    private static void save(String key, int value) {
+    private void save(String key, int value) {
         try (FileChannel channel = FileChannel.open(Constant.getMetaPath(),
                 StandardOpenOption.WRITE,
                 StandardOpenOption.CREATE,
