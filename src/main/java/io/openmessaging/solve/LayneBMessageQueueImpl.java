@@ -96,7 +96,7 @@ public class LayneBMessageQueueImpl extends MessageQueue {
         if (start != -1) {
             log.info("75G cost: {}", (System.currentTimeMillis() - start));
             start = -1;
-            return null;
+//            return null;
         }
         int topicId = IdGenerator.getId(topic);
         Idx idx = IDX.get(WalInfoBasic.getKey(topicId, queueId));
