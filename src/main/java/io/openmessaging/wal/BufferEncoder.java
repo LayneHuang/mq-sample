@@ -68,7 +68,6 @@ public class BufferEncoder {
             nowWaitCnt++;
             if (nowWaitCnt < waitCnt) {
                 condition.await(10L * waitCnt, TimeUnit.MILLISECONDS);
-                if (info.getEndPos() <= writtenPos) return;
                 timeoutWrite(info);
             } else {
                 okWrite(info);
@@ -87,7 +86,7 @@ public class BufferEncoder {
 
     private void okWrite(WalInfoBasic info) {
         synchronized (LOCK) {
-            if (info.getEndPos() <= writtenPos) return;
+            if (forced(info)) return;
             fullTimes++;
             noFuck++;
             if (noFuck > 2 && waitCnt < 20) {
@@ -103,7 +102,7 @@ public class BufferEncoder {
 
     private void timeoutWrite(WalInfoBasic info) {
         synchronized (LOCK) {
-            if (info.getEndPos() <= writtenPos) return;
+            if (forced(info)) return;
             timeoutTimes++;
             fuck++;
             if (fuck > 2 && waitCnt >= 2) {
@@ -115,6 +114,11 @@ public class BufferEncoder {
             buffer.force();
             nowWaitCnt = 0;
         }
+    }
+
+    private boolean forced(WalInfoBasic info) {
+        if (info.walPart < part) return true;
+        return info.walPart == part && info.getEndPos() <= writtenPos;
     }
 
     private void fetchBuffer(WalInfoBasic info) {
@@ -138,10 +142,10 @@ public class BufferEncoder {
                         0,
                         Constant.WRITE_BEFORE_QUERY
                 );
+                pos = 0;
             } catch (IOException e) {
                 e.printStackTrace();
             }
-            pos = 0;
         }
     }
 }
