@@ -53,7 +53,6 @@ public class LayneBMessageQueueImpl extends MessageQueue {
     private long start = 0;
 
 
-
     @Override
     public long append(String topic, int queueId, ByteBuffer data) {
         if (start == 0) {
@@ -152,6 +151,7 @@ public class LayneBMessageQueueImpl extends MessageQueue {
             }
         } catch (IOException e) {
             e.printStackTrace();
+            return new HashMap<>();
         } finally {
             if (valueChannel != null) {
                 try {

@@ -18,6 +18,7 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
+@Deprecated
 public class LayneMessageQueueImpl extends MessageQueue {
     private static final Logger log = LoggerFactory.getLogger(LayneMessageQueueImpl.class);
     private static final WriteAheadLog[] walList = new WriteAheadLog[Constant.WAL_FILE_COUNT];

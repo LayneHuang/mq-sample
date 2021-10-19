@@ -21,6 +21,7 @@ import java.util.concurrent.locks.Lock;
  * @author layne
  * @since 2021/9/23
  */
+@Deprecated
 public class Broker extends Thread {
     public static final Logger log = LoggerFactory.getLogger(Broker.class);
     private final int walId;

@@ -13,6 +13,7 @@ import java.util.concurrent.LinkedBlockingQueue;
  * @author layne
  * @since 2021/9/17
  */
+@Deprecated
 public class WriteAheadLog {
     private static final Logger log = LoggerFactory.getLogger(WriteAheadLog.class);
 
