@@ -125,13 +125,13 @@ public class LayneBMessageQueueImpl extends MessageQueue {
         try {
             for (WalInfoBasic info : idxList) {
                 if (valueChannel == null || info.walPart != curPart) {
+                    curPart = info.walPart;
                     if (valueChannel != null) {
                         valueChannel.close();
                     }
                     valueChannel = FileChannel.open(
                             Constant.getWALInfoPath(walId, info.walPart),
                             StandardOpenOption.READ);
-                    curPart = info.walPart;
                 }
                 ByteBuffer buffer = ByteBuffer.allocate(info.valueSize);
                 valueChannel.read(buffer, info.walPos);
@@ -140,6 +140,8 @@ public class LayneBMessageQueueImpl extends MessageQueue {
             }
         } catch (IOException e) {
             e.printStackTrace();
+            BufferEncoder encoder = BLOCKS.computeIfAbsent(walId, key -> new BufferEncoder());
+            log.error("now part: {}, pos: {}, targetPart: {}", encoder.part, encoder.pos, curPart);
             return new HashMap<>();
         } finally {
             if (valueChannel != null) {

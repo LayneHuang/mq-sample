@@ -21,9 +21,8 @@ public class BufferEncoder {
     private FileChannel channel = null;
     private MappedByteBuffer buffer = null;
     private final Object LOCK = new Object();
-    private int pos = 0;
-
-    private int part = 0;
+    public volatile int pos = 0;
+    public volatile int part = 0;
 
     public BufferEncoder() {
     }
