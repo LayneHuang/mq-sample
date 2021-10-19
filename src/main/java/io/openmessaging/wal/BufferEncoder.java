@@ -9,6 +9,7 @@ import sun.nio.ch.DirectBuffer;
 import java.io.IOException;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
@@ -40,11 +41,12 @@ public class BufferEncoder {
                         }
                         channel.close();
                     }
+                    part++;
+                    Files.createDirectories(Constant.getWALInfoPath(info.walId, part));
                     channel = FileChannel.open(
-                            Constant.getWALInfoPath(info.walId, ++part),
+                            Constant.getWALInfoPath(info.walId, part),
                             StandardOpenOption.READ,
-                            StandardOpenOption.WRITE,
-                            StandardOpenOption.CREATE);
+                            StandardOpenOption.WRITE);
                     buffer = channel.map(
                             FileChannel.MapMode.READ_WRITE,
                             0,
