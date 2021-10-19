@@ -34,11 +34,11 @@ public class BufferEncoder {
                 try {
                     if (channel != null) {
                         buffer.force();
-                        channel.close();
                         Cleaner cleaner = ((DirectBuffer) buffer).cleaner();
                         if (cleaner != null) {
                             cleaner.clean();
                         }
+                        channel.close();
                     }
                     channel = FileChannel.open(
                             Constant.getWALInfoPath(info.walId, ++part),
