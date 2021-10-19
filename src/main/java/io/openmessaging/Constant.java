@@ -13,12 +13,9 @@ import java.nio.file.Paths;
  */
 public class Constant {
 
-    public static final Path DIR_ESSD =
-            Files.exists(new File("/essd").toPath())
-                    ? Paths.get("/essd")
-                    : Paths.get(System.getProperty("user.dir") + File.separator + "essd");
+    public static final Path DIR_ESSD = Paths.get("/essd");
 
-    public static final String DIR_PMEM = "/pmem";
+    public static final Path DIR_PMEM = Paths.get("/pmem");
 
     public static final int WAL_FILE_COUNT = 2;
 
@@ -34,6 +31,10 @@ public class Constant {
 
     public static Path getWALInfoPath(int walId, int part) {
         return DIR_ESSD.resolve("WAL-INFO-" + walId + "-" + part + ".md");
+    }
+
+    public static Path getCacheInfoPath(int walId, int part) {
+        return DIR_PMEM.resolve("WAL-INFO-" + walId + "-" + part + ".md");
     }
 
     public static Path getMetaPath() {

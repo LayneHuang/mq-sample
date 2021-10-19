@@ -83,7 +83,7 @@ public class LayneBMessageQueueImpl extends MessageQueue {
 
         // 获取偏移
         info.pOffset = APPEND_OFFSET_MAP.computeIfAbsent(
-                info.getKey(),
+                key,
                 k -> new AtomicInteger()
         ).getAndIncrement();
         try {
@@ -93,7 +93,7 @@ public class LayneBMessageQueueImpl extends MessageQueue {
             e.printStackTrace();
         }
         // 索引
-        Idx idx = IDX.computeIfAbsent(info.getKey(), k -> new Idx());
+        Idx idx = IDX.computeIfAbsent(key, k -> new Idx());
         idx.add((int) info.pOffset, info.walId, info.walPart, info.walPos + WalInfoBasic.BYTES, info.valueSize);
 
         partitionCnt.decrementAndGet();
