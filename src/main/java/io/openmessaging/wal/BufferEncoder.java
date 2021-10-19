@@ -55,7 +55,7 @@ public class BufferEncoder {
                     pos = 0;
                     nowWaitCnt = 0;
                     writtenPos = buffer.position();
-                    log.info("change file: {}, {}", part, writtenPos);
+                    log.info("walId: {}, change file: {}, {}", info.walId, part, writtenPos);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
