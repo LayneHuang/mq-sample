@@ -53,7 +53,7 @@ public class WalInfoBasic {
         this.value = value;
     }
 
-    public static final int BYTES = 1 + 2 * 3;
+    public static final int BYTES = 5;
 
     public void encode(MappedByteBuffer buffer) {
         // topicId
@@ -134,9 +134,9 @@ public class WalInfoBasic {
         queueId <<= 8;
         queueId |= buffer.get() & 0xff;
         // pOffset
-        pOffset = buffer.get() & 0xff;
-        pOffset <<= 8;
-        pOffset |= buffer.get() & 0xff;
+//        pOffset = buffer.get() & 0xff;
+//        pOffset <<= 8;
+//        pOffset |= buffer.get() & 0xff;
         // valueSize
         valueSize = buffer.get() & 0xff;
         valueSize <<= 8;

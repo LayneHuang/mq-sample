@@ -25,7 +25,6 @@ public class LayneBMessageQueueImpl extends MessageQueue {
     private static final Logger log = LoggerFactory.getLogger(LayneBMessageQueueImpl.class);
     private static final Loader[] loader = new Loader[Constant.WAL_FILE_COUNT];
     public Map<Integer, Idx> IDX = new ConcurrentHashMap<>();
-
     private static final BufferEncoder[] bufferEncoders = new BufferEncoder[Constant.WAL_FILE_COUNT];
 
     public LayneBMessageQueueImpl() {
@@ -37,6 +36,9 @@ public class LayneBMessageQueueImpl extends MessageQueue {
     }
 
     private void reload() {
+        if (!IdGenerator.load()) {
+            return;
+        }
         for (int i = 0; i < Constant.WAL_FILE_COUNT; ++i) {
             loader[i] = new Loader(i, IDX, APPEND_OFFSET_MAP);
             loader[i].start();

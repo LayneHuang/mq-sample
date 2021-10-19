@@ -42,9 +42,6 @@ public class BufferEncoder {
             // queueId
             buffer.put((byte) ((info.queueId >> 8) & 0xff));
             buffer.put((byte) (info.queueId & 0xff));
-            // pOffset
-            buffer.put((byte) ((info.pOffset >> 8) & 0xff));
-            buffer.put((byte) (info.pOffset & 0xff));
             // value
             buffer.put((byte) ((info.valueSize >> 8) & 0xff));
             buffer.put((byte) (info.valueSize & 0xff));
