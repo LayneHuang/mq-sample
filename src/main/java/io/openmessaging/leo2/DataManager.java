@@ -48,7 +48,48 @@ public class DataManager {
             if (Files.notExists(LOGS_PATH)) {
                 Files.createDirectories(LOGS_PATH);
             } else {
-                restartLogic();
+//                restartLogic();
+                // 重启
+                Files.list(LOGS_PATH).forEach(partitionDir -> {
+                    byte partitionId = Byte.parseByte(String.valueOf(partitionDir.getFileName()));
+                    try {
+                        Files.list(partitionDir).forEach(logFile -> {
+                            byte logNum = Byte.parseByte(String.valueOf(logFile.getFileName()));
+                            try {
+                                FileChannel logFileChannel = FileChannel.open(logFile, StandardOpenOption.READ, StandardOpenOption.WRITE);
+                                long fileSize = logFileChannel.size();
+                                MappedByteBuffer logBuf = logFileChannel.map(FileChannel.MapMode.READ_ONLY, 0, fileSize);
+                                while (logBuf.remaining() > MSG_META_SIZE) {
+                                    int position = logBuf.position();
+                                    byte topic = logBuf.get();
+                                    short queueId = logBuf.getShort();
+                                    int offset = logBuf.getInt();
+                                    short msgLen = logBuf.getShort();
+                                    if (msgLen == 0) break;
+                                    logBuf.position(logBuf.position() + msgLen);
+                                    short dataSize = (short) (MSG_META_SIZE + msgLen);
+                                    // index
+                                    ByteBuffer indexBuf = ByteBuffer.allocate(INDEX_BUF_SIZE);
+                                    indexBuf.put(partitionId);
+                                    indexBuf.put(logNum);
+                                    indexBuf.putInt(position);
+                                    indexBuf.putShort(dataSize);
+                                    indexBuf.flip();
+                                    Indexer indexer = getIndexer(topic, queueId);
+                                    indexer.writeIndex(new OffsetBuf(offset, indexBuf));
+                                }
+                                unmap(logBuf);
+                                logFileChannel.close();
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        });
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                });
+                // 根据 offset 排序
+                INDEXERS.values().forEach(indexer -> indexer.fullBufs.sort(Comparator.comparingInt(o -> o.offset)));
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -68,7 +109,7 @@ public class DataManager {
     private void blockTask(CountDownLatch latch, byte partitionId) throws IOException {
         Path partitionDir = LOGS_PATH.resolve(String.valueOf(partitionId));
         List<Byte> logNums;
-        try (Stream<Path> logPaths = Files.list(partitionDir)){
+        try (Stream<Path> logPaths = Files.list(partitionDir)) {
             logNums = logPaths.map(logFile ->
                     Byte.parseByte(String.valueOf(logFile.getFileName()))
             ).sorted().collect(Collectors.toList());
