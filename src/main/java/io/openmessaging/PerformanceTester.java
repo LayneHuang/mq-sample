@@ -21,28 +21,6 @@ public class PerformanceTester {
 //        check();
     }
 
-    public static void check() {
-        String text = "SOMETHING_IS_HAPPEN123";
-        WalInfoBasic info = new WalInfoBasic(250, 99, ByteBuffer.wrap(text.getBytes(StandardCharsets.UTF_8)));
-        info.pOffset = 6676;
-        byte[] encodeB = info.encodeToB();
-        ByteBuffer buffer = ByteBuffer.allocate(encodeB.length);
-        buffer.put(encodeB);
-        buffer.flip();
-        WalInfoBasic info2 = new WalInfoBasic();
-        info2.decode(buffer, true);
-        log.info("{}, {}, {}", info.topicId == info2.topicId, info.topicId, info2.topicId);
-        log.info("{}", info.queueId == info2.queueId);
-        log.info("{}", info.pOffset == info2.pOffset);
-        log.info("{}", text.equals(new String(info2.value.array())));
-        Idx idx = new Idx();
-        idx.add(0, 3, 66556, 888);
-        log.info("{}", idx.getWalPart(0) == 3);
-//        log.info("{}", idx.getWalId(0) == 4);
-        log.info("{}", idx.getWalValuePos(0) == 66556);
-        log.info("{}", idx.getWalValueSize(0) == 888);
-    }
-
     private static void gao() throws InterruptedException {
         MessageQueue messageQueue = new LayneBMessageQueueImpl();
         Map<String, ByteBuffer> targetMap = new ConcurrentHashMap<>();

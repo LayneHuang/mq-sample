@@ -67,58 +67,6 @@ public class WalInfoBasic {
         buffer.put(value);
     }
 
-    public byte[] encodeToB() {
-        byte[] result = new byte[BYTES + this.valueSize];
-        // topicId
-        result[0] = (byte) topicId;
-        // queueId
-        result[1] = (byte) ((queueId >> 8) & 0xff);
-        result[2] = (byte) (queueId & 0xff);
-        // value size
-        result[5] = (byte) ((valueSize >> 8) & 0xff);
-        result[6] = (byte) (valueSize & 0xff);
-        // value
-        System.arraycopy(value.array(), 0, result, BYTES, result.length - BYTES);
-        return result;
-    }
-
-    private byte checkAndGetByte(FileChannel channel, ByteBuffer buffer) {
-        if (buffer.hasRemaining()) return buffer.get();
-        buffer.clear();
-        try {
-            channel.read(buffer);
-            buffer.flip();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return buffer.get();
-    }
-
-    public void decodeSafety(FileChannel channel, ByteBuffer buffer, boolean hasValue) {
-        // topicId
-        topicId = checkAndGetByte(channel, buffer) & 0xff;
-        // queueId
-        queueId = checkAndGetByte(channel, buffer) & 0xff;
-        queueId <<= 8;
-        queueId |= checkAndGetByte(channel, buffer) & 0xff;
-        // pOffset
-        pOffset = checkAndGetByte(channel, buffer) & 0xff;
-        pOffset <<= 8;
-        pOffset |= checkAndGetByte(channel, buffer) & 0xff;
-        // valueSize
-        valueSize = checkAndGetByte(channel, buffer) & 0xff;
-        valueSize <<= 8;
-        valueSize |= checkAndGetByte(channel, buffer) & 0xff;
-        // value
-        if (!hasValue) {
-            return;
-        }
-        value = ByteBuffer.allocate(valueSize);
-        for (int i = 0; i < valueSize; ++i) {
-            value.put(checkAndGetByte(channel, buffer));
-        }
-    }
-
     public void decode(ByteBuffer buffer, boolean hasValue) {
         // topicId
         topicId = buffer.get() & 0xff;
@@ -138,24 +86,6 @@ public class WalInfoBasic {
         for (int i = 0; i < valueSize; ++i) {
             value.put(buffer.get());
         }
-    }
-
-    public int decode(ByteBuffer buffer, int pos) {
-        // topicId
-        topicId = buffer.get(pos) & 0xff;
-        // queueId
-        queueId = buffer.get(pos + 1) & 0xff;
-        queueId <<= 8;
-        queueId |= buffer.get(pos + 2) & 0xff;
-        // pOffset
-        pOffset = buffer.get(pos + 3) & 0xff;
-        pOffset <<= 8;
-        pOffset |= buffer.get(pos + 4) & 0xff;
-        // valueSize
-        valueSize = buffer.get(pos + 5) & 0xff;
-        valueSize <<= 8;
-        valueSize |= buffer.get(pos + 6) & 0xff;
-        return pos + valueSize;
     }
 
     public int getSize() {
