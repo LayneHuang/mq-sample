@@ -110,6 +110,7 @@ public class BufferEncoder {
         if (channel == null || pos + info.getSize() >= Constant.WRITE_BEFORE_QUERY) {
             try {
                 if (channel != null) {
+                    buffer.force();
                     Cleaner cleaner = ((DirectBuffer) buffer).cleaner();
                     if (cleaner != null) {
                         cleaner.clean();

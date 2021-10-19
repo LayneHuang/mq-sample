@@ -54,11 +54,11 @@ public class Loader extends Thread {
                 info.walPart = part;
                 info.walPos = walPos;
                 int key = info.getKey();
+                // 块偏移
+                info.pOffset = APPEND_OFFSET_MAP.computeIfAbsent(key, k -> new AtomicInteger()).getAndIncrement();
                 // 索引
                 Idx idx = IDX.computeIfAbsent(key, k -> new Idx());
                 idx.add((int) info.pOffset, info.walId, info.walPart, info.walPos + WalInfoBasic.BYTES, info.valueSize);
-                // 块偏移
-                APPEND_OFFSET_MAP.computeIfAbsent(key, k -> new AtomicInteger()).getAndIncrement();
                 // 偏移
                 walPos += info.getSize();
             }
