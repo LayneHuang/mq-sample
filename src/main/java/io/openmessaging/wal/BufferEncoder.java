@@ -142,6 +142,9 @@ public class BufferEncoder {
                         Constant.WRITE_BEFORE_QUERY
                 );
                 pos = 0;
+                nowWaitCnt = 0;
+                writtenPos = buffer.position();
+                log.info("change file: {}, {}", part, writtenPos);
             } catch (IOException e) {
                 e.printStackTrace();
             }
