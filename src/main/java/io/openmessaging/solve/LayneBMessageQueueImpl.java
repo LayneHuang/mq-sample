@@ -25,6 +25,7 @@ public class LayneBMessageQueueImpl extends MessageQueue {
     private static final Logger log = LoggerFactory.getLogger(LayneBMessageQueueImpl.class);
     private static final Loader[] loader = new Loader[Constant.WAL_FILE_COUNT];
     public Map<Integer, Idx> IDX = new ConcurrentHashMap<>();
+    private final Map<Integer, AtomicInteger> WAL_ID_CNT_MAP = new ConcurrentHashMap<>();
     private final Map<Integer, AtomicInteger> APPEND_OFFSET_MAP = new ConcurrentHashMap<>();
 
     public LayneBMessageQueueImpl() {
@@ -74,6 +75,12 @@ public class LayneBMessageQueueImpl extends MessageQueue {
             encoder = BLOCKS.computeIfAbsent(walId, key -> new BufferEncoder());
             BLOCK_TL.set(encoder);
         }
+
+        // 某块计算处理中的 msg 数目
+        int key = info.getKey();
+        AtomicInteger partitionCnt = WAL_ID_CNT_MAP.computeIfAbsent(key, k -> new AtomicInteger());
+        partitionCnt.incrementAndGet();
+
         // 获取偏移
         info.pOffset = APPEND_OFFSET_MAP.computeIfAbsent(
                 info.getKey(),
@@ -88,6 +95,8 @@ public class LayneBMessageQueueImpl extends MessageQueue {
         // 索引
         Idx idx = IDX.computeIfAbsent(info.getKey(), k -> new Idx());
         idx.add((int) info.pOffset, info.walId, info.walPart, info.walPos + WalInfoBasic.BYTES, info.valueSize);
+
+        partitionCnt.decrementAndGet();
         return info.pOffset;
     }
 
@@ -101,7 +110,8 @@ public class LayneBMessageQueueImpl extends MessageQueue {
         int topicId = IdGenerator.getId(topic);
         Idx idx = IDX.get(WalInfoBasic.getKey(topicId, queueId));
         int key = WalInfoBasic.getKey(topicId, queueId);
-        int pOffset = APPEND_OFFSET_MAP.getOrDefault(key, new AtomicInteger()).get();
+        int pOffset = APPEND_OFFSET_MAP.getOrDefault(key, new AtomicInteger()).get()
+                - WAL_ID_CNT_MAP.getOrDefault(key, new AtomicInteger()).get();
         fetchNum = Math.min(fetchNum, (int) (pOffset - offset));
         return readValueFromWAL((int) offset, fetchNum, idx);
     }
