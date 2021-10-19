@@ -100,8 +100,8 @@ public class LayneBMessageQueueImpl extends MessageQueue {
 //            return null;
         }
         int topicId = IdGenerator.getId(topic);
-        Idx idx = IDX.get(WalInfoBasic.getKey(topicId, queueId));
         int key = WalInfoBasic.getKey(topicId, queueId);
+        Idx idx = IDX.get(key);
         int pOffset = APPEND_OFFSET_MAP.getOrDefault(key, new AtomicInteger()).get();
         fetchNum = Math.min(fetchNum, (int) (pOffset - offset));
         return readValueFromWAL(topicId, (int) offset, fetchNum, idx);
