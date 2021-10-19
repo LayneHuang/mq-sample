@@ -60,9 +60,6 @@ public class WalInfoBasic {
         // queueId
         buffer.put((byte) ((queueId >> 8) & 0xff));
         buffer.put((byte) (queueId & 0xff));
-        // pOffset
-        buffer.put((byte) ((pOffset >> 8) & 0xff));
-        buffer.put((byte) (pOffset & 0xff));
         // value
         buffer.put((byte) ((valueSize >> 8) & 0xff));
         buffer.put((byte) (valueSize & 0xff));
@@ -77,9 +74,6 @@ public class WalInfoBasic {
         // queueId
         result[1] = (byte) ((queueId >> 8) & 0xff);
         result[2] = (byte) (queueId & 0xff);
-        // pOffset
-        result[3] = (byte) ((pOffset >> 8) & 0xff);
-        result[4] = (byte) (pOffset & 0xff);
         // value size
         result[5] = (byte) ((valueSize >> 8) & 0xff);
         result[6] = (byte) (valueSize & 0xff);
@@ -132,10 +126,6 @@ public class WalInfoBasic {
         queueId = buffer.get() & 0xff;
         queueId <<= 8;
         queueId |= buffer.get() & 0xff;
-        // pOffset
-//        pOffset = buffer.get() & 0xff;
-//        pOffset <<= 8;
-//        pOffset |= buffer.get() & 0xff;
         // valueSize
         valueSize = buffer.get() & 0xff;
         valueSize <<= 8;
