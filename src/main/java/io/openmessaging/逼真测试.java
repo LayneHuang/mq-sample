@@ -5,7 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-import io.openmessaging.solve.FinkysMessageQueueImpl;
+import io.openmessaging.solve.LayneBMessageQueueImpl;
 
 public class 逼真测试 {
 
@@ -16,7 +16,7 @@ public class 逼真测试 {
     private static final int DATA_SIZE_MIN = 100;
     private static final int DATA_SIZE_MAX = 17 * 1024;
     private static final long RANDOM_SEED = 157625465123L;
-    private static final long MAX_SIZE_PER_THREAD = 128 * 1024 * 1024L; // 1G
+    private static final long MAX_SIZE_PER_THREAD = 32 * 1024 * 1024L; // 1G
 //    private static final int QUEUE_COUNT_MIN = 1;
 //    private static final int QUEUE_COUNT_MAX = 10000;
 
@@ -39,7 +39,7 @@ public class 逼真测试 {
 
     private static byte[] bytes = new byte[17 * 1024];
 
-    public static MessageQueue messageQueue = new FinkysMessageQueueImpl();
+    public static MessageQueue messageQueue = new LayneBMessageQueueImpl();
 
     public static void main(String[] args) throws InterruptedException {
         random.nextBytes(bytes);
