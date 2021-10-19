@@ -142,8 +142,8 @@ public class LayneBMessageQueueImpl extends MessageQueue {
             BufferEncoder encoder = BLOCKS.computeIfAbsent(walId, key -> new BufferEncoder());
             int maxP = 1;
             while (Constant.getWALInfoPath(walId, maxP).toFile().exists()) maxP++;
-            log.error("now part: {}, pos: {}, targetPart: {}, maxP: {}, e: {}",
-                    encoder.part, encoder.pos, curPart, maxP - 1, e.getMessage());
+            log.error("now walId: {}, part: {}, pos: {}, targetPart: {}, maxP: {}, e: {}",
+                    walId, encoder.part, encoder.pos, curPart, maxP - 1, e.getMessage());
             return new HashMap<>();
         } finally {
             if (valueChannel != null) {
