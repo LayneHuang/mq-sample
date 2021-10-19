@@ -88,7 +88,7 @@ public class LayneBMessageQueueImpl extends MessageQueue {
         ).getAndIncrement();
         try {
             encoder.submit(info);
-            encoder.holdOn();
+            encoder.holdOn(info);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }

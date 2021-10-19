@@ -10,17 +10,14 @@ import java.io.IOException;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
-import java.util.concurrent.BrokenBarrierException;
-import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class BufferEncoder {
     public static final Logger log = LoggerFactory.getLogger(BufferEncoder.class);
     private volatile int waitCnt = Constant.DEFAULT_MAX_THREAD_PER_WAL;
-    private CyclicBarrier barrier = new CyclicBarrier(Constant.DEFAULT_MAX_THREAD_PER_WAL);
     private FileChannel channel = null;
     private MappedByteBuffer buffer = null;
     private final Object LOCK = new Object();
@@ -55,54 +52,68 @@ public class BufferEncoder {
     private volatile int fuck = 0;
     private volatile int timeoutTimes = 0;
     private volatile int fullTimes = 0;
+    private volatile int writtenPos = 0;
 
-    public void holdOn() {
+    private final Lock waitLock = new ReentrantLock();
+    private final Condition condition = waitLock.newCondition();
+    private int nowWaitCnt = 0;
+
+    public void holdOn(WalInfoBasic info) {
+        if (waitCnt <= 1) {
+            okWrite(info);
+            return;
+        }
         try {
-            int arrive = 0;
-            if (waitCnt > 1) {
-                arrive = barrier.await(10L * waitCnt, TimeUnit.MILLISECONDS);
+            waitLock.lock();
+            nowWaitCnt++;
+            if (nowWaitCnt < waitCnt) {
+                condition.await(10L * waitCnt, TimeUnit.MILLISECONDS);
+                if (info.walPos <= writtenPos) return;
+                timeoutWrite(info);
+            } else {
+                okWrite(info);
+                condition.signalAll();
+                if (fullTimes % 1000 == 0) {
+                    log.info("TIME OVER: {}, FULL: {}, FINISH: {}, WAIT CNT: {}",
+                            timeoutTimes, fullTimes, writtenPos, waitCnt);
+                }
             }
-            if (arrive == 0) {
-                fullTimes++;
-                noFuck++;
-                okWrite();
-            }
-        } catch (TimeoutException e) {
-            // 只有一个超时，其他都是 BrokenBarrierException
-            timeoutTimes++;
-            fuck++;
-            if (timeoutTimes % 50 == 0) {
-                log.info("TIMEOVER: {}, FULL: {}, , BC: {}", timeoutTimes, fullTimes, waitCnt);
-            }
-            timeoutWrite();
-        } catch (BrokenBarrierException | InterruptedException ignored) {
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } finally {
+            waitLock.unlock();
         }
     }
 
-    private void okWrite() {
+    private void okWrite(WalInfoBasic info) {
         synchronized (LOCK) {
+            if (info.walPos <= writtenPos) return;
+            fullTimes++;
+            noFuck++;
             if (noFuck > 2 && waitCnt < 20) {
                 noFuck = 0;
                 fuck = 0;
                 waitCnt++;
-                barrier = new CyclicBarrier(waitCnt);
             }
+            writtenPos = buffer.position();
             buffer.force();
+            nowWaitCnt = 0;
         }
     }
 
-    private void timeoutWrite() {
-        barrier.reset();
+    private void timeoutWrite(WalInfoBasic info) {
         synchronized (LOCK) {
+            if (info.walPos <= writtenPos) return;
+            timeoutTimes++;
+            fuck++;
             if (fuck > 2 && waitCnt >= 2) {
                 waitCnt--;
                 fuck = 0;
                 noFuck = 0;
-                if (waitCnt > 1) {
-                    barrier = new CyclicBarrier(waitCnt);
-                }
             }
+            writtenPos = buffer.position();
             buffer.force();
+            nowWaitCnt = 0;
         }
     }
 
@@ -111,14 +122,14 @@ public class BufferEncoder {
             try {
                 if (channel != null) {
                     buffer.force();
+                    channel.close();
                     Cleaner cleaner = ((DirectBuffer) buffer).cleaner();
                     if (cleaner != null) {
                         cleaner.clean();
                     }
-                    channel.close();
                 }
                 channel = FileChannel.open(
-                        Constant.getWALInfoPath(info.walId, part),
+                        Constant.getWALInfoPath(info.walId, ++part),
                         StandardOpenOption.READ,
                         StandardOpenOption.WRITE,
                         StandardOpenOption.CREATE);
@@ -131,7 +142,6 @@ public class BufferEncoder {
                 e.printStackTrace();
             }
             pos = 0;
-            part++;
         }
     }
 }
