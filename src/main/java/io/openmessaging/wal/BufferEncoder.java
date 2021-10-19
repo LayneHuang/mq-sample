@@ -68,7 +68,7 @@ public class BufferEncoder {
             nowWaitCnt++;
             if (nowWaitCnt < waitCnt) {
                 condition.await(10L * waitCnt, TimeUnit.MILLISECONDS);
-                if (info.walPos <= writtenPos) return;
+                if (info.getEndPos() <= writtenPos) return;
                 timeoutWrite(info);
             } else {
                 okWrite(info);
@@ -87,7 +87,7 @@ public class BufferEncoder {
 
     private void okWrite(WalInfoBasic info) {
         synchronized (LOCK) {
-            if (info.walPos <= writtenPos) return;
+            if (info.getEndPos() <= writtenPos) return;
             fullTimes++;
             noFuck++;
             if (noFuck > 2 && waitCnt < 20) {
@@ -103,7 +103,7 @@ public class BufferEncoder {
 
     private void timeoutWrite(WalInfoBasic info) {
         synchronized (LOCK) {
-            if (info.walPos <= writtenPos) return;
+            if (info.getEndPos() <= writtenPos) return;
             timeoutTimes++;
             fuck++;
             if (fuck > 2 && waitCnt >= 2) {

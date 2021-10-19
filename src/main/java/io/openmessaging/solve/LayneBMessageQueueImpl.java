@@ -93,8 +93,7 @@ public class LayneBMessageQueueImpl extends MessageQueue {
         }
         // 索引
         Idx idx = IDX.computeIfAbsent(key, k -> new Idx());
-        idx.add((int) info.pOffset, info.walId, info.walPart, info.walPos + WalInfoBasic.BYTES, info.valueSize);
-
+        idx.add((int) info.pOffset, info.walPart, info.walPos + WalInfoBasic.BYTES, info.valueSize);
         partitionCnt.decrementAndGet();
         return info.pOffset;
     }
@@ -112,36 +111,33 @@ public class LayneBMessageQueueImpl extends MessageQueue {
         int pOffset = APPEND_OFFSET_MAP.getOrDefault(key, new AtomicInteger()).get()
                 - WAL_ID_CNT_MAP.getOrDefault(key, new AtomicInteger()).get();
         fetchNum = Math.min(fetchNum, (int) (pOffset - offset));
-        return readValueFromWAL((int) offset, fetchNum, idx);
+        return readValueFromWAL(topicId, (int) offset, fetchNum, idx);
     }
 
-    private Map<Integer, ByteBuffer> readValueFromWAL(int offset, int fetchNum, Idx idx) {
+    private Map<Integer, ByteBuffer> readValueFromWAL(int topicId, int offset, int fetchNum, Idx idx) {
         Map<Integer, ByteBuffer> result = new HashMap<>(fetchNum);
         if (idx == null || fetchNum <= 0) return result;
         FileChannel valueChannel = null;
-        List<WalInfoBasic> idxList = new ArrayList<>(fetchNum);
+        int walId = topicId % Constant.WAL_FILE_COUNT;
+        List<WalInfoBasic> idxList = new ArrayList<>();
         for (int i = 0; i < fetchNum; ++i) {
             int key = offset + i;
             if ((key << 1) >= idx.getSize()) break;
-            int walId = idx.getWalId(key);
             int part = idx.getWalPart(key);
             int pos = idx.getWalValuePos(key);
             int size = idx.getWalValueSize(key);
-            idxList.add(new WalInfoBasic(i, walId, part, pos, size));
+            idxList.add(new WalInfoBasic(i, part, pos, size));
         }
-
-        int curWalId = -1;
         int curPart = -1;
         try {
             for (WalInfoBasic info : idxList) {
-                if (valueChannel == null || info.walId != curWalId || info.walPart != curPart) {
+                if (valueChannel == null || info.walPart != curPart) {
                     if (valueChannel != null) {
                         valueChannel.close();
                     }
                     valueChannel = FileChannel.open(
-                            Constant.getWALInfoPath(info.walId, info.walPart),
+                            Constant.getWALInfoPath(walId, info.walPart),
                             StandardOpenOption.READ);
-                    curWalId = info.walId;
                     curPart = info.walPart;
                 }
                 ByteBuffer buffer = ByteBuffer.allocate(info.valueSize);

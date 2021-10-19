@@ -15,7 +15,7 @@ public class Idx {
     private int[] list = new int[128];
     private final Lock lock = new ReentrantLock();
 
-    public void add(int pos, int walId, int walPart, int walPos, int valueSize) {
+    public void add(int pos, int walPart, int walPos, int valueSize) {
         int maxPos = pos << 1 | 1;
         if (maxPos + IDX_SIZE > list.length) {
             lock.lock();
@@ -24,7 +24,7 @@ public class Idx {
             list = nList;
             lock.unlock();
         }
-        list[pos << 1] = ((walPos & WAL_VALUE_BASE) << WAL_ID_DIS) | (walId & WAL_ID_BASE);
+        list[pos << 1] = walPos;
         list[pos << 1 | 1] = ((walPart & BASE) << BASE_DIS) | (valueSize & BASE);
     }
 
@@ -42,11 +42,7 @@ public class Idx {
         return list[p] & BASE;
     }
 
-    public int getWalId(int pos) {
-        return list[pos << 1] & WAL_ID_BASE;
-    }
-
     public int getWalValuePos(int pos) {
-        return (list[pos << 1] >> WAL_ID_DIS) & WAL_VALUE_BASE;
+        return list[pos << 1];
     }
 }

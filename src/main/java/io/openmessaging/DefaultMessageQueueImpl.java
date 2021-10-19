@@ -2,7 +2,6 @@ package io.openmessaging;
 
 import io.openmessaging.solve.FinkysMessageQueueImpl;
 import io.openmessaging.solve.LayneBMessageQueueImpl;
-import io.openmessaging.solve.LayneMessageQueueImpl;
 import io.openmessaging.solve.LeoMessageQueueImpl;
 
 import java.nio.ByteBuffer;
