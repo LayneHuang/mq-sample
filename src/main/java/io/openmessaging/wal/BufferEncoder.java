@@ -30,7 +30,34 @@ public class BufferEncoder {
     public void submit(WalInfoBasic info) throws InterruptedException {
         synchronized (LOCK) {
             // wal 分段
-            fetchBuffer(info);
+            if (channel == null || pos + info.getSize() >= Constant.WRITE_BEFORE_QUERY) {
+                try {
+                    if (channel != null) {
+                        buffer.force();
+                        channel.close();
+                        Cleaner cleaner = ((DirectBuffer) buffer).cleaner();
+                        if (cleaner != null) {
+                            cleaner.clean();
+                        }
+                    }
+                    channel = FileChannel.open(
+                            Constant.getWALInfoPath(info.walId, ++part),
+                            StandardOpenOption.READ,
+                            StandardOpenOption.WRITE,
+                            StandardOpenOption.CREATE);
+                    buffer = channel.map(
+                            FileChannel.MapMode.READ_WRITE,
+                            0,
+                            Constant.WRITE_BEFORE_QUERY
+                    );
+                    pos = 0;
+                    nowWaitCnt = 0;
+                    writtenPos = buffer.position();
+                    log.info("change file: {}, {}", part, writtenPos);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
             info.walPart = part;
             info.walPos = pos;
             // topicId
@@ -116,40 +143,9 @@ public class BufferEncoder {
     }
 
     private boolean forced(WalInfoBasic info) {
-        if (info.walPart < part) return true;
-        return info.walPart == part && info.getEndPos() <= writtenPos;
-    }
-
-    private void fetchBuffer(WalInfoBasic info) {
         synchronized (LOCK) {
-            if (channel == null || pos + info.getSize() >= Constant.WRITE_BEFORE_QUERY) {
-                try {
-                    if (channel != null) {
-                        buffer.force();
-                        channel.close();
-                        Cleaner cleaner = ((DirectBuffer) buffer).cleaner();
-                        if (cleaner != null) {
-                            cleaner.clean();
-                        }
-                    }
-                    channel = FileChannel.open(
-                            Constant.getWALInfoPath(info.walId, ++part),
-                            StandardOpenOption.READ,
-                            StandardOpenOption.WRITE,
-                            StandardOpenOption.CREATE);
-                    buffer = channel.map(
-                            FileChannel.MapMode.READ_WRITE,
-                            0,
-                            Constant.WRITE_BEFORE_QUERY
-                    );
-                    pos = 0;
-                    nowWaitCnt = 0;
-                    writtenPos = buffer.position();
-                    log.info("change file: {}, {}", part, writtenPos);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
+            if (info.walPart < part) return true;
+            return info.walPart == part && info.getEndPos() <= writtenPos;
         }
     }
 }
