@@ -121,32 +121,34 @@ public class BufferEncoder {
     }
 
     private void fetchBuffer(WalInfoBasic info) {
-        if (channel == null || pos + info.getSize() >= Constant.WRITE_BEFORE_QUERY) {
-            try {
-                if (channel != null) {
-                    buffer.force();
-                    channel.close();
-                    Cleaner cleaner = ((DirectBuffer) buffer).cleaner();
-                    if (cleaner != null) {
-                        cleaner.clean();
+        synchronized (LOCK) {
+            if (channel == null || pos + info.getSize() >= Constant.WRITE_BEFORE_QUERY) {
+                try {
+                    if (channel != null) {
+                        buffer.force();
+                        channel.close();
+                        Cleaner cleaner = ((DirectBuffer) buffer).cleaner();
+                        if (cleaner != null) {
+                            cleaner.clean();
+                        }
                     }
+                    channel = FileChannel.open(
+                            Constant.getWALInfoPath(info.walId, ++part),
+                            StandardOpenOption.READ,
+                            StandardOpenOption.WRITE,
+                            StandardOpenOption.CREATE);
+                    buffer = channel.map(
+                            FileChannel.MapMode.READ_WRITE,
+                            0,
+                            Constant.WRITE_BEFORE_QUERY
+                    );
+                    pos = 0;
+                    nowWaitCnt = 0;
+                    writtenPos = buffer.position();
+                    log.info("change file: {}, {}", part, writtenPos);
+                } catch (IOException e) {
+                    e.printStackTrace();
                 }
-                channel = FileChannel.open(
-                        Constant.getWALInfoPath(info.walId, ++part),
-                        StandardOpenOption.READ,
-                        StandardOpenOption.WRITE,
-                        StandardOpenOption.CREATE);
-                buffer = channel.map(
-                        FileChannel.MapMode.READ_WRITE,
-                        0,
-                        Constant.WRITE_BEFORE_QUERY
-                );
-                pos = 0;
-                nowWaitCnt = 0;
-                writtenPos = buffer.position();
-                log.info("change file: {}, {}", part, writtenPos);
-            } catch (IOException e) {
-                e.printStackTrace();
             }
         }
     }
