@@ -42,7 +42,7 @@ public class BufferEncoder {
                         channel.close();
                     }
                     part++;
-                    Files.createDirectories(Constant.getWALInfoPath(info.walId, part));
+                    Files.createFile(Constant.getWALInfoPath(info.walId, part));
                     channel = FileChannel.open(
                             Constant.getWALInfoPath(info.walId, part),
                             StandardOpenOption.READ,
