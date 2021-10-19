@@ -31,6 +31,7 @@ public class DataBlock2 {
         try {
             Files.createDirectories(logDir);
             setupLog();
+            System.out.println(logDir.toString());
         } catch (IOException e) {
             e.printStackTrace();
         }

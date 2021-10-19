@@ -19,6 +19,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static io.openmessaging.leo2.Utils.unmap;
 
@@ -66,9 +67,12 @@ public class DataManager {
 
     private void blockTask(CountDownLatch latch, byte partitionId) throws IOException {
         Path partitionDir = LOGS_PATH.resolve(String.valueOf(partitionId));
-        List<Byte> logNums = Files.list(partitionDir).map(logFile ->
-                Byte.parseByte(String.valueOf(logFile.getFileName()))
-        ).sorted().collect(Collectors.toList());
+        List<Byte> logNums;
+        try (Stream<Path> logPaths = Files.list(partitionDir)){
+            logNums = logPaths.map(logFile ->
+                    Byte.parseByte(String.valueOf(logFile.getFileName()))
+            ).sorted().collect(Collectors.toList());
+        }
         int midIndex = logNums.size() / 2;
         List<Byte> left = logNums.subList(0, midIndex);
         List<Byte> right = logNums.subList(midIndex, logNums.size());
