@@ -9,11 +9,11 @@ import java.io.File;
 public class CacheManager {
 
     public static final String DIR_PMEM = "/pmem";
-    public static final long PMEM_SIZE = new File(DIR_PMEM).length();
-    public static final Heap HEAP = Heap.createHeap(DIR_PMEM);
+//    public static final long PMEM_SIZE = new File(DIR_PMEM).length();
+//    public static final Heap HEAP = Heap.createHeap(DIR_PMEM);
 
-    static {
-        System.out.println("PMEM_SIZE " + PMEM_SIZE);
+//    static {
+//        System.out.println("PMEM_SIZE " + PMEM_SIZE);
 //        // first run -- write values
 //        MemoryBlock block = HEAP.allocateMemoryBlock(256, false);
 //        HEAP.setRoot(block.handle());
@@ -36,16 +36,16 @@ public class CacheManager {
 //        otherBlock.flush(0, Integer.BYTES);
 //        block.setLong(16, otherBlock.handle());
 //        block.flush(16, Long.BYTES);
-    }
+//    }
 
-    public static void init(){
-        System.out.println("PMEM_SIZE " + PMEM_SIZE);
-    }
+//    public static void init(){
+//        System.out.println("PMEM_SIZE " + PMEM_SIZE);
+//    }
 
-    public static void write(){
-        // first run -- write values
-        MemoryBlock block = HEAP.allocateMemoryBlock(256, false);
-        HEAP.setRoot(block.handle());
-    }
+//    public static void write(){
+//        // first run -- write values
+//        MemoryBlock block = HEAP.allocateMemoryBlock(256, false);
+//        HEAP.setRoot(block.handle());
+//    }
 
 }

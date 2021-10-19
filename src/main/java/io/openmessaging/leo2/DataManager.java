@@ -89,6 +89,7 @@ public class DataManager {
                 FileChannel logFileChannel = FileChannel.open(logFile, StandardOpenOption.READ, StandardOpenOption.WRITE);
                 long fileSize = logFileChannel.size();
                 MappedByteBuffer logBuf = logFileChannel.map(FileChannel.MapMode.READ_ONLY, 0, fileSize);
+                logBuf.load();
                 while (logBuf.remaining() > MSG_META_SIZE) {
                     int position = logBuf.position();
                     byte topic = logBuf.get();
@@ -140,10 +141,11 @@ public class DataManager {
             int key = 0;
             Indexer indexer = getIndexer(topic, queueId);
             int maxCount = Math.min(indexer.fullBufs.size(), offset + fetchNum);
-            for (int i = offset; i < maxCount; i++) {
-                OffsetBuf fullBuf = indexer.fullBufs.get(i);
+            while (offset < maxCount) {
+                OffsetBuf fullBuf = indexer.fullBufs.get(offset);
                 readLog(dataMap, key, fullBuf.buf);
                 key++;
+                offset++;
             }
         } catch (IOException e) {
             e.printStackTrace();
