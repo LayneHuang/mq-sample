@@ -51,8 +51,8 @@ public class DataBlock2 {
     private final Object WRITE_LOCKER = new Object();
     private volatile int barrierCount = THREAD_MAX / 2;
     private volatile CyclicBarrier barrier = new CyclicBarrier(barrierCount);
-    private volatile int noFuck = 0;
-    private volatile int fuck = 0;
+    private volatile int allDone = 0;
+    private volatile int allBreak = 0;
     private volatile int timeoutTimes = 0;
     private volatile int fullTimes = 0;
 
@@ -60,6 +60,8 @@ public class DataBlock2 {
         short msgLen = (short) data.limit();
         short dataSize = (short) (MSG_META_SIZE + msgLen);
         try {
+            MappedByteBuffer tempBuf;
+            CyclicBarrier tempBarrier = barrier;
             synchronized (WRITE_LOCKER) {
                 if (logMappedBuf.remaining() < dataSize) {
                     logMappedBuf.force();
@@ -67,32 +69,33 @@ public class DataBlock2 {
                     logFileChannel.close();
                     openLog();
                 }
-                int position = logMappedBuf.position();
-                logMappedBuf.put(topic); // 1
-                logMappedBuf.putShort(queueId); // 2
-                logMappedBuf.putInt(offset); // 4
-                logMappedBuf.putShort(msgLen); // 2
-                logMappedBuf.put(data);
+                tempBuf = logMappedBuf;
+                int position = tempBuf.position();
+                tempBuf.put(topic); // 1
+                tempBuf.putShort(queueId); // 2
+                tempBuf.putInt(offset); // 4
+                tempBuf.putShort(msgLen); // 2
+                tempBuf.put(data);
                 indexer.writeIndex(id, logNumAdder, position, dataSize);
             }
             try {
                 int arrive = 0;
                 if (barrierCount > 1) {
-                    arrive = barrier.await(10L * barrierCount, TimeUnit.MILLISECONDS);
+                    arrive = tempBarrier.await(10L * barrierCount, TimeUnit.MILLISECONDS);
                 }
                 if (arrive == 0) {
                     fullTimes++;
-                    noFuck++;
-                    okWrite();
+                    allDone++;
+                    okWrite(tempBuf);
                 }
             } catch (TimeoutException e) {
                 // 只有一个超时，其他都是 BrokenBarrierException
                 timeoutTimes++;
-                fuck++;
+                allBreak++;
                 if (timeoutTimes % 50 == 0) {
                     System.out.println("TIMEOVER:" + timeoutTimes + ", FULL:" + fullTimes + ", BC:" + barrierCount);
                 }
-                timeoutWrite();
+                timeoutWrite(tempBuf);
             } catch (BrokenBarrierException | InterruptedException ignored) {
             }
         } catch (Exception e) {
@@ -100,34 +103,34 @@ public class DataBlock2 {
         }
     }
 
-    private void okWrite() {
+    private void okWrite(MappedByteBuffer tempBuf) {
         synchronized (WRITE_LOCKER) {
-            if (noFuck > 2 && barrierCount < 20) {
-                noFuck = 0;
-                fuck = 0;
+            if (allDone > 2 && barrierCount < 20) {
+                allDone = 0;
+                allBreak = 0;
                 barrierCount++;
                 barrier = new CyclicBarrier(barrierCount);
             }
             try {
-                logMappedBuf.force();
+                tempBuf.force();
             } catch (Exception ignored) {
             }
         }
     }
 
-    private void timeoutWrite() {
+    private void timeoutWrite(MappedByteBuffer tempBuf) {
         synchronized (WRITE_LOCKER) {
             barrier.reset();
-            if (fuck > 2 && barrierCount >= 2) {
+            if (allBreak > 2 && barrierCount > 1) {
                 barrierCount--;
-                fuck = 0;
-                noFuck = 0;
+                allBreak = 0;
+                allDone = 0;
                 if (barrierCount > 1) {
                     barrier = new CyclicBarrier(barrierCount);
                 }
             }
             try {
-                logMappedBuf.force();
+                tempBuf.force();
             } catch (Exception ignored) {
             }
         }
