@@ -87,7 +87,7 @@ public class BufferEncoder {
             buffer.put((byte) (info.valueSize & 0xff));
             // value
             buffer.put(info.value);
-            pos += info.getSize();
+            walPos.addAndGet(info.getSize());
         }
     }
 
