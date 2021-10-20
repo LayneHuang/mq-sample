@@ -12,6 +12,7 @@ import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -22,8 +23,8 @@ public class BufferEncoder {
     private FileChannel channel = null;
     private MappedByteBuffer buffer = null;
     private final Object LOCK = new Object();
-    public volatile int pos = 0;
-    public volatile int part = 0;
+    public AtomicInteger walPos = new AtomicInteger();
+    public AtomicInteger walPart = new AtomicInteger();
 
     public BufferEncoder() {
     }
@@ -31,8 +32,11 @@ public class BufferEncoder {
     public void submit(WalInfoBasic info) throws InterruptedException {
         synchronized (LOCK) {
             // wal 分段
+            int part = walPart.get();
+            int pos = walPos.get();
             if (channel == null || pos + info.getSize() >= Constant.WRITE_BEFORE_QUERY) {
                 long tId = Thread.currentThread().getId();
+                part = walPart.incrementAndGet();
                 try {
                     if (channel != null) {
                         buffer.force();
@@ -42,7 +46,6 @@ public class BufferEncoder {
                         }
                         channel.close();
                     }
-                    part++;
                     log.info("Thread: {}, walId: {}, change file: {}, {}",
                             tId,
                             info.walId,
@@ -96,7 +99,7 @@ public class BufferEncoder {
 
     private final Lock waitLock = new ReentrantLock();
     private final Condition condition = waitLock.newCondition();
-    private int nowWaitCnt = 0;
+    private volatile int nowWaitCnt = 0;
 
     public void holdOn(WalInfoBasic info) {
         if (waitCnt <= 1) {
@@ -157,9 +160,7 @@ public class BufferEncoder {
     }
 
     private boolean forced(WalInfoBasic info) {
-        synchronized (LOCK) {
-            if (info.walPart < part) return true;
-            return info.walPart == part && info.getEndPos() <= writtenPos;
-        }
+        if (info.walPart < walPart.get()) return true;
+        return info.walPart == walPart.get() && info.getEndPos() <= writtenPos;
     }
 }
