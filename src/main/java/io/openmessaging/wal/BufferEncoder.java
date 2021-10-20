@@ -11,6 +11,8 @@ import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
@@ -41,18 +43,18 @@ public class BufferEncoder {
                 try {
                     if (channel != null) {
                         buffer.force();
+                        forcedMap.put(info.walPart, buffer.position());
                         Cleaner cleaner = ((DirectBuffer) buffer).cleaner();
                         if (cleaner != null) {
                             cleaner.clean();
                         }
                         channel.close();
                     }
-                    log.info("Thread: {}, walId: {}, pre part: {}, part: {}, {}",
+                    log.info("Thread: {}, walId: {}, pre part: {}, part: {}",
                             tId,
                             info.walId,
                             prePart,
-                            part,
-                            writtenPos
+                            part
                     );
                     Files.createFile(Constant.getWALInfoPath(info.walId, part));
                     channel = FileChannel.open(
@@ -66,15 +68,13 @@ public class BufferEncoder {
                     );
                     pos = 0;
                     nowWaitCnt = 0;
-                    writtenPos = buffer.position();
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
-                log.info("Thread: {}, walId: {}, change file: {}, {}, Finished",
+                log.info("Thread: {}, walId: {}, change file: {}, Finished",
                         tId,
                         info.walId,
-                        part,
-                        writtenPos
+                        part
                 );
             }
             info.walPart = part;
@@ -97,7 +97,6 @@ public class BufferEncoder {
     private volatile int fuck = 0;
     private volatile int timeoutTimes = 0;
     private volatile int fullTimes = 0;
-    private volatile int writtenPos = 0;
 
     private final Lock waitLock = new ReentrantLock();
     private final Condition condition = waitLock.newCondition();
@@ -118,8 +117,8 @@ public class BufferEncoder {
                 okWrite(info);
                 condition.signalAll();
                 if (fullTimes % 1000 == 0) {
-                    log.info("TIME OVER: {}, FULL: {}, FINISH: {}, WAIT CNT: {}",
-                            timeoutTimes, fullTimes, writtenPos, waitCnt);
+                    log.info("TIME OVER: {}, FULL: {}, WAIT CNT: {}",
+                            timeoutTimes, fullTimes, waitCnt);
                 }
             }
         } catch (InterruptedException e) {
@@ -139,8 +138,8 @@ public class BufferEncoder {
                 fuck = 0;
                 waitCnt++;
             }
-            writtenPos = buffer.position();
             buffer.force();
+            forcedMap.put(info.walPart, buffer.position());
             nowWaitCnt = 0;
         }
     }
@@ -155,14 +154,16 @@ public class BufferEncoder {
                 fuck = 0;
                 noFuck = 0;
             }
-            writtenPos = buffer.position();
             buffer.force();
+            forcedMap.put(info.walPart, buffer.position());
             nowWaitCnt = 0;
         }
     }
 
+    private final Map<Integer, Integer> forcedMap = new ConcurrentHashMap<>();
+
     private boolean forced(WalInfoBasic info) {
-        if (info.walPart < walPart.get()) return true;
-        return info.walPart == walPart.get() && info.getEndPos() <= writtenPos;
+        int writtenPos = forcedMap.computeIfAbsent(info.walPart, k -> 0);
+        return info.getEndPos() <= writtenPos;
     }
 }
