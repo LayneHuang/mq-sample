@@ -81,16 +81,7 @@ public class BufferEncoder {
             }
             info.walPart = part;
             info.walPos = pos;
-            // topicId
-            buffer.put((byte) info.topicId);
-            // queueId
-            buffer.put((byte) ((info.queueId >> 8) & 0xff));
-            buffer.put((byte) (info.queueId & 0xff));
-            // value
-            buffer.put((byte) ((info.valueSize >> 8) & 0xff));
-            buffer.put((byte) (info.valueSize & 0xff));
-            // value
-            buffer.put(info.value);
+            info.encode(buffer);
             walPos.addAndGet(info.getSize());
         }
     }
