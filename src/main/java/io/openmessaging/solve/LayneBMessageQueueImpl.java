@@ -60,7 +60,7 @@ public class LayneBMessageQueueImpl extends MessageQueue {
         return allIn(topic, queueId, data);
     }
 
-//    public static ThreadLocal<BufferEncoder> BLOCK_TL = new ThreadLocal<>();
+    public static ThreadLocal<BufferEncoder> BLOCK_TL = new ThreadLocal<>();
     public static ConcurrentHashMap<Integer, BufferEncoder> BLOCKS = new ConcurrentHashMap<>(40);
 
     private long allIn(String topic, int queueId, ByteBuffer data) {
@@ -68,11 +68,11 @@ public class LayneBMessageQueueImpl extends MessageQueue {
         int walId = topicId % Constant.WAL_FILE_COUNT;
         WalInfoBasic info = new WalInfoBasic(topicId, queueId, data);
         info.walId = walId;
-//        BufferEncoder encoder = BLOCK_TL.get();
-//        if (encoder == null) {
-        BufferEncoder encoder = BLOCKS.computeIfAbsent(walId, key -> new BufferEncoder());
-//            BLOCK_TL.set(encoder);
-//        }
+        BufferEncoder encoder = BLOCK_TL.get();
+        if (encoder == null) {
+            encoder = BLOCKS.computeIfAbsent(walId, key -> new BufferEncoder());
+            BLOCK_TL.set(encoder);
+        }
         // 某块计算处理中的 msg 数目
         int key = info.getKey();
         try {
