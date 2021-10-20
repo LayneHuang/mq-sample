@@ -36,6 +36,7 @@ public class BufferEncoder {
             int pos = walPos.get();
             if (channel == null || pos + info.getSize() >= Constant.WRITE_BEFORE_QUERY) {
                 long tId = Thread.currentThread().getId();
+                int prePart = part;
                 part = walPart.incrementAndGet();
                 try {
                     if (channel != null) {
@@ -46,9 +47,10 @@ public class BufferEncoder {
                         }
                         channel.close();
                     }
-                    log.info("Thread: {}, walId: {}, change file: {}, {}",
+                    log.info("Thread: {}, walId: {}, pre part: {}, part: {}, {}",
                             tId,
                             info.walId,
+                            prePart,
                             part,
                             writtenPos
                     );
