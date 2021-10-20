@@ -132,7 +132,10 @@ public class DataManager {
         indexBuf.rewind();
         Path logFile = DIR_PMEM.resolve(String.valueOf(partitionId)).resolve(String.valueOf(logNum));
         if (Files.notExists(logFile)) {
+            System.out.println("未命中");
             logFile = LOGS_PATH.resolve(String.valueOf(partitionId)).resolve(String.valueOf(logNum));
+        } else{
+            System.out.println("命中");
         }
         FileChannel logChannel = FileChannel.open(logFile, StandardOpenOption.READ);
         try {

@@ -11,10 +11,12 @@ import java.nio.file.StandardOpenOption;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static io.openmessaging.leo2.DataManager.G1;
+import static io.openmessaging.leo2.Utils.unmap;
 
 public class Cache {
 
     public static final Path DIR_PMEM = Paths.get("/pmem");
+    //        public static final Path DIR_PMEM = Paths.get(System.getProperty("user.dir")).resolve("target").resolve("pmem");
     public static final int DIR_PMEM_SIZE = 60;
 
     public static volatile AtomicInteger size = new AtomicInteger();
@@ -39,10 +41,16 @@ public class Cache {
     }
 
     public void openLog(byte logNumAdder) throws IOException {
+        if (logMappedBuf != null) {
+            logMappedBuf.force();
+            unmap(logMappedBuf);
+            logMappedBuf = null;
+            logFileChannel.close();
+            logFileChannel = null;
+        }
         if (size.get() < DIR_PMEM_SIZE) {
             this.logNumAdder = logNumAdder;
             setupLog();
-            size.getAndIncrement();
         } else {
             full = true;
         }
@@ -53,6 +61,7 @@ public class Cache {
         Files.createFile(logFile);
         logFileChannel = FileChannel.open(logFile, StandardOpenOption.READ, StandardOpenOption.WRITE);
         logMappedBuf = logFileChannel.map(FileChannel.MapMode.READ_WRITE, 0, G1);// 1G
+        size.getAndIncrement();
     }
 
     public void write(byte topic, short queueId, int offset, short msgLen, ByteBuffer data) {
@@ -62,6 +71,7 @@ public class Cache {
         tempBuf.putShort(queueId); // 2
         tempBuf.putInt(offset); // 4
         tempBuf.putShort(msgLen); // 2
+        data.rewind();
         tempBuf.put(data);
     }
 
