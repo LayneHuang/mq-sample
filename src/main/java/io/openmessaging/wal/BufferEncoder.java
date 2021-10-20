@@ -25,9 +25,9 @@ public class BufferEncoder {
     private FileChannel channel = null;
     private MappedByteBuffer buffer = null;
     private final Object LOCK = new Object();
-    public AtomicInteger walPos = new AtomicInteger();
-    public AtomicInteger walPart = new AtomicInteger();
     public final int id;
+    private int part;
+    private int pos;
 
     public BufferEncoder(int id) {
         this.id = id;
@@ -36,16 +36,13 @@ public class BufferEncoder {
     public void submit(WalInfoBasic info) throws InterruptedException {
         synchronized (LOCK) {
             // wal 分段
-            int part = walPart.get();
-            int pos = walPos.get();
             if (channel == null || pos + info.getSize() >= Constant.WRITE_BEFORE_QUERY) {
                 long tId = Thread.currentThread().getId();
-                int prePart = part;
-                part = walPart.incrementAndGet();
+                int prePart = part++;
                 try {
                     if (channel != null) {
                         buffer.force();
-                        forcedMap.put(info.walPart, buffer.position());
+                        forcedMap.put(prePart, buffer.position());
                         Cleaner cleaner = ((DirectBuffer) buffer).cleaner();
                         if (cleaner != null) {
                             cleaner.clean();
@@ -82,7 +79,7 @@ public class BufferEncoder {
             info.walPart = part;
             info.walPos = pos;
             info.encode(buffer);
-            walPos.addAndGet(info.getSize());
+            pos += info.getSize();
         }
     }
 
