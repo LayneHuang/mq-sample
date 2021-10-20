@@ -26,6 +26,7 @@ public class LayneBMessageQueueImpl extends MessageQueue {
     private static final Loader[] loader = new Loader[Constant.WAL_FILE_COUNT];
     public Map<Integer, Idx> IDX = new ConcurrentHashMap<>();
     private final Map<Integer, AtomicInteger> APPEND_OFFSET_MAP = new ConcurrentHashMap<>();
+    private final Map<Integer, AtomicInteger> DOING_OFFSET_MAP = new ConcurrentHashMap<>();
 
     public LayneBMessageQueueImpl() {
         reload();
@@ -75,6 +76,7 @@ public class LayneBMessageQueueImpl extends MessageQueue {
         info.walId = encoder.id;
         // 某块计算处理中的 msg 数目
         int key = info.getKey();
+        DOING_OFFSET_MAP.computeIfAbsent(key, k -> new AtomicInteger()).getAndIncrement();
         // 获取偏移
         info.pOffset = APPEND_OFFSET_MAP.computeIfAbsent(
                 key,
@@ -89,6 +91,7 @@ public class LayneBMessageQueueImpl extends MessageQueue {
         // 索引
         Idx idx = IDX.computeIfAbsent(key, k -> new Idx());
         idx.add((int) info.pOffset, info.walPart, info.walPos + WalInfoBasic.BYTES, info.valueSize);
+        DOING_OFFSET_MAP.get(key).decrementAndGet();
         return info.pOffset;
     }
 
@@ -102,7 +105,8 @@ public class LayneBMessageQueueImpl extends MessageQueue {
         int topicId = IdGenerator.getIns().getId(topic);
         int key = WalInfoBasic.getKey(topicId, queueId);
         Idx idx = IDX.get(key);
-        int pOffset = APPEND_OFFSET_MAP.getOrDefault(key, new AtomicInteger()).get();
+        int pOffset = APPEND_OFFSET_MAP.getOrDefault(key, new AtomicInteger()).get()
+                - DOING_OFFSET_MAP.getOrDefault(key, new AtomicInteger()).get();
         fetchNum = Math.min(fetchNum, (int) (pOffset - offset));
         return readValueFromWAL(topicId, (int) offset, fetchNum, idx);
     }
