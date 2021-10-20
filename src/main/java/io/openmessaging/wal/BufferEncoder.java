@@ -26,8 +26,8 @@ public class BufferEncoder {
     private MappedByteBuffer buffer = null;
     private final Object LOCK = new Object();
     public final int id;
-    private int part;
-    private int pos;
+    public int part;
+    public int pos;
 
     public BufferEncoder(int id) {
         this.id = id;
