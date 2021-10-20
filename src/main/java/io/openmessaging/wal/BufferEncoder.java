@@ -32,6 +32,7 @@ public class BufferEncoder {
         synchronized (LOCK) {
             // wal 分段
             if (channel == null || pos + info.getSize() >= Constant.WRITE_BEFORE_QUERY) {
+                long tId = Thread.currentThread().getId();
                 try {
                     if (channel != null) {
                         buffer.force();
@@ -42,6 +43,12 @@ public class BufferEncoder {
                         channel.close();
                     }
                     part++;
+                    log.info("Thread: {}, walId: {}, change file: {}, {}",
+                            tId,
+                            info.walId,
+                            part,
+                            writtenPos
+                    );
                     Files.createFile(Constant.getWALInfoPath(info.walId, part));
                     channel = FileChannel.open(
                             Constant.getWALInfoPath(info.walId, part),
@@ -55,10 +62,15 @@ public class BufferEncoder {
                     pos = 0;
                     nowWaitCnt = 0;
                     writtenPos = buffer.position();
-                    log.info("walId: {}, change file: {}, {}", info.walId, part, writtenPos);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
+                log.info("Thread: {}, walId: {}, change file: {}, {}, Finished",
+                        tId,
+                        info.walId,
+                        part,
+                        writtenPos
+                );
             }
             info.walPart = part;
             info.walPos = pos;
