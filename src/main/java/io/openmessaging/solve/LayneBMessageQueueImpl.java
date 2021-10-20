@@ -75,17 +75,17 @@ public class LayneBMessageQueueImpl extends MessageQueue {
         info.walId = encoder.id;
         // 某块计算处理中的 msg 数目
         int key = info.getKey();
+        // 获取偏移
+        info.pOffset = APPEND_OFFSET_MAP.computeIfAbsent(
+                key,
+                k -> new AtomicInteger()
+        ).getAndIncrement();
         try {
             encoder.submit(info);
             encoder.holdOn(info);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-        // 获取偏移
-        info.pOffset = APPEND_OFFSET_MAP.computeIfAbsent(
-                key,
-                k -> new AtomicInteger()
-        ).getAndIncrement();
         // 索引
         Idx idx = IDX.computeIfAbsent(key, k -> new Idx());
         idx.add((int) info.pOffset, info.walPart, info.walPos + WalInfoBasic.BYTES, info.valueSize);
