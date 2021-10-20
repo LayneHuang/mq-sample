@@ -65,14 +65,14 @@ public class LayneBMessageQueueImpl extends MessageQueue {
 
     private long allIn(String topic, int queueId, ByteBuffer data) {
         int topicId = IdGenerator.getIns().getId(topic);
-        int walId = topicId % Constant.WAL_FILE_COUNT;
         WalInfoBasic info = new WalInfoBasic(topicId, queueId, data);
-        info.walId = walId;
         BufferEncoder encoder = BLOCK_TL.get();
         if (encoder == null) {
-            encoder = BLOCKS.computeIfAbsent(walId, key -> new BufferEncoder());
+            int walId = topicId % Constant.WAL_FILE_COUNT;
+            encoder = BLOCKS.computeIfAbsent(walId, key -> new BufferEncoder(walId));
             BLOCK_TL.set(encoder);
         }
+        info.walId = encoder.id;
         // 某块计算处理中的 msg 数目
         int key = info.getKey();
         try {
@@ -139,7 +139,7 @@ public class LayneBMessageQueueImpl extends MessageQueue {
                 result.put((int) info.pOffset, buffer);
             }
         } catch (IOException e) {
-            BufferEncoder encoder = BLOCKS.computeIfAbsent(walId, key -> new BufferEncoder());
+            BufferEncoder encoder = BLOCKS.computeIfAbsent(walId, key -> new BufferEncoder(walId));
             int maxP = 1;
             while (Constant.getWALInfoPath(walId, maxP).toFile().exists()) maxP++;
             log.error("now walId: {}, part: {}, pos: {}, targetPart: {}, maxP: {}, resultSize: {}, e: {}",

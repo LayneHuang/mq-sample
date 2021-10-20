@@ -27,8 +27,10 @@ public class BufferEncoder {
     private final Object LOCK = new Object();
     public AtomicInteger walPos = new AtomicInteger();
     public AtomicInteger walPart = new AtomicInteger();
+    public final int id;
 
-    public BufferEncoder() {
+    public BufferEncoder(int id) {
+        this.id = id;
     }
 
     public void submit(WalInfoBasic info) throws InterruptedException {
