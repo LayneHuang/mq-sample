@@ -24,6 +24,7 @@ public class DataBlock2 {
     public byte logNumAdder = Byte.MIN_VALUE;
     public FileChannel logFileChannel;
     public MappedByteBuffer logMappedBuf;
+    public Cache cache;
 
     public DataBlock2(byte id) {
         this.id = id;
@@ -35,11 +36,13 @@ public class DataBlock2 {
         } catch (IOException e) {
             e.printStackTrace();
         }
+        cache = new Cache(id);
     }
 
     private void openLog() throws IOException {
         logNumAdder++;
         setupLog();
+        cache.openLog(logNumAdder);
     }
 
     private void setupLog() throws IOException {
@@ -78,6 +81,8 @@ public class DataBlock2 {
                 tempBuf.putShort(msgLen); // 2
                 tempBuf.put(data);
                 indexer.writeIndex(id, logNumAdder, position, dataSize);
+                // 缓存
+                cache.write(topic, queueId, offset, msgLen, data);
             }
             try {
                 int arrive = 0;

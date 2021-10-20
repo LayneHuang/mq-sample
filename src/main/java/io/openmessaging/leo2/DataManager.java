@@ -13,14 +13,11 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
+import static io.openmessaging.leo2.Cache.DIR_PMEM;
 import static io.openmessaging.leo2.Utils.unmap;
 
 public class DataManager {
@@ -35,20 +32,17 @@ public class DataManager {
     public static final short THREAD_MAX = 40;
     public static final short MSG_META_SIZE = 9;
     public static final short INDEX_BUF_SIZE = 8;
-    //    public static final short INDEX_TEMP_BUF_NUM = 2048;
-//    public static final short INDEX_TEMP_BUF_SIZE = INDEX_BUF_SIZE * INDEX_TEMP_BUF_NUM;
-    public static ConcurrentHashMap<String, Indexer> INDEXERS = new ConcurrentHashMap<>(1000_000);
+    public static final ConcurrentHashMap<String, Indexer> INDEXERS = new ConcurrentHashMap<>(1000_000);
 
-    public static ThreadLocal<DataBlock2> BLOCK_TL = new ThreadLocal<>();
-    public static AtomicInteger BLOCK_ID_ADDER = new AtomicInteger();
-    public static ConcurrentHashMap<Integer, DataBlock2> BLOCKS = new ConcurrentHashMap<>(THREAD_MAX);
+    public static final ThreadLocal<DataBlock2> BLOCK_TL = new ThreadLocal<>();
+    public static final AtomicInteger BLOCK_ID_ADDER = new AtomicInteger();
+    public static final ConcurrentHashMap<Integer, DataBlock2> BLOCKS = new ConcurrentHashMap<>(THREAD_MAX);
 
     public DataManager() {
         try {
             if (Files.notExists(LOGS_PATH)) {
                 Files.createDirectories(LOGS_PATH);
             } else {
-//                restartLogic();
                 // 重启
                 Files.list(LOGS_PATH).forEach(partitionDir -> {
                     byte partitionId = Byte.parseByte(String.valueOf(partitionDir.getFileName()));
@@ -96,74 +90,6 @@ public class DataManager {
         }
     }
 
-    public void restartLogic() throws Exception {
-        CountDownLatch latch = new CountDownLatch(4);
-        blockTask(latch, (byte) 0);
-        blockTask(latch, (byte) 1);
-        latch.await();
-        System.out.println("读完了");
-        // 根据 offset 排序
-        INDEXERS.values().forEach(indexer -> indexer.fullBufs.sort(Comparator.comparingInt(o -> o.offset)));
-    }
-
-    private void blockTask(CountDownLatch latch, byte partitionId) throws IOException {
-        Path partitionDir = LOGS_PATH.resolve(String.valueOf(partitionId));
-        List<Byte> logNums;
-        try (Stream<Path> logPaths = Files.list(partitionDir)) {
-            logNums = logPaths.map(logFile ->
-                    Byte.parseByte(String.valueOf(logFile.getFileName()))
-            ).sorted().collect(Collectors.toList());
-        }
-        int midIndex = logNums.size() / 2;
-        List<Byte> left = logNums.subList(0, midIndex);
-        List<Byte> right = logNums.subList(midIndex, logNums.size());
-        new Thread(() -> {
-            subTask(partitionDir, partitionId, left);
-            latch.countDown();
-        }).start();
-        new Thread(() -> {
-            subTask(partitionDir, partitionId, right);
-            latch.countDown();
-        }).start();
-    }
-
-    private void subTask(Path partitionDir, byte partitionId, List<Byte> left) {
-        try {
-            for (Byte logNum : left) {
-                Path logFile = partitionDir.resolve(String.valueOf(logNum));
-                FileChannel logFileChannel = FileChannel.open(logFile, StandardOpenOption.READ, StandardOpenOption.WRITE);
-                long fileSize = logFileChannel.size();
-                MappedByteBuffer logBuf = logFileChannel.map(FileChannel.MapMode.READ_ONLY, 0, fileSize);
-                logBuf.load();
-                while (logBuf.remaining() > MSG_META_SIZE) {
-                    int position = logBuf.position();
-                    byte topic = logBuf.get();
-                    short queueId = logBuf.getShort();
-                    int offset = logBuf.getInt();
-                    short msgLen = logBuf.getShort();
-                    if (msgLen == 0) break;
-                    logBuf.position(logBuf.position() + msgLen);
-                    short dataSize = (short) (MSG_META_SIZE + msgLen);
-                    // index
-                    ByteBuffer indexBuf = ByteBuffer.allocate(INDEX_BUF_SIZE);
-                    indexBuf.put(partitionId);
-                    indexBuf.put(logNum);
-                    indexBuf.putInt(position);
-                    indexBuf.putShort(dataSize);
-                    indexBuf.flip();
-                    Indexer indexer = getIndexer(topic, queueId);
-                    indexer.writeIndex(new OffsetBuf(offset, indexBuf));
-                }
-                unmap(logBuf);
-                logFileChannel.close();
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    // block 2 64k 75G cost: 330965
-
     public void writeLog(byte topic, short queueId, int offset, ByteBuffer data) {
         DataBlock2 dataBlock = BLOCK_TL.get();
         if (dataBlock == null) {
@@ -204,7 +130,10 @@ public class DataManager {
         int position = indexBuf.getInt() + MSG_META_SIZE;
         short dataSize = (short) (indexBuf.getShort() - MSG_META_SIZE);
         indexBuf.rewind();
-        Path logFile = LOGS_PATH.resolve(String.valueOf(partitionId)).resolve(String.valueOf(logNum));
+        Path logFile = DIR_PMEM.resolve(String.valueOf(partitionId)).resolve(String.valueOf(logNum));
+        if (Files.notExists(logFile)) {
+            logFile = LOGS_PATH.resolve(String.valueOf(partitionId)).resolve(String.valueOf(logNum));
+        }
         FileChannel logChannel = FileChannel.open(logFile, StandardOpenOption.READ);
         try {
             ByteBuffer msgBuf = ByteBuffer.allocate(dataSize);
