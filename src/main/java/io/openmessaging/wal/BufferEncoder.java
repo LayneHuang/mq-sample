@@ -14,7 +14,6 @@ import java.nio.file.StandardOpenOption;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -49,12 +48,6 @@ public class BufferEncoder {
                         }
                         channel.close();
                     }
-                    log.info("Thread: {}, walId: {}, pre part: {}, part: {}",
-                            tId,
-                            info.walId,
-                            prePart,
-                            part
-                    );
                     Files.createFile(Constant.getWALInfoPath(info.walId, part));
                     channel = FileChannel.open(
                             Constant.getWALInfoPath(info.walId, part),
@@ -70,11 +63,7 @@ public class BufferEncoder {
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
-                log.info("Thread: {}, walId: {}, change file: {}, Finished",
-                        tId,
-                        info.walId,
-                        part
-                );
+                log.info("Thread: {}, walId: {}, file: {}, Finished", tId, info.walId, part);
             }
             info.walPart = part;
             info.walPos = pos;
