@@ -43,6 +43,7 @@ public class Cache {
         tempMb = ROOT_HEAP.allocateMemoryBlock(G1);
         ROOT_HEAP.setRoot(tempMb.handle());
         mbs.add(tempMb);
+        position = 0;
         size.getAndIncrement();
     }
 
