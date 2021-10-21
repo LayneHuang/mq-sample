@@ -102,21 +102,20 @@ public class LayneBMessageQueueImpl extends MessageQueue {
         int topicId = IdGenerator.getIns().getId(topic);
         int key = WalInfoBasic.getKey(topicId, queueId);
         Idx idx = IDX.get(key);
-        int pOffset = APPEND_OFFSET_MAP.getOrDefault(key, new AtomicInteger()).get()
-                - DOING_OFFSET_MAP.getOrDefault(key, new AtomicInteger()).get();
-        fetchNum = Math.min(fetchNum, (int) (pOffset - offset));
-        return readValueFromWAL(topicId, (int) offset, fetchNum, idx);
-    }
+        int append = APPEND_OFFSET_MAP.getOrDefault(key, new AtomicInteger()).get();
+        int doing = DOING_OFFSET_MAP.getOrDefault(key, new AtomicInteger()).get();
+        int pOffset = append - doing;
 
-    private Map<Integer, ByteBuffer> readValueFromWAL(int topicId, int offset, int fetchNum, Idx idx) {
-        Map<Integer, ByteBuffer> result = new HashMap<>(fetchNum);
+        fetchNum = Math.min(fetchNum, (int) (pOffset - offset));
+
+        Map<Integer, ByteBuffer> result = new HashMap<>();
         if (idx == null || fetchNum <= 0) return result;
         FileChannel valueChannel = null;
         int walId = topicId % Constant.WAL_FILE_COUNT;
         List<WalInfoBasic> idxList = new ArrayList<>();
         for (int i = 0; i < fetchNum; ++i) {
-            int key = offset + i;
-            if ((key << 1 | 1) >= idx.getSize()) break;
+            int idxPos = (int) offset + i;
+            if ((idxPos << 1 | 1) >= idx.getSize()) break;
             int part = idx.getWalPart(key);
             int pos = idx.getWalValuePos(key);
             int size = idx.getWalValueSize(key);
@@ -140,13 +139,13 @@ public class LayneBMessageQueueImpl extends MessageQueue {
                 result.put((int) info.pOffset, buffer);
             }
         } catch (IOException e) {
-            BufferEncoder encoder = BLOCKS.computeIfAbsent(walId, key -> new BufferEncoder(walId));
+            BufferEncoder encoder = BLOCKS.computeIfAbsent(walId, k -> new BufferEncoder(walId));
             int createFilePart = 1;
             while (Constant.getWALInfoPath(walId, createFilePart).toFile().exists()) createFilePart++;
-            int queryMaxPart = idxList.stream().map(item -> item.walPart).max(Comparator.naturalOrder()).get();
+            int queryMaxPart = idxList.get(fetchNum - 1).walPart;
             int queryMaxPos = idxList.get(fetchNum - 1).walPos;
-            log.error("now walId: {}, part: {}, pos: {}, targetPart: {}, bufferPart:{}, bufferPos: {}, createFilePart: {}, queryMaxPart: {}, queryMaxPos: {},resultSize: {}, e: {}",
-                    walId, encoder.part, encoder.pos, curPart, encoder.part, encoder.pos, createFilePart - 1, queryMaxPart, queryMaxPos, result.size(), e.getMessage());
+            log.error("now walId: {}, append: {}, doing: {}, part: {}, pos: {}, createFilePart: {}, queryMaxPart: {}, queryMaxPos: {},resultSize: {}, e: {}",
+                    walId, append, doing, encoder.part, encoder.pos, createFilePart - 1, queryMaxPart, queryMaxPos, result.size(), e.getMessage());
             return new HashMap<>();
         } finally {
             if (valueChannel != null) {
