@@ -20,10 +20,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class LayneBMessageQueueImpl extends MessageQueue {
     private static final Logger log = LoggerFactory.getLogger(LayneBMessageQueueImpl.class);
-    private static final Loader[] loader = new Loader[Constant.WAL_FILE_COUNT];
     public Map<Integer, Idx> IDX = new ConcurrentHashMap<>();
     private final Map<Integer, AtomicInteger> APPEND_OFFSET_MAP = new ConcurrentHashMap<>();
-//    private final Map<Integer, AtomicInteger> DOING_OFFSET_MAP = new ConcurrentHashMap<>();
+    //    private final Map<Integer, AtomicInteger> DOING_OFFSET_MAP = new ConcurrentHashMap<>();
+    public static ThreadLocal<BufferEncoder> BLOCK_TL = new ThreadLocal<>();
+    public static ConcurrentHashMap<Integer, BufferEncoder> BLOCKS = new ConcurrentHashMap<>(40);
 
     public LayneBMessageQueueImpl() {
         reload();
@@ -40,19 +41,11 @@ public class LayneBMessageQueueImpl extends MessageQueue {
 
     private long start = 0;
 
-
     @Override
     public long append(String topic, int queueId, ByteBuffer data) {
         if (start == 0) {
             start = System.currentTimeMillis();
         }
-        return allIn(topic, queueId, data);
-    }
-
-    public static ThreadLocal<BufferEncoder> BLOCK_TL = new ThreadLocal<>();
-    public static ConcurrentHashMap<Integer, BufferEncoder> BLOCKS = new ConcurrentHashMap<>(40);
-
-    private long allIn(String topic, int queueId, ByteBuffer data) {
         int topicId = IdGenerator.getIns().getId(topic);
         BufferEncoder encoder = BLOCK_TL.get();
         if (encoder == null) {
