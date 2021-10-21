@@ -33,13 +33,11 @@ public class Idx {
     }
 
     public int getWalPart(int pos) {
-        int p = (pos << 1) | 1;
-        return (list[p] >> BASE_DIS) & BASE;
+        return (list[(pos << 1) | 1] >> BASE_DIS) & BASE;
     }
 
     public int getWalValueSize(int pos) {
-        int p = (pos << 1) | 1;
-        return list[p] & BASE;
+        return list[(pos << 1) | 1] & BASE;
     }
 
     public int getWalId(int pos) {

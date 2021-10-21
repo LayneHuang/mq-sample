@@ -46,7 +46,8 @@ public class WalInfoBasic {
         this.valueSize = valueSize;
     }
 
-    public WalInfoBasic(int topicId, int queueId, ByteBuffer value) {
+    public WalInfoBasic(int walId, int topicId, int queueId, ByteBuffer value) {
+        this.walId = walId;
         this.topicId = topicId;
         this.queueId = queueId;
         this.valueSize = value.limit();

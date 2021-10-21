@@ -63,14 +63,13 @@ public class LayneBMessageQueueImpl extends MessageQueue {
 
     private long allIn(String topic, int queueId, ByteBuffer data) {
         int topicId = IdGenerator.getIns().getId(topic);
-        WalInfoBasic info = new WalInfoBasic(topicId, queueId, data);
         BufferEncoder encoder = BLOCK_TL.get();
         if (encoder == null) {
             int walId = topicId % Constant.WAL_FILE_COUNT;
             encoder = BLOCKS.computeIfAbsent(walId, key -> new BufferEncoder(walId));
             BLOCK_TL.set(encoder);
         }
-        info.walId = encoder.id;
+        WalInfoBasic info = new WalInfoBasic(encoder.id, topicId, queueId, data);
         // 某块计算处理中的 msg 数目
         int key = info.getKey();
         DOING_OFFSET_MAP.computeIfAbsent(key, k -> new AtomicInteger()).getAndIncrement();
@@ -87,7 +86,7 @@ public class LayneBMessageQueueImpl extends MessageQueue {
         }
         // 索引
         Idx idx = IDX.computeIfAbsent(key, k -> new Idx());
-        idx.add(info.walId, (int) info.pOffset, info.walPart, info.walPos + WalInfoBasic.BYTES, info.valueSize);
+        idx.add((int) info.pOffset, info.walId, info.walPart, info.walPos + WalInfoBasic.BYTES, info.valueSize);
         DOING_OFFSET_MAP.get(key).decrementAndGet();
         return info.pOffset;
     }
@@ -120,15 +119,6 @@ public class LayneBMessageQueueImpl extends MessageQueue {
             int pos = idx.getWalValuePos(idxPos);
             int size = idx.getWalValueSize(idxPos);
             idxList.add(new WalInfoBasic(i, walId, part, pos, size));
-        }
-        for (int i = 0; i < fetchNum - 1; ++i) {
-            if (idxList.get(i).walPart > idxList.get(i + 1).walPart
-                    || (idxList.get(i).walPart == idxList.get(i + 1).walPart && idxList.get(i).walPos > idxList.get(i + 1).walPos)) {
-                log.info("FUCK!!!!");
-            }
-            if (idxList.get(i).walId != idxList.get(i + 1).walId) {
-                log.info("FUCK!!!! ID");
-            }
         }
         idxList.sort(
                 Comparator.comparingInt((WalInfoBasic o) -> o.walId)
