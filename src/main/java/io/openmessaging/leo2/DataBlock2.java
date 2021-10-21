@@ -82,7 +82,7 @@ public class DataBlock2 {
                 tempBuf.put(data);
                 indexer.writeIndex(id, logNumAdder, position, dataSize);
                 // 缓存
-                cache.write(topic, queueId, offset, msgLen, data);
+                cache.write(topic, queueId, offset, msgLen, data, dataSize);
             }
             try {
                 int arrive = 0;
@@ -141,5 +141,4 @@ public class DataBlock2 {
             }
         }
     }
-
 }

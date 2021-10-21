@@ -1,5 +1,6 @@
 package io.openmessaging.leo2;
 
+import com.intel.pmem.llpl.MemoryBlock;
 import io.openmessaging.leo.Indexer;
 import io.openmessaging.leo.OffsetBuf;
 
@@ -17,7 +18,6 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static io.openmessaging.leo2.Cache.DIR_PMEM;
 import static io.openmessaging.leo2.Utils.unmap;
 
 public class DataManager {
@@ -36,7 +36,7 @@ public class DataManager {
 
     public static final ThreadLocal<DataBlock2> BLOCK_TL = new ThreadLocal<>();
     public static final AtomicInteger BLOCK_ID_ADDER = new AtomicInteger();
-    public static final ConcurrentHashMap<Integer, DataBlock2> BLOCKS = new ConcurrentHashMap<>(THREAD_MAX);
+    public static final ConcurrentHashMap<Byte, DataBlock2> BLOCKS = new ConcurrentHashMap<>(THREAD_MAX);
 
     public DataManager() {
         try {
@@ -93,8 +93,8 @@ public class DataManager {
     public void writeLog(byte topic, short queueId, int offset, ByteBuffer data) {
         DataBlock2 dataBlock = BLOCK_TL.get();
         if (dataBlock == null) {
-            int id = BLOCK_ID_ADDER.getAndIncrement() % 2;
-            dataBlock = BLOCKS.computeIfAbsent(id, key -> new DataBlock2(key.byteValue()));
+            byte id = (byte) (BLOCK_ID_ADDER.getAndIncrement() % 2);
+            dataBlock = BLOCKS.computeIfAbsent(id, DataBlock2::new);
             BLOCK_TL.set(dataBlock);
         }
         Indexer indexer = getIndexer(topic, queueId);
@@ -130,23 +130,36 @@ public class DataManager {
         int position = indexBuf.getInt() + MSG_META_SIZE;
         short dataSize = (short) (indexBuf.getShort() - MSG_META_SIZE);
         indexBuf.rewind();
-        Path logFile = DIR_PMEM.resolve(String.valueOf(partitionId)).resolve(String.valueOf(logNum));
-        if (Files.notExists(logFile)) {
+        ByteBuffer msgBuf = readCache(partitionId, logNum, position, dataSize);
+        if (msgBuf == null) {
             System.out.println("未命中");
-            logFile = LOGS_PATH.resolve(String.valueOf(partitionId)).resolve(String.valueOf(logNum));
-        } else{
+            Path logFile = LOGS_PATH.resolve(String.valueOf(partitionId)).resolve(String.valueOf(logNum));
+            FileChannel logChannel = FileChannel.open(logFile, StandardOpenOption.READ);
+            try {
+                msgBuf = ByteBuffer.allocate(dataSize);
+                logChannel.read(msgBuf, position);
+                logChannel.close();
+                msgBuf.flip();
+            } catch (Exception e) {
+                System.out.println("readLog : " + partitionId + ", " + logNum + ", " + position + ", " + dataSize);
+            }
+        } else {
             System.out.println("命中");
         }
-        FileChannel logChannel = FileChannel.open(logFile, StandardOpenOption.READ);
-        try {
-            ByteBuffer msgBuf = ByteBuffer.allocate(dataSize);
-            logChannel.read(msgBuf, position);
-            logChannel.close();
-            msgBuf.flip();
-            dataMap.put(key, msgBuf);
-        } catch (Exception e) {
-            System.out.println("readLog : " + partitionId + ", " + logNum + ", " + position + ", " + dataSize);
+        dataMap.put(key, msgBuf);
+    }
+
+    private ByteBuffer readCache(byte partitionId, byte logNum, int position, short dataSize) {
+        DataBlock2 dataBlock2 = BLOCKS.get(partitionId);
+        if (dataBlock2 == null) return null;
+        MemoryBlock mb = dataBlock2.cache.getMb(logNum);
+        if (mb == null) return null;
+        ByteBuffer msgBuf = ByteBuffer.allocate(dataSize);
+        for (int i = 0; i < dataSize; i++) {
+            msgBuf.put(mb.getByte(position + i));
         }
+        msgBuf.flip();
+        return msgBuf;
     }
 
     public static int getOffset(byte topicId, short queueId) {
