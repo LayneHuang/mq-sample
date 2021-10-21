@@ -14,10 +14,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -146,8 +143,9 @@ public class LayneBMessageQueueImpl extends MessageQueue {
             BufferEncoder encoder = BLOCKS.computeIfAbsent(walId, key -> new BufferEncoder(walId));
             int maxP = 1;
             while (Constant.getWALInfoPath(walId, maxP).toFile().exists()) maxP++;
-            log.error("now walId: {}, part: {}, pos: {}, targetPart: {}, maxP: {}, resultSize: {}, e: {}",
-                    walId, encoder.part, encoder.pos, curPart, maxP - 1, result.size(), e.getMessage());
+            int maxS = idxList.stream().map(item -> item.walPart).max(Comparator.naturalOrder()).get();
+            log.error("now walId: {}, part: {}, pos: {}, targetPart: {}, maxP: {}, maxS: {}, resultSize: {}, e: {}",
+                    walId, encoder.part, encoder.pos, curPart, maxP - 1, maxS, result.size(), e.getMessage());
             return new HashMap<>();
         } finally {
             if (valueChannel != null) {

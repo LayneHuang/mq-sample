@@ -29,8 +29,8 @@ public class PerformanceTester {
         String topic = "topic1";
         int queueId = 1;
         long queryOffset = 0;
-        int queryNum = 300;
-        for (int i = 0; i < 100; i++) {
+        int queryNum = 3000;
+        for (int i = 0; i < 1000; i++) {
             String text = String.valueOf(i);
             ByteBuffer buf = ByteBuffer.wrap(text.getBytes(StandardCharsets.UTF_8));
             long offset = messageQueue.append(topic, queueId, buf);
@@ -38,7 +38,7 @@ public class PerformanceTester {
         }
 
         Thread threadW1 = new Thread(() -> {
-            for (int i = 100; i < 200; i++) {
+            for (int i = 1000; i < 2000; i++) {
                 String text = String.valueOf(i);
                 ByteBuffer buf = ByteBuffer.wrap(text.getBytes(StandardCharsets.UTF_8));
                 long offset = messageQueue.append(topic, queueId, buf);
@@ -47,7 +47,7 @@ public class PerformanceTester {
         });
 
         Thread threadW2 = new Thread(() -> {
-            for (int i = 200; i < 300; i++) {
+            for (int i = 2000; i < 3000; i++) {
                 String text = String.valueOf(i);
                 ByteBuffer buf = ByteBuffer.wrap(text.getBytes(StandardCharsets.UTF_8));
                 long offset = messageQueue.append(topic, queueId, buf);
