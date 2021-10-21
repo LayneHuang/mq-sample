@@ -87,7 +87,7 @@ public class LayneBMessageQueueImpl extends MessageQueue {
         }
         // 索引
         Idx idx = IDX.computeIfAbsent(key, k -> new Idx());
-        idx.add((int) info.pOffset, info.walPart, info.walPos + WalInfoBasic.BYTES, info.valueSize);
+        idx.add(info.walId, (int) info.pOffset, info.walPart, info.walPos + WalInfoBasic.BYTES, info.valueSize);
         DOING_OFFSET_MAP.get(key).decrementAndGet();
         return info.pOffset;
     }
@@ -125,6 +125,9 @@ public class LayneBMessageQueueImpl extends MessageQueue {
             if (idxList.get(i).walPart > idxList.get(i + 1).walPart
                     || (idxList.get(i).walPart == idxList.get(i + 1).walPart && idxList.get(i).walPos > idxList.get(i + 1).walPos)) {
                 log.info("FUCK!!!!");
+            }
+            if (idxList.get(i).walId != idxList.get(i + 1).walId) {
+                log.info("FUCK!!!! ID");
             }
         }
         int curPart = -1;

@@ -79,7 +79,7 @@ public class BufferEncoder {
 
     private final Lock waitLock = new ReentrantLock();
     private final Condition condition = waitLock.newCondition();
-    private volatile int nowWaitCnt = 0;
+    private int nowWaitCnt = 0;
 
     public void holdOn(WalInfoBasic info) {
         if (waitCnt <= 1) {
