@@ -130,6 +130,11 @@ public class LayneBMessageQueueImpl extends MessageQueue {
                 log.info("FUCK!!!! ID");
             }
         }
+        idxList.sort(
+                Comparator.comparingInt((WalInfoBasic o) -> o.walId)
+                        .thenComparingInt(o -> o.walPart)
+                        .thenComparingInt(o -> o.walPos)
+        );
         int curPart = -1;
         int curId = -1;
         try {
