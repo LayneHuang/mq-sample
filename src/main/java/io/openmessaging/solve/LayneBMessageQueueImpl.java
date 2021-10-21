@@ -26,24 +26,15 @@ public class LayneBMessageQueueImpl extends MessageQueue {
 //    private final Map<Integer, AtomicInteger> DOING_OFFSET_MAP = new ConcurrentHashMap<>();
 
     public LayneBMessageQueueImpl() {
-//        reload();
+        reload();
     }
 
     private void reload() {
         if (!IdGenerator.getIns().load()) {
             return;
         }
-        for (int i = 0; i < Constant.WAL_FILE_COUNT; ++i) {
-            loader[i] = new Loader(i, IDX, APPEND_OFFSET_MAP);
-            loader[i].start();
-        }
-        for (int i = 0; i < Constant.WAL_FILE_COUNT; ++i) {
-            try {
-                loader[i].join();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-        }
+        Loader load = new Loader(IDX, APPEND_OFFSET_MAP);
+        load.run();
         log.info("reload finished.");
     }
 
