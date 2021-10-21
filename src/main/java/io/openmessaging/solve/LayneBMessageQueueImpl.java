@@ -116,9 +116,9 @@ public class LayneBMessageQueueImpl extends MessageQueue {
         for (int i = 0; i < fetchNum; ++i) {
             int idxPos = (int) offset + i;
             if ((idxPos << 1 | 1) >= idx.getSize()) break;
-            int part = idx.getWalPart(key);
-            int pos = idx.getWalValuePos(key);
-            int size = idx.getWalValueSize(key);
+            int part = idx.getWalPart(idxPos);
+            int pos = idx.getWalValuePos(idxPos);
+            int size = idx.getWalValueSize(idxPos);
             idxList.add(new WalInfoBasic(i, part, pos, size));
         }
         int curPart = -1;
