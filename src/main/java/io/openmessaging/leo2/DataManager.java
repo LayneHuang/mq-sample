@@ -114,7 +114,7 @@ public class DataManager {
             int maxCount = Math.min(indexer.fullBufs.size(), offset + fetchNum);
             while (offset < maxCount) {
                 OffsetBuf fullBuf = indexer.fullBufs.get(offset);
-                readLog(dataMap, key, fullBuf.buf, indexer.cache, offset);
+                readLog(dataMap, key, fullBuf.buf);
                 key++;
                 offset++;
             }
@@ -124,32 +124,37 @@ public class DataManager {
         return dataMap;
     }
 
-    private void readLog(Map<Integer, ByteBuffer> dataMap, int key, ByteBuffer indexBuf, Cache cache, int offset) throws IOException {
+    private void readLog(Map<Integer, ByteBuffer> dataMap, int key, ByteBuffer indexBuf) throws IOException {
         byte partitionId = indexBuf.get();
         byte logNum = indexBuf.get();
         int position = indexBuf.getInt() + MSG_META_SIZE;
         short dataSize = (short) (indexBuf.getShort() - MSG_META_SIZE);
         indexBuf.rewind();
-        ByteBuffer msgBuf = ByteBuffer.allocate(dataSize);
-        MemoryBlock mb = cache.getMb(offset);
-        if (mb != null) {
-            System.out.println("命中");
-            for (int i = 0; i < dataSize; i++) {
-                msgBuf.put(mb.getByte(position + i));
-            }
-        } else {
-            System.out.println("未命中");
+        ByteBuffer msgBuf = readCache(partitionId, logNum, position, dataSize);
+        if (msgBuf == null) {
             Path logFile = LOGS_PATH.resolve(String.valueOf(partitionId)).resolve(String.valueOf(logNum));
             FileChannel logChannel = FileChannel.open(logFile, StandardOpenOption.READ);
-            try {
-                logChannel.read(msgBuf, position);
-                logChannel.close();
-            } catch (Exception e) {
-                System.out.println("readLog : " + partitionId + ", " + logNum + ", " + position + ", " + dataSize);
-            }
+            msgBuf = ByteBuffer.allocate(dataSize);
+            logChannel.read(msgBuf, position);
+            logChannel.close();
+            msgBuf.flip();
+        } else {
+            System.out.println("命中");
+        }
+        dataMap.put(key, msgBuf);
+    }
+
+    private ByteBuffer readCache(byte partitionId, byte logNum, int position, short dataSize) {
+        DataBlock2 dataBlock2 = BLOCKS.get(partitionId);
+        if (dataBlock2 == null) return null;
+        MemoryBlock mb = dataBlock2.cache.getMb(logNum);
+        if (mb == null) return null;
+        ByteBuffer msgBuf = ByteBuffer.allocate(dataSize);
+        for (int i = 0; i < dataSize; i++) {
+            msgBuf.put(mb.getByte(position + i));
         }
         msgBuf.flip();
-        dataMap.put(key, msgBuf);
+        return msgBuf;
     }
 
     public static int getOffset(byte topicId, short queueId) {
