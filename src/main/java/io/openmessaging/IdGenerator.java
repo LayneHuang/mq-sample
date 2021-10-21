@@ -24,14 +24,13 @@ public class IdGenerator {
 
     private final Object lock = new Object();
 
-    private static IdGenerator ins = new IdGenerator();
+    private static final IdGenerator ins = new IdGenerator();
 
     public static IdGenerator getIns() {
         return ins;
     }
 
     private IdGenerator() {
-
     }
 
     public int getId(String key) {

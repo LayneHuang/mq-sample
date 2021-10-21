@@ -1,8 +1,5 @@
 package io.openmessaging.wal;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 
@@ -13,7 +10,6 @@ import java.nio.MappedByteBuffer;
  * @since 2021/9/23
  */
 public class WalInfoBasic {
-    private static final Logger log = LoggerFactory.getLogger(WalInfoBasic.class);
 
     public int topicId;
 
