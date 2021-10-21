@@ -43,6 +43,7 @@ public class DataManager {
             if (Files.notExists(LOGS_PATH)) {
                 Files.createDirectories(LOGS_PATH);
             } else {
+                if (true) return; // TODO 屏蔽重放
                 // 重启
                 Files.list(LOGS_PATH).forEach(partitionDir -> {
                     byte partitionId = Byte.parseByte(String.valueOf(partitionDir.getFileName()));
