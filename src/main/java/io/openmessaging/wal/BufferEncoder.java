@@ -48,11 +48,11 @@ public class BufferEncoder {
                         }
                         channel.close();
                     }
-                    Files.createFile(Constant.getWALInfoPath(info.walId, part));
                     channel = FileChannel.open(
                             Constant.getWALInfoPath(info.walId, part),
                             StandardOpenOption.READ,
-                            StandardOpenOption.WRITE);
+                            StandardOpenOption.WRITE,
+                            StandardOpenOption.CREATE);
                     buffer = channel.map(
                             FileChannel.MapMode.READ_WRITE,
                             0,

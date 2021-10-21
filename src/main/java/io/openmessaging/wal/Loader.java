@@ -1,8 +1,6 @@
 package io.openmessaging.wal;
 
 import io.openmessaging.Constant;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import sun.misc.Cleaner;
 import sun.nio.ch.DirectBuffer;
 
@@ -17,8 +15,6 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class Loader {
-    public static final Logger log = LoggerFactory.getLogger(Loader.class);
-
     private final Map<Integer, Idx> IDX;
 
     private final Map<Integer, AtomicInteger> APPEND_OFFSET_MAP;
@@ -60,7 +56,6 @@ public class Loader {
 
     private void read(int walId, int part) throws IOException {
         WalInfoBasic info = new WalInfoBasic();
-        log.info("Read File: {}, {}", walId, part);
         FileChannel channel = FileChannel.open(Constant.getWALInfoPath(walId, part), StandardOpenOption.READ);
         MappedByteBuffer buffer = channel.map(FileChannel.MapMode.READ_ONLY, 0, Constant.WRITE_BEFORE_QUERY);
         int walPos = 0;

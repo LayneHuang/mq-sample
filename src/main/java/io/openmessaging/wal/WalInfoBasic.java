@@ -3,10 +3,8 @@ package io.openmessaging.wal;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
-import java.nio.channels.FileChannel;
 
 /**
  * WalInfoBasic
@@ -31,11 +29,14 @@ public class WalInfoBasic {
 
     public int walPos;
 
-    public long logCount;
-
     public ByteBuffer value;
 
     public WalInfoBasic() {
+    }
+
+    public WalInfoBasic(int walId, int walPart) {
+        this.walId = walId;
+        this.walPart = walPart;
     }
 
     public WalInfoBasic(int pOffset, int walId, int walPart, int walPos, int valueSize) {
