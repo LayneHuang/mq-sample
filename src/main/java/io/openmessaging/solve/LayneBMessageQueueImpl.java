@@ -141,11 +141,12 @@ public class LayneBMessageQueueImpl extends MessageQueue {
             }
         } catch (IOException e) {
             BufferEncoder encoder = BLOCKS.computeIfAbsent(walId, key -> new BufferEncoder(walId));
-            int maxP = 1;
-            while (Constant.getWALInfoPath(walId, maxP).toFile().exists()) maxP++;
-            int maxS = idxList.stream().map(item -> item.walPart).max(Comparator.naturalOrder()).get();
-            log.error("now walId: {}, part: {}, pos: {}, targetPart: {}, maxP: {}, maxS: {}, resultSize: {}, e: {}",
-                    walId, encoder.part, encoder.pos, curPart, maxP - 1, maxS, result.size(), e.getMessage());
+            int createFilePart = 1;
+            while (Constant.getWALInfoPath(walId, createFilePart).toFile().exists()) createFilePart++;
+            int queryMaxPart = idxList.stream().map(item -> item.walPart).max(Comparator.naturalOrder()).get();
+            int queryMaxPos = idxList.get(fetchNum - 1).walPos;
+            log.error("now walId: {}, part: {}, pos: {}, targetPart: {}, bufferPart:{}, bufferPos: {}, createFilePart: {}, queryMaxPart: {}, queryMaxPos: {},resultSize: {}, e: {}",
+                    walId, encoder.part, encoder.pos, curPart, encoder.part, encoder.pos, createFilePart - 1, queryMaxPart, queryMaxPos, result.size(), e.getMessage());
             return new HashMap<>();
         } finally {
             if (valueChannel != null) {
