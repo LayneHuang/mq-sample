@@ -36,7 +36,7 @@ public class BufferEncoder {
         synchronized (LOCK) {
             // wal 分段
             if (channel == null || pos + info.getSize() >= Constant.WRITE_BEFORE_QUERY) {
-                long tId = Thread.currentThread().getId();
+                // long tId = Thread.currentThread().getId();
                 int prePart = part++;
                 try {
                     if (channel != null) {
@@ -63,7 +63,7 @@ public class BufferEncoder {
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
-                log.info("Thread: {}, walId: {}, file: {}, Finished", tId, info.walId, part);
+                // log.info("Thread: {}, walId: {}, file: {}, Finished", tId, info.walId, part);
             }
             info.walPart = part;
             info.walPos = pos;
@@ -72,10 +72,10 @@ public class BufferEncoder {
         }
     }
 
-    private volatile int noFuck = 0;
-    private volatile int fuck = 0;
-    private volatile int timeoutTimes = 0;
-    private volatile int fullTimes = 0;
+    private int noFuck = 0;
+    private int fuck = 0;
+//    private int timeoutTimes = 0;
+//    private int fullTimes = 0;
 
     private final Lock waitLock = new ReentrantLock();
     private final Condition condition = waitLock.newCondition();
@@ -95,10 +95,7 @@ public class BufferEncoder {
             } else {
                 okWrite(info);
                 condition.signalAll();
-                if (fullTimes % 1000 == 0) {
-                    log.info("TIME OVER: {}, FULL: {}, WAIT CNT: {}",
-                            timeoutTimes, fullTimes, waitCnt);
-                }
+//                if (fullTimes % 10000 == 0) log.info("TIME OVER: {}, FULL: {}, WAIT CNT: {}", timeoutTimes, fullTimes, waitCnt);
             }
         } catch (InterruptedException e) {
             e.printStackTrace();
@@ -110,7 +107,7 @@ public class BufferEncoder {
     private void okWrite(WalInfoBasic info) {
         synchronized (LOCK) {
             if (forced(info)) return;
-            fullTimes++;
+//            fullTimes++;
             noFuck++;
             if (noFuck > 2 && waitCnt < 20) {
                 noFuck = 0;
@@ -126,7 +123,7 @@ public class BufferEncoder {
     private void timeoutWrite(WalInfoBasic info) {
         synchronized (LOCK) {
             if (forced(info)) return;
-            timeoutTimes++;
+//            timeoutTimes++;
             fuck++;
             if (fuck > 2 && waitCnt >= 2) {
                 waitCnt--;

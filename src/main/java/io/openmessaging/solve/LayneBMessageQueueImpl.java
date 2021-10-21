@@ -23,10 +23,10 @@ public class LayneBMessageQueueImpl extends MessageQueue {
     private static final Loader[] loader = new Loader[Constant.WAL_FILE_COUNT];
     public Map<Integer, Idx> IDX = new ConcurrentHashMap<>();
     private final Map<Integer, AtomicInteger> APPEND_OFFSET_MAP = new ConcurrentHashMap<>();
-    private final Map<Integer, AtomicInteger> DOING_OFFSET_MAP = new ConcurrentHashMap<>();
+//    private final Map<Integer, AtomicInteger> DOING_OFFSET_MAP = new ConcurrentHashMap<>();
 
     public LayneBMessageQueueImpl() {
-        reload();
+//        reload();
     }
 
     private void reload() {
@@ -72,7 +72,7 @@ public class LayneBMessageQueueImpl extends MessageQueue {
         WalInfoBasic info = new WalInfoBasic(encoder.id, topicId, queueId, data);
         // 某块计算处理中的 msg 数目
         int key = info.getKey();
-        DOING_OFFSET_MAP.computeIfAbsent(key, k -> new AtomicInteger()).getAndIncrement();
+//        DOING_OFFSET_MAP.computeIfAbsent(key, k -> new AtomicInteger()).getAndIncrement();
         // 获取偏移
         info.pOffset = APPEND_OFFSET_MAP.computeIfAbsent(
                 key,
@@ -87,7 +87,7 @@ public class LayneBMessageQueueImpl extends MessageQueue {
         // 索引
         Idx idx = IDX.computeIfAbsent(key, k -> new Idx());
         idx.add((int) info.pOffset, info.walId, info.walPart, info.walPos + WalInfoBasic.BYTES, info.valueSize);
-        DOING_OFFSET_MAP.get(key).decrementAndGet();
+//        DOING_OFFSET_MAP.get(key).decrementAndGet();
         return info.pOffset;
     }
 
@@ -102,10 +102,9 @@ public class LayneBMessageQueueImpl extends MessageQueue {
         int key = WalInfoBasic.getKey(topicId, queueId);
         Idx idx = IDX.get(key);
         int append = APPEND_OFFSET_MAP.getOrDefault(key, new AtomicInteger()).get();
-        int doing = DOING_OFFSET_MAP.getOrDefault(key, new AtomicInteger()).get();
-        int pOffset = append - doing;
-
-        fetchNum = Math.min(fetchNum, (int) (pOffset - offset));
+//        int doing = DOING_OFFSET_MAP.getOrDefault(key, new AtomicInteger()).get();
+//        int pOffset = append - doing;
+        fetchNum = Math.min(fetchNum, (int) (append - offset));
 
         Map<Integer, ByteBuffer> result = new HashMap<>();
         if (idx == null || fetchNum <= 0) return result;
@@ -145,13 +144,13 @@ public class LayneBMessageQueueImpl extends MessageQueue {
                 result.put((int) info.pOffset, buffer);
             }
         } catch (IOException e) {
-            BufferEncoder encoder = BLOCKS.computeIfAbsent(curId, k -> new BufferEncoder(0));
-            int createFilePart = 1;
-            while (Constant.getWALInfoPath(curId, createFilePart).toFile().exists()) createFilePart++;
-            int queryMaxPart = idxList.get(fetchNum - 1).walPart;
-            int queryMaxPos = idxList.get(fetchNum - 1).walPos;
-            log.error("now walId: {}, append: {}, doing: {}, part: {}, pos: {}, createFilePart: {}, queryMaxPart: {}, queryMaxPos: {},resultSize: {}, e: {}",
-                    curId, append, doing, encoder.part, encoder.pos, createFilePart - 1, queryMaxPart, queryMaxPos, result.size(), e.getMessage());
+//            BufferEncoder encoder = BLOCKS.computeIfAbsent(curId, k -> new BufferEncoder(0));
+//            int createFilePart = 1;
+//            while (Constant.getWALInfoPath(curId, createFilePart).toFile().exists()) createFilePart++;
+//            int queryMaxPart = idxList.get(fetchNum - 1).walPart;
+//            int queryMaxPos = idxList.get(fetchNum - 1).walPos;
+//            log.error("now walId: {}, append: {}, doing: {}, part: {}, pos: {}, createFilePart: {}, queryMaxPart: {}, queryMaxPos: {},resultSize: {}, e: {}",
+//                    curId, append, doing, encoder.part, encoder.pos, createFilePart - 1, queryMaxPart, queryMaxPos, result.size(), e.getMessage());
             return new HashMap<>();
         } finally {
             if (valueChannel != null) {

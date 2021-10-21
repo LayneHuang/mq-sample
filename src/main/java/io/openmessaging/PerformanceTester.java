@@ -29,8 +29,8 @@ public class PerformanceTester {
         String topic = "topic1";
         int queueId = 1;
         long queryOffset = 0;
-        int queryNum = 3000;
-        for (int i = 0; i < 1000; i++) {
+        int queryNum = 30;
+        for (int i = 0; i < 100; i++) {
             String text = String.valueOf(i);
             ByteBuffer buf = ByteBuffer.wrap(text.getBytes(StandardCharsets.UTF_8));
             long offset = messageQueue.append(topic, queueId, buf);
@@ -38,7 +38,7 @@ public class PerformanceTester {
         }
 
         Thread threadW1 = new Thread(() -> {
-            for (int i = 1000; i < 2000; i++) {
+            for (int i = 100; i < 200; i++) {
                 String text = String.valueOf(i);
                 ByteBuffer buf = ByteBuffer.wrap(text.getBytes(StandardCharsets.UTF_8));
                 long offset = messageQueue.append(topic, queueId, buf);
@@ -47,18 +47,35 @@ public class PerformanceTester {
         });
 
         Thread threadW2 = new Thread(() -> {
-            for (int i = 2000; i < 3000; i++) {
+            for (int i = 200; i < 300; i++) {
                 String text = String.valueOf(i);
                 ByteBuffer buf = ByteBuffer.wrap(text.getBytes(StandardCharsets.UTF_8));
                 long offset = messageQueue.append(topic, queueId, buf);
                 targetMap.put(toKey(topic, queueId, offset), buf);
             }
         });
+        Thread threadR = new Thread(() -> {
+            for (int i = 1; i < 300; ++i) {
+                log.info("------------------- {} ---------------------", i);
+                Map<Integer, ByteBuffer> res = messageQueue.getRange(topic, queueId, i, i + i);
+
+                res.forEach((key, value) -> {
+                    log.info("res, {}, {}", key, new String(value.array()));
+                });
+                try {
+                    Thread.sleep(10);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
 
         threadW1.start();
         threadW2.start();
+        threadR.start();
         threadW1.join();
         threadW2.join();
+        threadR.join();
         log.info("WRITE FINISH-1, size: {}", targetMap.size());
         log.info("query, offset:{}, fetchNum:{}", queryOffset, queryNum);
         Map<Integer, ByteBuffer> ansMap = messageQueue.getRange(topic, queueId, queryOffset, queryNum);
