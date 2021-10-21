@@ -26,7 +26,7 @@ public class Loader {
 
     private final ExecutorService executor = new ThreadPoolExecutor(5, 10,
             300, TimeUnit.MILLISECONDS,
-            new LinkedBlockingQueue<>(20)
+            new LinkedBlockingQueue<>(1024)
     );
 
     public void run() {
