@@ -13,14 +13,14 @@ import static io.openmessaging.leo2.DataManager.G1;
 public class Cache {
 
     public static final String DIR_PMEM = "/pmem";
-    public static final int DIR_PMEM_SIZE = 60;
+    public static final int DIR_PMEM_SIZE = 58;
     public static final Heap ROOT_HEAP = Heap.createHeap(DIR_PMEM, (long) G1 * DIR_PMEM_SIZE);
 
-    public static volatile AtomicInteger size = new AtomicInteger();
+    public static final AtomicInteger size = new AtomicInteger();
 
     public byte id;
     public byte logNumAdder = Byte.MIN_VALUE;
-    public List<MemoryBlock> mbs = new ArrayList<>(60);
+    public List<MemoryBlock> mbs = new ArrayList<>(DIR_PMEM_SIZE);
     public MemoryBlock tempMb;
     private boolean full = false;
     private long position = 0;
@@ -40,9 +40,14 @@ public class Cache {
     }
 
     private void setupLog() {
-        tempMb = ROOT_HEAP.allocateMemoryBlock(G1);
-        ROOT_HEAP.setRoot(tempMb.handle());
-        mbs.add(tempMb);
+        try {
+            tempMb = ROOT_HEAP.allocateMemoryBlock(G1);
+            ROOT_HEAP.setRoot(tempMb.handle());
+            mbs.add(tempMb);
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+            full = true;
+        }
         position = 0;
         size.getAndIncrement();
     }
@@ -63,7 +68,7 @@ public class Cache {
             tempMb.setByte(position, data.get());
             position++;
         }
-        tempMb.flush(startPos, dataSize);
+//        tempMb.flush(startPos, dataSize);
     }
 
     public MemoryBlock getMb(byte logNum) {
