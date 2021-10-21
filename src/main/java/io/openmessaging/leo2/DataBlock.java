@@ -84,7 +84,7 @@ public class DataBlock {
                 tempBuf.putShort(msgLen); // 2
                 tempBuf.put(data);
                 addSize += msgLen;
-                indexer.writeIndex(id, logNumAdder, position, dataSize);
+//                indexer.writeIndex(id, logNumAdder, position, dataSize);
             }
             try {
                 int arrive = tempBarrier.await(10L * barrierCount, TimeUnit.MILLISECONDS);
