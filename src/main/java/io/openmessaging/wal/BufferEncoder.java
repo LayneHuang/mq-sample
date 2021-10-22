@@ -9,7 +9,6 @@ import sun.nio.ch.DirectBuffer;
 import java.io.IOException;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
-import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -63,7 +62,6 @@ public class BufferEncoder {
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
-                // log.info("Thread: {}, walId: {}, file: {}, Finished", tId, info.walId, part);
             }
             info.walPart = part;
             info.walPos = pos;
@@ -74,8 +72,6 @@ public class BufferEncoder {
 
     private int noFuck = 0;
     private int fuck = 0;
-//    private int timeoutTimes = 0;
-//    private int fullTimes = 0;
 
     private final Lock waitLock = new ReentrantLock();
     private final Condition condition = waitLock.newCondition();
@@ -93,9 +89,8 @@ public class BufferEncoder {
                 condition.await(10L * waitCnt, TimeUnit.MILLISECONDS);
                 timeoutWrite(info);
             } else {
-                okWrite(info);
                 condition.signalAll();
-//                if (fullTimes % 10000 == 0) log.info("TIME OVER: {}, FULL: {}, WAIT CNT: {}", timeoutTimes, fullTimes, waitCnt);
+                okWrite(info);
             }
         } catch (InterruptedException e) {
             e.printStackTrace();
@@ -107,7 +102,6 @@ public class BufferEncoder {
     private void okWrite(WalInfoBasic info) {
         synchronized (LOCK) {
             if (forced(info)) return;
-//            fullTimes++;
             noFuck++;
             if (noFuck > 2 && waitCnt < 20) {
                 noFuck = 0;
@@ -123,7 +117,6 @@ public class BufferEncoder {
     private void timeoutWrite(WalInfoBasic info) {
         synchronized (LOCK) {
             if (forced(info)) return;
-//            timeoutTimes++;
             fuck++;
             if (fuck > 2 && waitCnt >= 2) {
                 waitCnt--;
