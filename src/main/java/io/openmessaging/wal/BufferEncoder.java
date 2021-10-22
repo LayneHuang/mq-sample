@@ -86,7 +86,9 @@ public class BufferEncoder {
             waitLock.lock();
             nowWaitCnt++;
             if (nowWaitCnt < waitCnt) {
-                condition.await(10L * waitCnt, TimeUnit.MILLISECONDS);
+                // 后写线程先唤醒
+                long waitT = 5L * (waitCnt - nowWaitCnt);
+                condition.await(waitT, TimeUnit.MILLISECONDS);
                 timeoutWrite(info);
             } else {
                 condition.signalAll();
