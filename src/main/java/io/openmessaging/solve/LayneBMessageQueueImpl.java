@@ -82,6 +82,7 @@ public class LayneBMessageQueueImpl extends MessageQueue {
         if (start != -1) {
             log.info("75G cost: {}", (System.currentTimeMillis() - start));
             start = -1;
+            return null;
         }
         if (reload) return new HashMap<>();
         int topicId = IdGenerator.getIns().getId(topic);

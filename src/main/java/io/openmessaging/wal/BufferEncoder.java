@@ -103,7 +103,7 @@ public class BufferEncoder {
         synchronized (LOCK) {
             if (forced(info)) return;
             noFuck++;
-            if (noFuck > 2 && waitCnt < 20) {
+            if (noFuck > 2 && waitCnt < Constant.DEFAULT_MAX_THREAD_PER_WAL) {
                 noFuck = 0;
                 fuck = 0;
                 waitCnt++;
