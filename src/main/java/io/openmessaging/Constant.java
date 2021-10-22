@@ -19,7 +19,7 @@ public class Constant {
 
     public static final int DEFAULT_MAX_THREAD_PER_WAL = 20;
 
-    public static final int VALUE_POS_DIS = 28;
+    public static final int VALUE_POS_DIS = 30;
 
     public static final int WRITE_BEFORE_QUERY = (1 << VALUE_POS_DIS);
 

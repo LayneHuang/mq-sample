@@ -25,6 +25,7 @@ public class LayneBMessageQueueImpl extends MessageQueue {
     //    private final Map<Integer, AtomicInteger> DOING_OFFSET_MAP = new ConcurrentHashMap<>();
     public static ThreadLocal<BufferEncoder> BLOCK_TL = new ThreadLocal<>();
     public static ConcurrentHashMap<Integer, BufferEncoder> BLOCKS = new ConcurrentHashMap<>(40);
+    private boolean reload = false;
 
     public LayneBMessageQueueImpl() {
         reload();
@@ -34,6 +35,7 @@ public class LayneBMessageQueueImpl extends MessageQueue {
         if (!IdGenerator.getIns().load()) {
             return;
         }
+        reload = true;
         Loader load = new Loader(IDX, APPEND_OFFSET_MAP);
         load.run();
         log.info("reload finished.");
@@ -80,8 +82,8 @@ public class LayneBMessageQueueImpl extends MessageQueue {
         if (start != -1) {
             log.info("75G cost: {}", (System.currentTimeMillis() - start));
             start = -1;
-//            return null;
         }
+        if (reload) return new HashMap<>();
         int topicId = IdGenerator.getIns().getId(topic);
         int key = WalInfoBasic.getKey(topicId, queueId);
         Idx idx = IDX.get(key);
