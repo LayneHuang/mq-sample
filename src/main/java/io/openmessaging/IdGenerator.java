@@ -51,11 +51,8 @@ public class IdGenerator {
             return false;
         }
         ByteBuffer buffer = ByteBuffer.allocate(4 * 1024);
-        try (FileChannel channel = FileChannel.open(Constant.getMetaPath(),
-                StandardOpenOption.READ
-        )) {
+        try (FileChannel channel = FileChannel.open(Constant.getMetaPath(), StandardOpenOption.READ)) {
             while (channel.read(buffer) > 0) {
-//            log.info("meta size: {}", cnt);
                 buffer.flip();
                 while (buffer.hasRemaining()) {
                     int value = buffer.getInt();
@@ -64,7 +61,6 @@ public class IdGenerator {
                     for (int i = 0; i < keySize; ++i) {
                         key.append(buffer.getChar());
                     }
-//                log.info("key: {}, value: {}", key.toString(), value);
                     ID_MAP.put(key.toString(), value);
                 }
                 buffer.clear();
