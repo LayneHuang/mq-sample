@@ -83,7 +83,7 @@ public class LayneBMessageQueueImpl extends MessageQueue {
             log.info("75G cost: {}", (System.currentTimeMillis() - start));
             start = -1;
         }
-        if (reload) return new HashMap<>();
+//        if (reload) return new HashMap<>();
         int topicId = IdGenerator.getIns().getId(topic);
         int key = WalInfoBasic.getKey(topicId, queueId);
         Idx idx = IDX.get(key);
