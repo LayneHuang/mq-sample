@@ -78,6 +78,7 @@ public class WalInfoBasic {
         address ++;
         UNSAFE.putByte(address, (byte) (valueSize & 0xff));
         // value
+        address ++;
         UNSAFE.copyMemory(value.array(), 16, null, address, value.limit());
         buffer.position(position + value.limit() + BYTES);
     }
