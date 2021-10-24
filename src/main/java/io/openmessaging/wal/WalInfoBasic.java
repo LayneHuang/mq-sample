@@ -1,7 +1,11 @@
 package io.openmessaging.wal;
 
+import sun.nio.ch.DirectBuffer;
+
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
+
+import static io.openmessaging.leo2.Utils.UNSAFE;
 
 /**
  * WalInfoBasic
@@ -54,19 +58,28 @@ public class WalInfoBasic {
     public static final int BYTES = 7;
 
     public void encode(MappedByteBuffer buffer) {
+        int position = buffer.position();
+        long address = ((DirectBuffer) buffer).address() + position;
         // topicId
-        buffer.put((byte) topicId);
+        UNSAFE.putByte(address, (byte) topicId);
         // queueId
-        buffer.put((byte) ((queueId >> 8) & 0xff));
-        buffer.put((byte) (queueId & 0xff));
+        address ++;
+        UNSAFE.putByte(address, (byte) ((queueId >> 8) & 0xff));
+        address ++;
+        UNSAFE.putByte(address, (byte) (queueId & 0xff));
         // pOffset
-        buffer.put((byte) ((pOffset >> 8) & 0xff));
-        buffer.put((byte) (pOffset & 0xff));
+        address ++;
+        UNSAFE.putByte(address, (byte) ((pOffset >> 8) & 0xff));
+        address ++;
+        UNSAFE.putByte(address, (byte) (pOffset & 0xff));
         // value
-        buffer.put((byte) ((valueSize >> 8) & 0xff));
-        buffer.put((byte) (valueSize & 0xff));
+        address ++;
+        UNSAFE.putByte(address, (byte) ((valueSize >> 8) & 0xff));
+        address ++;
+        UNSAFE.putByte(address, (byte) (valueSize & 0xff));
         // value
-        buffer.put(value);
+        UNSAFE.copyMemory(value.array(), 16, null, address, value.limit());
+        buffer.position(position + value.limit() + BYTES);
     }
 
     public void decode(ByteBuffer buffer, boolean hasValue) {
