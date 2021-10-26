@@ -1,5 +1,6 @@
 package io.openmessaging.solve;
 
+import com.intel.pmem.llpl.MemoryBlock;
 import io.openmessaging.Constant;
 import io.openmessaging.IdGenerator;
 import io.openmessaging.MessageQueue;
@@ -25,7 +26,6 @@ public class LayneBMessageQueueImpl extends MessageQueue {
     //    private final Map<Integer, AtomicInteger> DOING_OFFSET_MAP = new ConcurrentHashMap<>();
     public static ThreadLocal<BufferEncoder> BLOCK_TL = new ThreadLocal<>();
     public static ConcurrentHashMap<Integer, BufferEncoder> BLOCKS = new ConcurrentHashMap<>(40);
-    private boolean reload = false;
 
     public LayneBMessageQueueImpl() {
         reload();
@@ -35,19 +35,12 @@ public class LayneBMessageQueueImpl extends MessageQueue {
         if (!IdGenerator.getIns().load()) {
             return;
         }
-        reload = true;
         Loader load = new Loader(IDX, APPEND_OFFSET_MAP);
         load.run();
-        log.info("reload finished.");
     }
-
-    private long start = 0;
 
     @Override
     public long append(String topic, int queueId, ByteBuffer data) {
-        if (start == 0) {
-            start = System.currentTimeMillis();
-        }
         int topicId = IdGenerator.getIns().getId(topic);
         BufferEncoder encoder = BLOCK_TL.get();
         if (encoder == null) {
@@ -64,12 +57,8 @@ public class LayneBMessageQueueImpl extends MessageQueue {
                 key,
                 k -> new AtomicInteger()
         ).getAndIncrement();
-        try {
-            encoder.submit(info);
-            encoder.holdOn(info);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+        encoder.submit(info);
+        encoder.holdOn(info);
         // 索引
         Idx idx = IDX.computeIfAbsent(key, k -> new Idx());
         idx.add((int) info.pOffset, info.walId, info.walPart, info.walPos + WalInfoBasic.BYTES, info.valueSize);
@@ -79,11 +68,6 @@ public class LayneBMessageQueueImpl extends MessageQueue {
 
     @Override
     public Map<Integer, ByteBuffer> getRange(String topic, int queueId, long offset, int fetchNum) {
-        if (start != -1) {
-            log.info("75G cost: {}", (System.currentTimeMillis() - start));
-            start = -1;
-        }
-//        if (reload) return new HashMap<>();
         int topicId = IdGenerator.getIns().getId(topic);
         int key = WalInfoBasic.getKey(topicId, queueId);
         Idx idx = IDX.get(key);
@@ -114,30 +98,29 @@ public class LayneBMessageQueueImpl extends MessageQueue {
         int curId = -1;
         try {
             for (WalInfoBasic info : idxList) {
-                if (valueChannel == null || info.walId != curId || info.walPart != curPart) {
-                    curId = info.walId;
-                    curPart = info.walPart;
-                    if (valueChannel != null) {
-                        valueChannel.close();
-                    }
-                    valueChannel = FileChannel.open(
-                            Constant.getWALInfoPath(info.walId, info.walPart),
-                            StandardOpenOption.READ);
-                }
+                BufferEncoder encoder = BLOCKS.get(info.walId);
+                MemoryBlock mb = encoder.cache.getMb(info.walPart);
                 ByteBuffer buffer = ByteBuffer.allocate(info.valueSize);
-                valueChannel.read(buffer, info.walPos);
-                buffer.flip();
+                if (mb != null) { // hint
+                    mb.copyToArray(info.walPos, buffer.array(), 0, info.valueSize);
+                    buffer.limit(info.valueSize);
+                } else {
+                    if (valueChannel == null || info.walId != curId || info.walPart != curPart) {
+                        curId = info.walId;
+                        curPart = info.walPart;
+                        if (valueChannel != null) {
+                            valueChannel.close();
+                        }
+                        valueChannel = FileChannel.open(
+                                Constant.getWALInfoPath(info.walId, info.walPart),
+                                StandardOpenOption.READ);
+                    }
+                    valueChannel.read(buffer, info.walPos);
+                    buffer.flip();
+                }
                 result.put((int) info.pOffset, buffer);
             }
         } catch (IOException e) {
-//            BufferEncoder encoder = BLOCKS.computeIfAbsent(curId, k -> new BufferEncoder(0));
-//            int createFilePart = 1;
-//            while (Constant.getWALInfoPath(curId, createFilePart).toFile().exists()) createFilePart++;
-//            int queryMaxPart = idxList.get(fetchNum - 1).walPart;
-//            int queryMaxPos = idxList.get(fetchNum - 1).walPos;
-//            log.error("now walId: {}, append: {}, doing: {}, part: {}, pos: {}, createFilePart: {}, queryMaxPart: {}, queryMaxPos: {},resultSize: {}, e: {}",
-//                    curId, append, doing, encoder.part, encoder.pos, createFilePart - 1, queryMaxPart, queryMaxPos, result.size(), e.getMessage());
-            return new HashMap<>();
         } finally {
             if (valueChannel != null) {
                 try {

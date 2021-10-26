@@ -1,13 +1,14 @@
 package io.openmessaging.test;
 
 import io.openmessaging.MessageQueue;
+import io.openmessaging.solve.LayneBMessageQueueImpl;
 import io.openmessaging.solve.LeoMessageQueueImpl;
 
 public class RebootTester {
 
     public static void main(String[] args) {
         long start = System.currentTimeMillis();
-        MessageQueue messageQueue = new LeoMessageQueueImpl();
+        MessageQueue messageQueue = new LayneBMessageQueueImpl();
         messageQueue.getRange("topic0", 1, 5, 10)
                 .forEach((key, value) -> System.out.println("边写边查 topic1: " + key + ": " + new String(value.array())));
         messageQueue.getRange("topic15", 1, 495, 10)

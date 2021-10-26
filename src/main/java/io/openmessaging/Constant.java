@@ -23,6 +23,12 @@ public class Constant {
 
     public static final int WRITE_BEFORE_QUERY = (1 << VALUE_POS_DIS);
 
+    public static final int KB = 1024;
+
+    public static final int MB = 1024 * KB;
+
+    public static final int GB = 1024 * MB;
+
     public static Path getWALInfoPath(int walId, int part) {
         return DIR_ESSD.resolve("WAL-INFO-" + walId + "-" + part + ".md");
     }

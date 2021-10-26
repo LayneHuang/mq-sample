@@ -80,7 +80,7 @@ public class WalInfoBasic {
         // value
         address ++;
         UNSAFE.copyMemory(value.array(), 16, null, address, value.limit());
-        buffer.position(position + value.limit() + BYTES);
+        buffer.position(position + getSize());
     }
 
     public void decode(ByteBuffer buffer, boolean hasValue) {
@@ -121,6 +121,6 @@ public class WalInfoBasic {
     }
 
     public int getKey() {
-        return queueId * 100 + (topicId - 1);
+        return getKey(topicId, queueId);
     }
 }

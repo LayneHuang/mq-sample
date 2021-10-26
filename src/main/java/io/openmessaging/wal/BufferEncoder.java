@@ -18,7 +18,6 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class BufferEncoder {
-    public static final Logger log = LoggerFactory.getLogger(BufferEncoder.class);
     private volatile int waitCnt = Constant.DEFAULT_MAX_THREAD_PER_WAL;
     private FileChannel channel = null;
     private MappedByteBuffer buffer = null;
@@ -26,12 +25,14 @@ public class BufferEncoder {
     public final int id;
     public int part;
     public int pos;
+    public Cache cache;
 
     public BufferEncoder(int id) {
         this.id = id;
+        cache = new Cache();
     }
 
-    public void submit(WalInfoBasic info) throws InterruptedException {
+    public void submit(WalInfoBasic info) {
         synchronized (LOCK) {
             // wal 分段
             if (channel == null || pos + info.getSize() >= Constant.WRITE_BEFORE_QUERY) {
@@ -59,6 +60,7 @@ public class BufferEncoder {
                     );
                     pos = 0;
                     nowWaitCnt = 0;
+                    cache.openLog();
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -67,6 +69,8 @@ public class BufferEncoder {
             info.walPos = pos;
             info.encode(buffer);
             pos += info.getSize();
+            // 缓存
+            cache.write(info.value);
         }
     }
 

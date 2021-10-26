@@ -1,19 +1,18 @@
 package io.openmessaging.test;
 
 import io.openmessaging.MessageQueue;
-import io.openmessaging.solve.LeoMessageQueueImpl;
+import io.openmessaging.solve.LayneBMessageQueueImpl;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Random;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 public class LeoTester {
 
-    private final MessageQueue messageQueue = new LeoMessageQueueImpl();
+    private final MessageQueue messageQueue = new LayneBMessageQueueImpl();
 
     private final ExecutorService executor = Executors.newFixedThreadPool(40);
     private ConcurrentHashMap<String, HashMap<Integer, HashMap<Integer, ByteBuffer>>> dataMap = new ConcurrentHashMap<>();
@@ -54,7 +53,7 @@ public class LeoTester {
 
     private String getRandomString() {
         return random.ints(random.nextInt(1), 'A', 'z')
-                .mapToObj(letter->{
+                .mapToObj(letter -> {
                     char letter1 = (char) letter;
                     return String.valueOf(letter1);
                 })
