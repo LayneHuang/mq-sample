@@ -98,26 +98,29 @@ public class LayneBMessageQueueImpl extends MessageQueue {
         int curId = -1;
         try {
             for (WalInfoBasic info : idxList) {
-                BufferEncoder encoder = BLOCKS.get(info.walId);
-                MemoryBlock mb = encoder.cache.getMb(info.walPart);
                 ByteBuffer buffer = ByteBuffer.allocate(info.valueSize);
-                if (mb != null) { // hint
-                    mb.copyToArray(info.walPos, buffer.array(), 0, info.valueSize);
-                    buffer.limit(info.valueSize);
-                } else {
-                    if (valueChannel == null || info.walId != curId || info.walPart != curPart) {
-                        curId = info.walId;
-                        curPart = info.walPart;
-                        if (valueChannel != null) {
-                            valueChannel.close();
-                        }
-                        valueChannel = FileChannel.open(
-                                Constant.getWALInfoPath(info.walId, info.walPart),
-                                StandardOpenOption.READ);
+                BufferEncoder encoder = BLOCKS.get(info.walId);
+                if (encoder != null) {
+                    MemoryBlock mb = encoder.cache.getMb(info.walPart);
+                    if (mb != null) { // hint
+                        mb.copyToArray(info.walPos, buffer.array(), 0, info.valueSize);
+                        buffer.limit(info.valueSize);
+                        result.put((int) info.pOffset, buffer);
+                        continue;
                     }
-                    valueChannel.read(buffer, info.walPos);
-                    buffer.flip();
                 }
+                if (valueChannel == null || info.walId != curId || info.walPart != curPart) {
+                    curId = info.walId;
+                    curPart = info.walPart;
+                    if (valueChannel != null) {
+                        valueChannel.close();
+                    }
+                    valueChannel = FileChannel.open(
+                            Constant.getWALInfoPath(info.walId, info.walPart),
+                            StandardOpenOption.READ);
+                }
+                valueChannel.read(buffer, info.walPos);
+                buffer.flip();
                 result.put((int) info.pOffset, buffer);
             }
         } catch (IOException e) {
