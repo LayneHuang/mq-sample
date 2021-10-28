@@ -42,7 +42,7 @@ public class LayneBMessageQueueImpl extends MessageQueue {
         BufferEncoder encoder = BLOCK_TL.get();
         if (encoder == null) {
             int walId = topicId % Constant.WAL_FILE_COUNT;
-            encoder = BLOCKS.computeIfAbsent(walId, key -> new BufferEncoder(walId, new Cache(IDX)));
+            encoder = BLOCKS.computeIfAbsent(walId, key -> new BufferEncoder(walId, new Cache(walId, IDX)));
             BLOCK_TL.set(encoder);
         }
         WalInfoBasic info = new WalInfoBasic(encoder.id, topicId, queueId, data);
