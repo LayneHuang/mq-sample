@@ -1,8 +1,6 @@
 package io.openmessaging.wal;
 
 import io.openmessaging.Constant;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import sun.misc.Cleaner;
 import sun.nio.ch.DirectBuffer;
 
@@ -16,6 +14,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+
+import static io.openmessaging.solve.LayneBMessageQueueImpl.GET_RANGE_START;
 
 public class BufferEncoder {
     private volatile int waitCnt = Constant.DEFAULT_MAX_THREAD_PER_WAL;
@@ -69,7 +69,7 @@ public class BufferEncoder {
             info.encode(buffer);
             pos += info.getSize();
             // 缓存
-            cache.write(info);
+            if (GET_RANGE_START) cache.write(info);
         }
     }
 

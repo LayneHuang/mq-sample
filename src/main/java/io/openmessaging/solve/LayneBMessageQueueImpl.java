@@ -1,12 +1,9 @@
 package io.openmessaging.solve;
 
-import com.intel.pmem.llpl.MemoryBlock;
 import io.openmessaging.Constant;
 import io.openmessaging.IdGenerator;
 import io.openmessaging.MessageQueue;
 import io.openmessaging.wal.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -17,15 +14,14 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class LayneBMessageQueueImpl extends MessageQueue {
-    private static final Logger log = LoggerFactory.getLogger(LayneBMessageQueueImpl.class);
     public Map<Integer, Idx> IDX = new ConcurrentHashMap<>();
     private final Map<Integer, AtomicInteger> APPEND_OFFSET_MAP = new ConcurrentHashMap<>();
-    //    private final Map<Integer, AtomicInteger> DOING_OFFSET_MAP = new ConcurrentHashMap<>();
     public static ThreadLocal<BufferEncoder> BLOCK_TL = new ThreadLocal<>();
     public static ConcurrentHashMap<Integer, BufferEncoder> BLOCKS = new ConcurrentHashMap<>(40);
+    public static boolean GET_RANGE_START = false;
 
     public LayneBMessageQueueImpl() {
-//        reload();
+        reload();
     }
 
     private void reload() {
@@ -48,7 +44,6 @@ public class LayneBMessageQueueImpl extends MessageQueue {
         WalInfoBasic info = new WalInfoBasic(encoder.id, topicId, queueId, data);
         // 某块计算处理中的 msg 数目
         int key = info.getKey();
-//        DOING_OFFSET_MAP.computeIfAbsent(key, k -> new AtomicInteger()).getAndIncrement();
         // 获取偏移
         info.pOffset = APPEND_OFFSET_MAP.computeIfAbsent(
                 key,
@@ -59,18 +54,16 @@ public class LayneBMessageQueueImpl extends MessageQueue {
         // 索引
         Idx idx = IDX.computeIfAbsent(key, k -> new Idx());
         idx.add((int) info.pOffset, info.walId, info.walPart, info.walPos + WalInfoBasic.BYTES, info.valueSize);
-//        DOING_OFFSET_MAP.get(key).decrementAndGet();
         return info.pOffset;
     }
 
     @Override
     public Map<Integer, ByteBuffer> getRange(String topic, int queueId, long offset, int fetchNum) {
+        GET_RANGE_START = true;
         int topicId = IdGenerator.getIns().getId(topic);
         int key = WalInfoBasic.getKey(topicId, queueId);
         Idx idx = IDX.get(key);
         int append = APPEND_OFFSET_MAP.getOrDefault(key, new AtomicInteger()).get();
-//        int doing = DOING_OFFSET_MAP.getOrDefault(key, new AtomicInteger()).get();
-//        int pOffset = append - doing;
         fetchNum = Math.min(fetchNum, (int) (append - offset));
         Map<Integer, ByteBuffer> result = new HashMap<>();
         if (idx == null || fetchNum <= 0) return result;

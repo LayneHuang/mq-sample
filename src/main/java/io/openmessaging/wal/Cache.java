@@ -12,9 +12,9 @@ import static io.openmessaging.Constant.WRITE_BEFORE_QUERY;
 
 public class Cache {
 
-    public final Heap ROOT_HEAP;
-    public List<MemoryBlock> mbs = new ArrayList<>();
-    public MemoryBlock tempMb;
+    private final Heap ROOT_HEAP;
+    private final List<MemoryBlock> mbs = new ArrayList<>();
+    private MemoryBlock tempMb;
     private boolean full = false;
     private int position = 0;
     private final Map<Integer, Idx> IDX;
@@ -22,11 +22,14 @@ public class Cache {
     public Cache(int id, Map<Integer, Idx> IDX) {
         ROOT_HEAP = Heap.createHeap("/pmem/" + id, 15L * GB);
         this.IDX = IDX;
+        tempMb = ROOT_HEAP.allocateMemoryBlock(WRITE_BEFORE_QUERY);
+        ROOT_HEAP.setRoot(tempMb.handle());
+        mbs.add(tempMb);
     }
 
     public void write(WalInfoBasic info) {
         if (full) return;
-        if (mbs.isEmpty() || position + info.value.limit() > WRITE_BEFORE_QUERY) {
+        if (position + info.value.limit() > WRITE_BEFORE_QUERY) {
             try {
                 tempMb = ROOT_HEAP.allocateMemoryBlock(WRITE_BEFORE_QUERY);
                 ROOT_HEAP.setRoot(tempMb.handle());
