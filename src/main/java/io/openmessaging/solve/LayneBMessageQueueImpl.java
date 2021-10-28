@@ -13,12 +13,15 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static io.openmessaging.Constant.KB;
+
 public class LayneBMessageQueueImpl extends MessageQueue {
     public Map<Integer, Idx> IDX = new ConcurrentHashMap<>();
     private final Map<Integer, AtomicInteger> APPEND_OFFSET_MAP = new ConcurrentHashMap<>();
     public static ThreadLocal<BufferEncoder> BLOCK_TL = new ThreadLocal<>();
     public static ConcurrentHashMap<Integer, BufferEncoder> BLOCKS = new ConcurrentHashMap<>(40);
     public static boolean GET_RANGE_START = false;
+//    public static ThreadLocal<ByteBuffer> PAGE_BUFFER = new ThreadLocal<>();
 
     public LayneBMessageQueueImpl() {
         reload();
@@ -87,8 +90,16 @@ public class LayneBMessageQueueImpl extends MessageQueue {
         int curPart = -1;
         int curId = -1;
         try {
+            // 多读出来的放这
+//            Map<String, WalInfoBasic> restMap = new HashMap<>();
             for (WalInfoBasic info : idxList) {
                 info.value = ByteBuffer.allocate(info.valueSize);
+                // 在多余的内存上
+//                if (restMap.containsKey(info.getStrKey())) {
+//                    WalInfoBasic resInfo = restMap.get(info.getStrKey());
+//                    result.put((int) (info.pOffset - offset), resInfo.value);
+//                    continue;
+//                }
                 // 在傲腾上
                 if (info.isPmem) {
                     BufferEncoder encoder = BLOCKS.get(info.walId);
@@ -97,6 +108,12 @@ public class LayneBMessageQueueImpl extends MessageQueue {
                     continue;
                 }
                 // ESSD上
+                // 每次读32K
+//                ByteBuffer pageBuffer = PAGE_BUFFER.get();
+//                if (pageBuffer == null) {
+//                    pageBuffer = ByteBuffer.allocate(64 * KB);
+//                    PAGE_BUFFER.set(pageBuffer);
+//                }
                 if (valueChannel == null || info.walId != curId || info.walPart != curPart) {
                     curId = info.walId;
                     curPart = info.walPart;
@@ -107,10 +124,33 @@ public class LayneBMessageQueueImpl extends MessageQueue {
                             Constant.getWALInfoPath(info.walId, info.walPart),
                             StandardOpenOption.READ);
                 }
+//                pageBuffer.clear();
                 valueChannel.read(info.value, info.walPos);
+//                pageBuffer.flip();
+                // 拿出答案
+//                for (int i = 0; i < info.valueSize; ++i) info.value.put(pageBuffer.get());
                 info.value.flip();
                 result.put((int) (info.pOffset - offset), info.value);
+                // 剩下的放内存
+//                while (pageBuffer.hasRemaining()) {
+//                    if (pageBuffer.remaining() < WalInfoBasic.BYTES) break;
+//                    WalInfoBasic restInfo = new WalInfoBasic();
+//                    restInfo.decode(pageBuffer, false);
+//                    if (pageBuffer.remaining() < restInfo.valueSize) break;
+//                    restInfo.value = ByteBuffer.allocate(restInfo.valueSize);
+//                    for (int i = 0; i < restInfo.valueSize; ++i) restInfo.value.put(pageBuffer.get());
+//                    restInfo.value.flip();
+//                    // 放入多余先放内存
+////                    restMap.put(restInfo.getStrKey(), restInfo);
+//                    BufferEncoder encoder = BLOCKS.get(restInfo.walId);
+//                    encoder.cache.write(restInfo);
+//                }
             }
+            // 把读出来多余的放傲腾
+//            restMap.forEach((infoStrKey, info) -> {
+//                BufferEncoder encoder = BLOCKS.get(info.walId);
+//                encoder.cache.write(info);
+//            });
         } catch (IOException e) {
         } finally {
             if (valueChannel != null) {

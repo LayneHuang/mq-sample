@@ -136,4 +136,13 @@ public class WalInfoBasic {
     public int getKey() {
         return getKey(topicId, queueId);
     }
+
+    // 两个值都是 int 范围, 合并成 long
+    public long getLongKey() {
+        return (pOffset & Integer.MAX_VALUE) << 32 | getKey();
+    }
+
+    public String getStrKey() {
+        return getKey() + "_" + pOffset;
+    }
 }

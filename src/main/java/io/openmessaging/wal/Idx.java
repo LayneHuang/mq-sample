@@ -46,8 +46,8 @@ public class Idx {
     }
 
     public int getSize() {
+        lock.readLock().lock();
         try {
-            lock.readLock().lock();
             return list.length;
         } finally {
             lock.readLock().unlock();
@@ -55,8 +55,8 @@ public class Idx {
     }
 
     public int getWalPart(int pos) {
+        lock.readLock().lock();
         try {
-            lock.readLock().lock();
             return (list[(pos << 1) | 1] >> BASE_DIS) & BASE;
         } finally {
             lock.readLock().unlock();
@@ -64,8 +64,8 @@ public class Idx {
     }
 
     public int getWalValueSize(int pos) {
+        lock.readLock().lock();
         try {
-            lock.readLock().lock();
             return list[(pos << 1) | 1] & BASE;
         } finally {
             lock.readLock().unlock();
@@ -73,8 +73,8 @@ public class Idx {
     }
 
     public int getWalId(int pos) {
+        lock.readLock().lock();
         try {
-            lock.readLock().lock();
             return (list[pos << 1] >> 1) & WAL_ID_BASE;
         } finally {
             lock.readLock().unlock();
@@ -82,8 +82,8 @@ public class Idx {
     }
 
     public int getWalValuePos(int pos) {
+        lock.readLock().lock();
         try {
-            lock.readLock().lock();
             return (list[pos << 1] >> 3) & WAL_VALUE_BASE;
         } finally {
             lock.readLock().unlock();
@@ -91,8 +91,8 @@ public class Idx {
     }
 
     public boolean isPmem(int pos) {
+        lock.readLock().lock();
         try {
-            lock.readLock().lock();
             return (list[pos << 1] & 1) == 1;
         } finally {
             lock.readLock().unlock();

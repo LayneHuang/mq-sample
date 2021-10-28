@@ -13,8 +13,6 @@ public class Constant {
 
     public static final Path DIR_ESSD = Paths.get("/essd");
 
-    public static final Path DIR_PMEM = Paths.get("/pmem");
-
     public static final int WAL_FILE_COUNT = 4;
 
     public static final int DEFAULT_MAX_THREAD_PER_WAL = 10;
@@ -31,10 +29,6 @@ public class Constant {
 
     public static Path getWALInfoPath(int walId, int part) {
         return DIR_ESSD.resolve("WAL-INFO-" + walId + "-" + part + ".md");
-    }
-
-    public static Path getCacheInfoPath(int walId, int part) {
-        return DIR_PMEM.resolve("WAL-INFO-" + walId + "-" + part + ".md");
     }
 
     public static Path getMetaPath() {
