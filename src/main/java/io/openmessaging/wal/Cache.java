@@ -3,9 +3,9 @@ package io.openmessaging.wal;
 import com.intel.pmem.llpl.Heap;
 import com.intel.pmem.llpl.MemoryBlock;
 
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import static io.openmessaging.Constant.GB;
 import static io.openmessaging.Constant.WRITE_BEFORE_QUERY;
@@ -19,8 +19,10 @@ public class Cache {
     public MemoryBlock tempMb;
     private boolean full = false;
     private long position = 0;
+    private final Map<Integer, Idx> IDX;
 
-    public Cache() {
+    public Cache(Map<Integer, Idx> IDX) {
+        this.IDX = IDX;
         setupLog();
     }
 
@@ -40,7 +42,7 @@ public class Cache {
         position = 0;
     }
 
-    public void write(ByteBuffer data) {
+    public void write(WalInfoBasic info) {
         if (full) return;
 //        tempMb.setByte(position, topic);
 //        position += 1;
@@ -50,21 +52,25 @@ public class Cache {
 //        position += 4;
 //        tempMb.setShort(position, msgLen);
 //        position += 2;
-        position += WalInfoBasic.BYTES;
-        data.rewind();
-        tempMb.copyFromArray(data.array(), 0, position, data.limit());
-        position += data.limit();
+//        position += WalInfoBasic.BYTES;
+        int cachePart = mbs.size() - 1;
+        int cachePos = (int) position;
+        info.value.rewind();
+        tempMb.copyFromArray(info.value.array(), 0, position, info.value.limit());
+        position += info.value.limit();
 //        while (data.hasRemaining()) {
 //            tempMb.setByte(position, data.get());
 //            position++;
 //        }
+        // 傲腾位置信息放入索引
+        Idx idx = IDX.computeIfAbsent(info.getKey(), k -> new Idx());
+        idx.add((int) info.pOffset, info.walId, cachePart, cachePos, info.valueSize, true);
     }
 
-    public MemoryBlock getMb(int part) {
-        if (part < mbs.size()) {
-            return mbs.get(part);
-        }
-        return null;
+    public void get(WalInfoBasic info) {
+        MemoryBlock mb = mbs.get(info.walPart);
+        mb.copyToArray(info.walPos, info.value.array(), 0, info.valueSize);
+        info.value.limit(info.valueSize);
     }
 
 }

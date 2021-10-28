@@ -27,9 +27,9 @@ public class BufferEncoder {
     public int pos;
     public Cache cache;
 
-    public BufferEncoder(int id) {
+    public BufferEncoder(int id, Cache cache) {
         this.id = id;
-        cache = new Cache();
+        this.cache = cache;
     }
 
     public void submit(WalInfoBasic info) {
@@ -70,7 +70,7 @@ public class BufferEncoder {
             info.encode(buffer);
             pos += info.getSize();
             // 缓存
-            cache.write(info.value);
+            cache.write(info);
         }
     }
 

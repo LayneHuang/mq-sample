@@ -4,10 +4,7 @@ import com.intel.pmem.llpl.MemoryBlock;
 import io.openmessaging.Constant;
 import io.openmessaging.IdGenerator;
 import io.openmessaging.MessageQueue;
-import io.openmessaging.wal.BufferEncoder;
-import io.openmessaging.wal.Idx;
-import io.openmessaging.wal.Loader;
-import io.openmessaging.wal.WalInfoBasic;
+import io.openmessaging.wal.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,7 +42,7 @@ public class LayneBMessageQueueImpl extends MessageQueue {
         BufferEncoder encoder = BLOCK_TL.get();
         if (encoder == null) {
             int walId = topicId % Constant.WAL_FILE_COUNT;
-            encoder = BLOCKS.computeIfAbsent(walId, key -> new BufferEncoder(walId));
+            encoder = BLOCKS.computeIfAbsent(walId, key -> new BufferEncoder(walId, new Cache(IDX)));
             BLOCK_TL.set(encoder);
         }
         WalInfoBasic info = new WalInfoBasic(encoder.id, topicId, queueId, data);
@@ -75,7 +72,6 @@ public class LayneBMessageQueueImpl extends MessageQueue {
 //        int doing = DOING_OFFSET_MAP.getOrDefault(key, new AtomicInteger()).get();
 //        int pOffset = append - doing;
         fetchNum = Math.min(fetchNum, (int) (append - offset));
-
         Map<Integer, ByteBuffer> result = new HashMap<>();
         if (idx == null || fetchNum <= 0) return result;
         FileChannel valueChannel = null;
@@ -87,7 +83,8 @@ public class LayneBMessageQueueImpl extends MessageQueue {
             int part = idx.getWalPart(idxPos);
             int pos = idx.getWalValuePos(idxPos);
             int size = idx.getWalValueSize(idxPos);
-            idxList.add(new WalInfoBasic(i, walId, part, pos, size));
+            boolean isPmem = idx.isPmem(idxPos);
+            idxList.add(new WalInfoBasic(idxPos, walId, part, pos, size, isPmem));
         }
         idxList.sort(
                 Comparator.comparingInt((WalInfoBasic o) -> o.walId)
@@ -98,17 +95,15 @@ public class LayneBMessageQueueImpl extends MessageQueue {
         int curId = -1;
         try {
             for (WalInfoBasic info : idxList) {
-                ByteBuffer buffer = ByteBuffer.allocate(info.valueSize);
-                BufferEncoder encoder = BLOCKS.get(info.walId);
-                if (encoder != null) {
-                    MemoryBlock mb = encoder.cache.getMb(info.walPart);
-                    if (mb != null) { // hint
-                        mb.copyToArray(info.walPos, buffer.array(), 0, info.valueSize);
-                        buffer.limit(info.valueSize);
-                        result.put((int) info.pOffset, buffer);
-                        continue;
-                    }
+                info.value = ByteBuffer.allocate(info.valueSize);
+                // 在傲腾上
+                if (info.isPmem) {
+                    BufferEncoder encoder = BLOCKS.get(info.walId);
+                    encoder.cache.get(info);
+                    result.put((int) (info.pOffset - offset), info.value);
+                    continue;
                 }
+                // ESSD上
                 if (valueChannel == null || info.walId != curId || info.walPart != curPart) {
                     curId = info.walId;
                     curPart = info.walPart;
@@ -119,9 +114,9 @@ public class LayneBMessageQueueImpl extends MessageQueue {
                             Constant.getWALInfoPath(info.walId, info.walPart),
                             StandardOpenOption.READ);
                 }
-                valueChannel.read(buffer, info.walPos);
-                buffer.flip();
-                result.put((int) info.pOffset, buffer);
+                valueChannel.read(info.value, info.walPos);
+                info.value.flip();
+                result.put((int) (info.pOffset - offset), info.value);
             }
         } catch (IOException e) {
         } finally {

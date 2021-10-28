@@ -31,6 +31,8 @@ public class WalInfoBasic {
 
     public ByteBuffer value;
 
+    public boolean isPmem;
+
     public WalInfoBasic() {
     }
 
@@ -39,12 +41,23 @@ public class WalInfoBasic {
         this.walPart = walPart;
     }
 
-    public WalInfoBasic(int pOffset, int walId, int walPart, int walPos, int valueSize) {
+    public WalInfoBasic(int topicId, int queueId, long pOffset, int walId, int walPart, int walPos, int valueSize) {
+        this.topicId = topicId;
+        this.queueId = queueId;
         this.pOffset = pOffset;
         this.walId = walId;
         this.walPart = walPart;
         this.walPos = walPos;
         this.valueSize = valueSize;
+    }
+
+    public WalInfoBasic(int pOffset, int walId, int walPart, int walPos, int valueSize, boolean isPmem) {
+        this.pOffset = pOffset;
+        this.walId = walId;
+        this.walPart = walPart;
+        this.walPos = walPos;
+        this.valueSize = valueSize;
+        this.isPmem = isPmem;
     }
 
     public WalInfoBasic(int walId, int topicId, int queueId, ByteBuffer value) {
@@ -63,22 +76,22 @@ public class WalInfoBasic {
         // topicId
         UNSAFE.putByte(address, (byte) topicId);
         // queueId
-        address ++;
+        address++;
         UNSAFE.putByte(address, (byte) ((queueId >> 8) & 0xff));
-        address ++;
+        address++;
         UNSAFE.putByte(address, (byte) (queueId & 0xff));
         // pOffset
-        address ++;
+        address++;
         UNSAFE.putByte(address, (byte) ((pOffset >> 8) & 0xff));
-        address ++;
+        address++;
         UNSAFE.putByte(address, (byte) (pOffset & 0xff));
         // value
-        address ++;
+        address++;
         UNSAFE.putByte(address, (byte) ((valueSize >> 8) & 0xff));
-        address ++;
+        address++;
         UNSAFE.putByte(address, (byte) (valueSize & 0xff));
         // value
-        address ++;
+        address++;
         UNSAFE.copyMemory(value.array(), 16, null, address, value.limit());
         buffer.position(position + getSize());
     }
