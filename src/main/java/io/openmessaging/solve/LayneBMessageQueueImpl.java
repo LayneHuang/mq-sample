@@ -25,7 +25,7 @@ public class LayneBMessageQueueImpl extends MessageQueue {
     public static ConcurrentHashMap<Integer, BufferEncoder> BLOCKS = new ConcurrentHashMap<>(40);
 
     public LayneBMessageQueueImpl() {
-        reload();
+//        reload();
     }
 
     private void reload() {

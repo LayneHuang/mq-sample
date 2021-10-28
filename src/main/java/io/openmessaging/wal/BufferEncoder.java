@@ -60,7 +60,6 @@ public class BufferEncoder {
                     );
                     pos = 0;
                     nowWaitCnt = 0;
-                    cache.openLog();
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
