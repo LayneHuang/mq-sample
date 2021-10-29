@@ -10,18 +10,15 @@ import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static io.openmessaging.solve.LayneBMessageQueueImpl.APPEND_OFFSET_MAP;
+import static io.openmessaging.solve.LayneBMessageQueueImpl.IDX;
+
 public class Loader {
-    private final Map<Integer, Idx> IDX;
 
-    private final Map<Integer, AtomicInteger> APPEND_OFFSET_MAP;
-
-    public Loader(Map<Integer, Idx> IDX, Map<Integer, AtomicInteger> APPEND_OFFSET_MAP) {
-        this.IDX = IDX;
-        this.APPEND_OFFSET_MAP = APPEND_OFFSET_MAP;
+    public Loader() {
     }
 
     private final ExecutorService executor = new ThreadPoolExecutor(5, 10,

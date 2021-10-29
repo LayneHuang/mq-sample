@@ -45,6 +45,18 @@ public class Idx {
         }
     }
 
+    public WalInfoBasic getInfo(int pos) {
+        if ((pos << 1 | 1) >= getSize()) return null;
+        return new WalInfoBasic(
+                pos,
+                getWalId(pos),
+                getWalPart(pos),
+                getWalValuePos(pos),
+                getWalValueSize(pos),
+                isPmem(pos)
+        );
+    }
+
     public int getSize() {
         lock.readLock().lock();
         try {

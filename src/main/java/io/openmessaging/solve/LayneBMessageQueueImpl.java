@@ -13,15 +13,12 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static io.openmessaging.Constant.KB;
-
 public class LayneBMessageQueueImpl extends MessageQueue {
-    public Map<Integer, Idx> IDX = new ConcurrentHashMap<>();
-    private final Map<Integer, AtomicInteger> APPEND_OFFSET_MAP = new ConcurrentHashMap<>();
+    public static final Map<Integer, Idx> IDX = new ConcurrentHashMap<>();
+    public static final Map<Integer, AtomicInteger> APPEND_OFFSET_MAP = new ConcurrentHashMap<>();
     public static ThreadLocal<BufferEncoder> BLOCK_TL = new ThreadLocal<>();
     public static ConcurrentHashMap<Integer, BufferEncoder> BLOCKS = new ConcurrentHashMap<>(40);
     public static boolean GET_RANGE_START = false;
-//    public static ThreadLocal<ByteBuffer> PAGE_BUFFER = new ThreadLocal<>();
 
     public LayneBMessageQueueImpl() {
         reload();
@@ -31,7 +28,7 @@ public class LayneBMessageQueueImpl extends MessageQueue {
         if (!IdGenerator.getIns().load()) {
             return;
         }
-        Loader load = new Loader(IDX, APPEND_OFFSET_MAP);
+        Loader load = new Loader();
         load.run();
     }
 
@@ -41,7 +38,7 @@ public class LayneBMessageQueueImpl extends MessageQueue {
         BufferEncoder encoder = BLOCK_TL.get();
         if (encoder == null) {
             int walId = topicId % Constant.WAL_FILE_COUNT;
-            encoder = BLOCKS.computeIfAbsent(walId, key -> new BufferEncoder(walId, new Cache(walId, IDX)));
+            encoder = BLOCKS.computeIfAbsent(walId, key -> new BufferEncoder(walId, new Cache(walId)));
             BLOCK_TL.set(encoder);
         }
         WalInfoBasic info = new WalInfoBasic(encoder.id, topicId, queueId, data);
@@ -70,36 +67,25 @@ public class LayneBMessageQueueImpl extends MessageQueue {
         fetchNum = Math.min(fetchNum, (int) (append - offset));
         Map<Integer, ByteBuffer> result = new HashMap<>();
         if (idx == null || fetchNum <= 0) return result;
-        FileChannel valueChannel = null;
         List<WalInfoBasic> idxList = new ArrayList<>();
         for (int i = 0; i < fetchNum; ++i) {
             int idxPos = (int) offset + i;
-            if ((idxPos << 1 | 1) >= idx.getSize()) break;
-            int walId = idx.getWalId(idxPos);
-            int part = idx.getWalPart(idxPos);
-            int pos = idx.getWalValuePos(idxPos);
-            int size = idx.getWalValueSize(idxPos);
-            boolean isPmem = idx.isPmem(idxPos);
-            idxList.add(new WalInfoBasic(idxPos, walId, part, pos, size, isPmem));
+            WalInfoBasic query = idx.getInfo(idxPos);
+            if (query == null) break;
+            idxList.add(query);
         }
         idxList.sort(
-                Comparator.comparingInt((WalInfoBasic o) -> o.walId)
+                Comparator.comparingInt((WalInfoBasic o) -> o.isPmem ? -1 : 1)
+                        .thenComparing(o -> o.walId)
                         .thenComparingInt(o -> o.walPart)
                         .thenComparingInt(o -> o.walPos)
         );
+        FileChannel valueChannel = null;
         int curPart = -1;
         int curId = -1;
         try {
-            // 多读出来的放这
-//            Map<String, WalInfoBasic> restMap = new HashMap<>();
             for (WalInfoBasic info : idxList) {
                 info.value = ByteBuffer.allocate(info.valueSize);
-                // 在多余的内存上
-//                if (restMap.containsKey(info.getStrKey())) {
-//                    WalInfoBasic resInfo = restMap.get(info.getStrKey());
-//                    result.put((int) (info.pOffset - offset), resInfo.value);
-//                    continue;
-//                }
                 // 在傲腾上
                 if (info.isPmem) {
                     BufferEncoder encoder = BLOCKS.get(info.walId);
@@ -108,12 +94,6 @@ public class LayneBMessageQueueImpl extends MessageQueue {
                     continue;
                 }
                 // ESSD上
-                // 每次读32K
-//                ByteBuffer pageBuffer = PAGE_BUFFER.get();
-//                if (pageBuffer == null) {
-//                    pageBuffer = ByteBuffer.allocate(64 * KB);
-//                    PAGE_BUFFER.set(pageBuffer);
-//                }
                 if (valueChannel == null || info.walId != curId || info.walPart != curPart) {
                     curId = info.walId;
                     curPart = info.walPart;
@@ -124,34 +104,11 @@ public class LayneBMessageQueueImpl extends MessageQueue {
                             Constant.getWALInfoPath(info.walId, info.walPart),
                             StandardOpenOption.READ);
                 }
-//                pageBuffer.clear();
                 valueChannel.read(info.value, info.walPos);
-//                pageBuffer.flip();
-                // 拿出答案
-//                for (int i = 0; i < info.valueSize; ++i) info.value.put(pageBuffer.get());
                 info.value.flip();
                 result.put((int) (info.pOffset - offset), info.value);
-                // 剩下的放内存
-//                while (pageBuffer.hasRemaining()) {
-//                    if (pageBuffer.remaining() < WalInfoBasic.BYTES) break;
-//                    WalInfoBasic restInfo = new WalInfoBasic();
-//                    restInfo.decode(pageBuffer, false);
-//                    if (pageBuffer.remaining() < restInfo.valueSize) break;
-//                    restInfo.value = ByteBuffer.allocate(restInfo.valueSize);
-//                    for (int i = 0; i < restInfo.valueSize; ++i) restInfo.value.put(pageBuffer.get());
-//                    restInfo.value.flip();
-//                    // 放入多余先放内存
-////                    restMap.put(restInfo.getStrKey(), restInfo);
-//                    BufferEncoder encoder = BLOCKS.get(restInfo.walId);
-//                    encoder.cache.write(restInfo);
-//                }
             }
-            // 把读出来多余的放傲腾
-//            restMap.forEach((infoStrKey, info) -> {
-//                BufferEncoder encoder = BLOCKS.get(info.walId);
-//                encoder.cache.write(info);
-//            });
-        } catch (IOException e) {
+        } catch (IOException ignored) {
         } finally {
             if (valueChannel != null) {
                 try {
