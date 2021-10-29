@@ -42,18 +42,13 @@ public class LayneBMessageQueueImpl extends MessageQueue {
             BLOCK_TL.set(encoder);
         }
         WalInfoBasic info = new WalInfoBasic(encoder.id, topicId, queueId, data);
-        // 某块计算处理中的 msg 数目
-        int key = info.getKey();
         // 获取偏移
         info.pOffset = APPEND_OFFSET_MAP.computeIfAbsent(
-                key,
+                info.getKey(),
                 k -> new AtomicInteger()
         ).getAndIncrement();
         encoder.submit(info);
         encoder.holdOn(info);
-        // 索引
-        Idx idx = IDX.computeIfAbsent(key, k -> new Idx());
-        idx.add((int) info.pOffset, info.walId, info.walPart, info.walPos + WalInfoBasic.BYTES, info.valueSize);
         return info.pOffset;
     }
 

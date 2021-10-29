@@ -9,7 +9,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static io.openmessaging.Constant.GB;
 import static io.openmessaging.Constant.WRITE_BEFORE_QUERY;
-import static io.openmessaging.solve.LayneBMessageQueueImpl.IDX;
 
 public class Cache {
 
@@ -24,12 +23,10 @@ public class Cache {
         ROOT_HEAP = Heap.createHeap("/pmem/" + id, 15L * GB);
     }
 
-    public void write(WalInfoBasic info) {
-        if (full) return;
-        int cachePart;
-        int cachePos;
+    public CacheResult write(WalInfoBasic info) {
+        if (full) return null;
         synchronized (LOCK) {
-            if (full) return;
+            if (full) return null;
             if (mbs.isEmpty() || position + info.value.limit() > WRITE_BEFORE_QUERY) {
                 try {
                     MemoryBlock mb = ROOT_HEAP.allocateMemoryBlock(WRITE_BEFORE_QUERY);
@@ -39,24 +36,32 @@ public class Cache {
                     position = 0;
                 } catch (Exception e) {
                     full = true;
-                    return;
+                    return null;
                 }
             }
-            cachePart = mbSize.get() - 1;
-            cachePos = position;
+            int cachePart = mbSize.get() - 1;
+            int cachePos = position;
             info.value.rewind();
             MemoryBlock mb = mbs.get(cachePart);
             mb.copyFromArray(info.value.array(), 0, position, info.value.limit());
             position += info.valueSize;
+            return new CacheResult(cachePart, cachePos);
         }
-        // 傲腾位置信息放入索引
-        Idx idx = IDX.computeIfAbsent(info.getKey(), k -> new Idx());
-        idx.add((int) info.pOffset, info.walId, cachePart, cachePos, info.valueSize, true);
     }
 
     public void get(WalInfoBasic info) {
         MemoryBlock mb = mbs.get(info.walPart);
         mb.copyToArray(info.walPos, info.value.array(), 0, info.valueSize);
         info.value.limit(info.valueSize);
+    }
+
+    public static class CacheResult {
+        public int part;
+        public int pos;
+
+        public CacheResult(int part, int pos) {
+            this.part = part;
+            this.pos = pos;
+        }
     }
 }
