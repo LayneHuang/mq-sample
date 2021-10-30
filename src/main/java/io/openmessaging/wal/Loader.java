@@ -29,7 +29,7 @@ public class Loader {
     public void run() {
         List<WalInfoBasic> files = new ArrayList<>();
         for (int walId = 0; walId < Constant.WAL_FILE_COUNT; ++walId) {
-            for (int part = 1; ; ++part) {
+            for (int part = 0; ; ++part) {
                 if (!Constant.getWALInfoPath(walId, part).toFile().exists()) break;
                 files.add(new WalInfoBasic(walId, part));
             }

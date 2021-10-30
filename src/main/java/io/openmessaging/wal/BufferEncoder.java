@@ -25,26 +25,38 @@ public class BufferEncoder {
     public int pos;
     public Cache cache;
 
-    public BufferEncoder(int id, Cache cache) {
+    public BufferEncoder(int id) {
         this.id = id;
-        this.cache = cache;
+        this.cache = new Cache(id);
+        try {
+            channel = FileChannel.open(
+                    Constant.getWALInfoPath(id, part),
+                    StandardOpenOption.READ,
+                    StandardOpenOption.WRITE,
+                    StandardOpenOption.CREATE);
+            buffer = channel.map(
+                    FileChannel.MapMode.READ_WRITE,
+                    0,
+                    Constant.WRITE_BEFORE_QUERY
+            );
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     public void submit(WalInfoBasic info) {
         synchronized (LOCK) {
             // wal 分段
-            if (channel == null || pos + info.getSize() >= Constant.WRITE_BEFORE_QUERY) {
+            if (pos + info.getSize() >= Constant.WRITE_BEFORE_QUERY) {
                 int prePart = part++;
                 try {
-                    if (channel != null) {
-                        buffer.force();
-                        forcedMap.put(prePart, buffer.position());
-                        Cleaner cleaner = ((DirectBuffer) buffer).cleaner();
-                        if (cleaner != null) {
-                            cleaner.clean();
-                        }
-                        channel.close();
+                    buffer.force();
+                    forcedMap.put(prePart, buffer.position());
+                    Cleaner cleaner = ((DirectBuffer) buffer).cleaner();
+                    if (cleaner != null) {
+                        cleaner.clean();
                     }
+                    channel.close();
                     channel = FileChannel.open(
                             Constant.getWALInfoPath(info.walId, part),
                             StandardOpenOption.READ,

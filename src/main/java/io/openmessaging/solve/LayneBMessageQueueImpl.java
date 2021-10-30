@@ -22,7 +22,7 @@ public class LayneBMessageQueueImpl extends MessageQueue {
     public static final Map<Integer, AtomicInteger> APPEND_OFFSET_MAP = new ConcurrentHashMap<>();
     public static ThreadLocal<BufferEncoder> BLOCK_TL = new ThreadLocal<>();
     public static ConcurrentHashMap<Integer, BufferEncoder> BLOCKS = new ConcurrentHashMap<>(Constant.WAL_FILE_COUNT);
-    //    public static boolean GET_RANGE_START = false;
+//    public static boolean GET_RANGE_START = false;
     public static ThreadLocal<ByteBuffer> READ_BUF_TL = ThreadLocal.withInitial(() -> ByteBuffer.allocateDirect(18 * KB));
 
     public LayneBMessageQueueImpl() {
@@ -43,7 +43,7 @@ public class LayneBMessageQueueImpl extends MessageQueue {
         BufferEncoder encoder = BLOCK_TL.get();
         if (encoder == null) {
             int walId = topicId % Constant.WAL_FILE_COUNT;
-            encoder = BLOCKS.computeIfAbsent(walId, key -> new BufferEncoder(walId, new Cache(walId)));
+            encoder = BLOCKS.computeIfAbsent(walId, BufferEncoder::new);
             BLOCK_TL.set(encoder);
         }
         WalInfoBasic info = new WalInfoBasic(encoder.id, topicId, queueId, data);
