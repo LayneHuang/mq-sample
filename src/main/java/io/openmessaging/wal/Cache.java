@@ -61,7 +61,7 @@ public class Cache {
                 position += info.valueSize;
                 return new int[]{cachePart, cachePos};
             } else {
-                if (info.valueSize <= 12 * KB) {
+                if (info.valueSize <= 8 * KB) {
                     return writeR(info);
                 }
             }
