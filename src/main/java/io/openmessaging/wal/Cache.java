@@ -5,8 +5,6 @@ import com.intel.pmem.llpl.MemoryBlock;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static io.openmessaging.Constant.GB;
 import static io.openmessaging.Constant.WRITE_BEFORE_QUERY;
@@ -26,7 +24,7 @@ public class Cache {
         mbs.add(mb);
     }
 
-    public CacheResult write(WalInfoBasic info) {
+    public int[] write(WalInfoBasic info) {
         if (full) return null;
         synchronized (LOCK) {
             if (full) return null;
@@ -46,7 +44,7 @@ public class Cache {
             MemoryBlock mb = mbs.get(cachePart);
             mb.copyFromArray(info.value.array(), 0, position, info.value.limit());
             position += info.valueSize;
-            return new CacheResult(cachePart, cachePos);
+            return new int[]{cachePart, cachePos};
         }
     }
 
@@ -56,13 +54,4 @@ public class Cache {
         info.value.limit(info.valueSize);
     }
 
-    public static class CacheResult {
-        public int part;
-        public int pos;
-
-        public CacheResult(int part, int pos) {
-            this.part = part;
-            this.pos = pos;
-        }
-    }
 }

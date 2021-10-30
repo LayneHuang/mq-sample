@@ -22,7 +22,7 @@ public class LayneBMessageQueueImpl extends MessageQueue {
     public static final Map<Integer, AtomicInteger> APPEND_OFFSET_MAP = new ConcurrentHashMap<>();
     public static ThreadLocal<BufferEncoder> BLOCK_TL = new ThreadLocal<>();
     public static ConcurrentHashMap<Integer, BufferEncoder> BLOCKS = new ConcurrentHashMap<>(Constant.WAL_FILE_COUNT);
-//    public static boolean GET_RANGE_START = false;
+    public static boolean GET_RANGE_START = false;
     public static ThreadLocal<ByteBuffer> READ_BUF_TL = ThreadLocal.withInitial(() -> ByteBuffer.allocateDirect(18 * KB));
 
     public LayneBMessageQueueImpl() {
@@ -54,8 +54,8 @@ public class LayneBMessageQueueImpl extends MessageQueue {
         ).getAndIncrement();
         // 每个步骤不放入写文件的同一个同步中, 锁粒度更小, 并发更高
         // 体积较小(12KB)的写傲腾(12KB->17KB, 60G->125G)
-        Cache.CacheResult cacheResult = null;
-        if (info.valueSize < 12 * KB) {
+        int[] cacheResult = null;
+        if (info.valueSize < 8 * KB || GET_RANGE_START) {
             cacheResult = encoder.cache.write(info);
         }
         // 再写文件
@@ -66,8 +66,8 @@ public class LayneBMessageQueueImpl extends MessageQueue {
         idx.add(
                 (int) info.pOffset,
                 info.walId,
-                isPmem ? cacheResult.part : info.walPart,
-                isPmem ? cacheResult.pos : info.walPos + WalInfoBasic.BYTES,
+                isPmem ? cacheResult[0] : info.walPart,
+                isPmem ? cacheResult[1] : info.walPos + WalInfoBasic.BYTES,
                 info.valueSize,
                 isPmem
         );
@@ -78,7 +78,7 @@ public class LayneBMessageQueueImpl extends MessageQueue {
 
     @Override
     public Map<Integer, ByteBuffer> getRange(String topic, int queueId, long offset, int fetchNum) {
-//        GET_RANGE_START = true;
+        GET_RANGE_START = true;
         int topicId = IdGenerator.getIns().getId(topic);
         int key = WalInfoBasic.getKey(topicId, queueId);
         Idx idx = IDX.get(key);
