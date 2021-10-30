@@ -50,9 +50,9 @@ public class LayneBMessageQueueImpl extends MessageQueue {
                 k -> new AtomicInteger()
         ).getAndIncrement();
         // 每个步骤不放入写文件的同一个同步中, 锁粒度更小, 并发更高
-        // 体积较小(8KB)的写傲腾(8KB->17KB, 60G->125G)
+        // 体积较小(12KB)的写傲腾(12KB->17KB, 60G->125G)
         Cache.CacheResult cacheResult = null;
-        if (info.valueSize < 8 * KB) {
+        if (info.valueSize < 12 * KB) {
             cacheResult = encoder.cache.write(info);
         }
         // 再写文件
