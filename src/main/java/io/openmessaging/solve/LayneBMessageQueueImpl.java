@@ -4,6 +4,7 @@ import io.openmessaging.Constant;
 import io.openmessaging.IdGenerator;
 import io.openmessaging.MessageQueue;
 import io.openmessaging.wal.*;
+import sun.nio.ch.DirectBuffer;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -14,13 +15,15 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static io.openmessaging.Constant.KB;
+import static io.openmessaging.leo2.Utils.UNSAFE;
 
 public class LayneBMessageQueueImpl extends MessageQueue {
     public static final Map<Integer, Idx> IDX = new ConcurrentHashMap<>();
     public static final Map<Integer, AtomicInteger> APPEND_OFFSET_MAP = new ConcurrentHashMap<>();
     public static ThreadLocal<BufferEncoder> BLOCK_TL = new ThreadLocal<>();
-    public static ConcurrentHashMap<Integer, BufferEncoder> BLOCKS = new ConcurrentHashMap<>(40);
-    public static boolean GET_RANGE_START = false;
+    public static ConcurrentHashMap<Integer, BufferEncoder> BLOCKS = new ConcurrentHashMap<>(Constant.WAL_FILE_COUNT);
+    //    public static boolean GET_RANGE_START = false;
+    public static ThreadLocal<ByteBuffer> READ_BUF_TL = ThreadLocal.withInitial(() -> ByteBuffer.allocateDirect(18 * KB));
 
     public LayneBMessageQueueImpl() {
         reload();
@@ -75,7 +78,7 @@ public class LayneBMessageQueueImpl extends MessageQueue {
 
     @Override
     public Map<Integer, ByteBuffer> getRange(String topic, int queueId, long offset, int fetchNum) {
-        GET_RANGE_START = true;
+//        GET_RANGE_START = true;
         int topicId = IdGenerator.getIns().getId(topic);
         int key = WalInfoBasic.getKey(topicId, queueId);
         Idx idx = IDX.get(key);
@@ -120,8 +123,12 @@ public class LayneBMessageQueueImpl extends MessageQueue {
                             Constant.getWALInfoPath(info.walId, info.walPart),
                             StandardOpenOption.READ);
                 }
-                valueChannel.read(info.value, info.walPos);
-                info.value.flip();
+                ByteBuffer readBuf = READ_BUF_TL.get();
+                readBuf.clear();
+                valueChannel.read(readBuf, info.walPos);
+                long address = ((DirectBuffer) readBuf).address();
+                UNSAFE.copyMemory(null, address, info.value.array(), 16, info.valueSize);
+                info.value.limit(info.valueSize);
                 result.put((int) (info.pOffset - offset), info.value);
             }
         } catch (IOException ignored) {
