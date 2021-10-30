@@ -13,6 +13,8 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static io.openmessaging.Constant.KB;
+
 public class LayneBMessageQueueImpl extends MessageQueue {
     public static final Map<Integer, Idx> IDX = new ConcurrentHashMap<>();
     public static final Map<Integer, AtomicInteger> APPEND_OFFSET_MAP = new ConcurrentHashMap<>();
@@ -47,7 +49,26 @@ public class LayneBMessageQueueImpl extends MessageQueue {
                 info.getKey(),
                 k -> new AtomicInteger()
         ).getAndIncrement();
+        // 每个步骤不放入写文件的同一个同步中, 锁粒度更小, 并发更高
+        // 体积较小(8KB)的写傲腾(8KB->17KB, 60G->125G)
+        Cache.CacheResult cacheResult = null;
+        if (info.valueSize < 8 * KB) {
+            cacheResult = encoder.cache.write(info);
+        }
+        // 再写文件
         encoder.submit(info);
+        // 写索引
+        boolean isPmem = cacheResult != null;
+        Idx idx = IDX.computeIfAbsent(info.getKey(), k -> new Idx());
+        idx.add(
+                (int) info.pOffset,
+                info.walId,
+                isPmem ? cacheResult.part : info.walPart,
+                isPmem ? cacheResult.pos : info.walPos + WalInfoBasic.BYTES,
+                info.valueSize,
+                isPmem
+        );
+        // 最后等待
         encoder.holdOn(info);
         return info.pOffset;
     }

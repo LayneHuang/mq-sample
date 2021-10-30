@@ -15,8 +15,6 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-import static io.openmessaging.solve.LayneBMessageQueueImpl.IDX;
-
 public class BufferEncoder {
     private volatile int waitCnt = Constant.DEFAULT_MAX_THREAD_PER_WAL;
     private FileChannel channel = null;
@@ -67,19 +65,6 @@ public class BufferEncoder {
             info.walPos = pos;
             info.encode(buffer);
             pos += info.getSize();
-            // 缓存
-            Cache.CacheResult cacheResult = cache.write(info);
-            // 索引
-            boolean isPmem = cacheResult != null;
-            Idx idx = IDX.computeIfAbsent(info.getKey(), k -> new Idx());
-            idx.add(
-                    (int) info.pOffset,
-                    info.walId,
-                    isPmem ? cacheResult.part : info.walPart,
-                    isPmem ? cacheResult.pos : info.walPos + WalInfoBasic.BYTES,
-                    info.valueSize,
-                    isPmem
-            );
         }
     }
 
