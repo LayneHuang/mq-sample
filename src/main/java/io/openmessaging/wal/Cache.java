@@ -64,14 +64,14 @@ public class Cache {
 
     private int[] writeR(WalInfoBasic info) {
         if (full_1) return null;
-        if (info.valueSize > 4 * KB){
+        if (info.valueSize > 8 * KB){
             if (lastWrite) {
                 lastWrite = false;
                 return null;
             }
         }
         if (position + info.value.limit() > WRITE_BEFORE_QUERY) {
-            if (mbs.size() < 24) {
+            if (mbs.size() < 26) {
                 MemoryBlock mb = ROOT_HEAP.allocateMemoryBlock(WRITE_BEFORE_QUERY);
                 ROOT_HEAP.setRoot(mb.handle());
                 mbs.add(mb);
