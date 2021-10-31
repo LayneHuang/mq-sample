@@ -33,7 +33,7 @@ public class Cache {
                     return writeO(info);
                 }
             } else {
-                if (info.valueSize <= 8 * KB) {
+                if (info.valueSize <= 12 * KB) {
                     return writeR(info);
                 }
             }
@@ -69,7 +69,7 @@ public class Cache {
     private int[] writeR(WalInfoBasic info) {
         if (full_1) return null;
         if (position + info.value.limit() > WRITE_BEFORE_QUERY) {
-            if (mbs.size() < 20) {
+            if (mbs.size() < 24) {
                 MemoryBlock mb = ROOT_HEAP.allocateMemoryBlock(WRITE_BEFORE_QUERY);
                 ROOT_HEAP.setRoot(mb.handle());
                 mbs.add(mb);
