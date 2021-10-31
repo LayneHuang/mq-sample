@@ -64,7 +64,7 @@ public class Cache {
 
     private int[] writeR(WalInfoBasic info) {
         if (full_1) return null;
-        if (info.valueSize > 8 * KB){
+        if (info.valueSize > 4 * KB){
             if (lastWrite) {
                 lastWrite = false;
                 return null;
