@@ -19,7 +19,7 @@ public class WalInfoBasic {
 
     public int queueId;
 
-    public long pOffset;
+    public int pOffset;
 
     public int valueSize;
 
@@ -41,7 +41,7 @@ public class WalInfoBasic {
         this.walPart = walPart;
     }
 
-    public WalInfoBasic(int topicId, int queueId, long pOffset, int walId, int walPart, int walPos, int valueSize) {
+    public WalInfoBasic(int topicId, int queueId, int pOffset, int walId, int walPart, int walPos, int valueSize) {
         this.topicId = topicId;
         this.queueId = queueId;
         this.pOffset = pOffset;

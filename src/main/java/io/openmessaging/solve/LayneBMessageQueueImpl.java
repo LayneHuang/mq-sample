@@ -48,8 +48,9 @@ public class LayneBMessageQueueImpl extends MessageQueue {
         }
         WalInfoBasic info = new WalInfoBasic(encoder.id, topicId, queueId, data);
         // 获取偏移
+        int infoKey = info.getKey();
         info.pOffset = APPEND_OFFSET_MAP.computeIfAbsent(
-                info.getKey(),
+                infoKey,
                 k -> new AtomicInteger()
         ).getAndIncrement();
         // 每个步骤不放入写文件的同一个同步中, 锁粒度更小, 并发更高
@@ -59,9 +60,9 @@ public class LayneBMessageQueueImpl extends MessageQueue {
         encoder.submit(info);
         // 写索引
         boolean isPmem = cacheResult != null;
-        Idx idx = IDX.computeIfAbsent(info.getKey(), k -> new Idx());
+        Idx idx = IDX.computeIfAbsent(infoKey, k -> new Idx());
         idx.add(
-                (int) info.pOffset,
+                info.pOffset,
                 info.walId,
                 isPmem ? cacheResult[0] : info.walPart,
                 isPmem ? cacheResult[1] : info.walPos + WalInfoBasic.BYTES,
@@ -80,9 +81,9 @@ public class LayneBMessageQueueImpl extends MessageQueue {
         int key = WalInfoBasic.getKey(topicId, queueId);
         Idx idx = IDX.get(key);
         int append = APPEND_OFFSET_MAP.getOrDefault(key, new AtomicInteger()).get();
-        fetchNum = Math.min(fetchNum, (int) (append - offset));
-        Map<Integer, ByteBuffer> result = new HashMap<>();
-        if (idx == null || fetchNum <= 0) return result;
+        fetchNum = Math.min(fetchNum, append - (int) offset);
+        if (idx == null || fetchNum <= 0) return Collections.emptyMap();
+        Map<Integer, ByteBuffer> result = new HashMap<>(fetchNum);
         List<WalInfoBasic> idxList = new ArrayList<>();
         for (int i = 0; i < fetchNum; ++i) {
             int idxPos = (int) offset + i;
@@ -100,7 +101,8 @@ public class LayneBMessageQueueImpl extends MessageQueue {
         int curPart = -1;
         int curId = -1;
         try {
-            for (WalInfoBasic info : idxList) {
+            for (int i = 0; i < idxList.size(); i++) {
+                WalInfoBasic info = idxList.get(i);
                 info.value = ByteBuffer.allocate(info.valueSize);
                 // 在傲腾上
                 if (info.isPmem) {
@@ -133,8 +135,7 @@ public class LayneBMessageQueueImpl extends MessageQueue {
             if (valueChannel != null) {
                 try {
                     valueChannel.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
+                } catch (IOException ignored) {
                 }
             }
         }
