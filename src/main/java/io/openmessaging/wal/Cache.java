@@ -18,6 +18,7 @@ public class Cache {
     private int position = 0;
     private int oIndex = 0;
     private final Object LOCK = new Object();
+    private boolean lastWrite = false;
 
     public Cache(int id) {
         ROOT_HEAP = Heap.createHeap("/pmem/" + id, 15L * GB);
@@ -29,16 +30,11 @@ public class Cache {
     public int[] write(WalInfoBasic info) {
         synchronized (LOCK) {
             if (GET_RANGE_START) {
-                if (info.valueSize <= 12 * KB) {
-                    return writeO(info);
-                }
+                return writeO(info);
             } else {
-                if (info.valueSize <= 12 * KB) {
-                    return writeR(info);
-                }
+                return writeR(info);
             }
         }
-        return null;
     }
 
     private int[] writeO(WalInfoBasic info) {
@@ -68,6 +64,12 @@ public class Cache {
 
     private int[] writeR(WalInfoBasic info) {
         if (full_1) return null;
+        if (info.valueSize > 8 * KB){
+            if (lastWrite) {
+                lastWrite = false;
+                return null;
+            }
+        }
         if (position + info.value.limit() > WRITE_BEFORE_QUERY) {
             if (mbs.size() < 24) {
                 MemoryBlock mb = ROOT_HEAP.allocateMemoryBlock(WRITE_BEFORE_QUERY);
@@ -80,6 +82,7 @@ public class Cache {
                 return null;
             }
         }
+        lastWrite = true;
         return realWrite(info);
     }
 
