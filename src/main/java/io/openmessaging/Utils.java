@@ -1,4 +1,4 @@
-package io.openmessaging.leo2;
+package io.openmessaging;
 
 import sun.misc.Cleaner;
 import sun.misc.Unsafe;

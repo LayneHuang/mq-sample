@@ -15,7 +15,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static io.openmessaging.Constant.KB;
-import static io.openmessaging.leo2.Utils.UNSAFE;
+import static io.openmessaging.Utils.UNSAFE;
 
 public class LayneBMessageQueueImpl extends MessageQueue {
     public static final Map<Integer, Idx> IDX = new ConcurrentHashMap<>();
@@ -101,8 +101,7 @@ public class LayneBMessageQueueImpl extends MessageQueue {
         int curPart = -1;
         int curId = -1;
         try {
-            for (int i = 0; i < idxList.size(); i++) {
-                WalInfoBasic info = idxList.get(i);
+            for (WalInfoBasic info : idxList) {
                 info.value = ByteBuffer.allocate(info.valueSize);
                 // 在傲腾上
                 if (info.isPmem) {

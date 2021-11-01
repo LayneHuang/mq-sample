@@ -3,7 +3,6 @@ package io.openmessaging.wal;
 import io.openmessaging.Constant;
 
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class Idx {
     private static final int IDX_SIZE = 4;

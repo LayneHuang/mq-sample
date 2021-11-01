@@ -5,7 +5,7 @@ import sun.nio.ch.DirectBuffer;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 
-import static io.openmessaging.leo2.Utils.UNSAFE;
+import static io.openmessaging.Utils.UNSAFE;
 
 /**
  * WalInfoBasic
