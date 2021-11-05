@@ -1,3 +1,5 @@
+http://laynehuang666.gitee.io/foreasierprogramming/2021/11/01/contest/tianchi/mq_sample/
+
 >写在前面: 
 > 1.在开始coding前请仔细阅读以下内容
 
